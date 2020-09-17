@@ -11,7 +11,7 @@ https://github.com/fbreve/Particle-Competition-and-Cooperation
 
 ## Getting Started
 #### Installation
-You need Python 3.7 or later to use **pycc**. You can find it at [python.org](https://www.python.org/).
+You need Python 3.7 or later to use **pypcc**. You can find it at [python.org](https://www.python.org/).
 
 You can clone this repo to your local machine using:
 ```
@@ -28,7 +28,8 @@ As arguments, **pypcc** receives the values explained below:
 - **k_nn:** value that represents the amount of k-nearest neighbours to connect in the graph build (Euclidean distance).
 - **p_grd:** value from 0 to 1 that defines the probability of particles to take the greedy movement. Default: 0.5.
 - **delta_v:** value from 0 to 1 to control changing rate of the domination levels. Default: 0.1.
-- **max_iter:** number of epochs until the label propagation stops (if the stop criteria is not met before that).
+- **max_iter:** number of iterations until the label propagation stops (if the stop criteria is not met before that).
+- **es_chk:** control how much iterations the algorithm performs after reaching some level of stability (stop criteria). Default: 2000. The formula is (total_number_of_nodes / number_of_labeled_nodes) * es_chk. Lower **es_chk** to finish earlier, but it may affect accuracy.
 ---
 
 ## Citation
