@@ -18,7 +18,8 @@ To Do:
     call graph_gen if needed.
     note: fit_predict matches the scikit-learn scheme
     could use a flag to not reset particles, nodes, distances, and just continue
-    the iterations
+    the iterations.
+ 2. The distance table is a particle attribute, it should be in the Particle class.
   
 Fixed:
  1. Graph was generating dictonaries with int and int64 numbers. 
@@ -55,6 +56,7 @@ Changes:
 
 #import time
 import numpy as np
+from dataclasses import dataclass
 
 class ParticleCompetitionAndCooperation():
 
@@ -245,6 +247,7 @@ class ParticleCompetitionAndCooperation():
 
     def __genParticles(self):
         
+        @dataclass
         class Particles():
             homenode = np.where(self.labels!=-1)[0]
             # it is important to copy the vector instead of referencing it,
@@ -264,6 +267,7 @@ class ParticleCompetitionAndCooperation():
         # matrix to hold nodes domination levels, first column hold the labels
         # holding labels as float64 is a waste of space, change that!
         
+        @dataclass
         class Nodes():
             amount = len(self.data)
             dominance = np.full(shape=(amount,len(self.unique_labels)), fill_value=float(1/self.c),dtype=float)
@@ -288,9 +292,9 @@ class ParticleCompetitionAndCooperation():
         # function, which makes greedy walk only a little slower.
         # This could be an option in the future, to be used only with large datasets.
         
-        dist_table = np.full(shape=(len(self.data),len(self.part.homenode)), fill_value=min(len(self.data)-1,255),dtype='uint8')
+        dist_table = np.full(shape=(len(self.data),self.part.amount), fill_value=min(len(self.data)-1,255),dtype='uint8')
 
-        for h,i in zip(self.part.homenode,range(len(self.part.homenode))):
+        for h,i in zip(self.part.homenode,range(self.part.amount)):
             dist_table[h,i] = 0
 
         return dist_table
