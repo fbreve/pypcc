@@ -217,7 +217,7 @@ class ParticleCompetitionAndCooperation():
             homenode = np.where(self.labels!=-1)[0]
             # it is important to copy the vector instead of referencing it,
             # otherwise the home nodes would change with the current nodes
-            curnode = np.copy(homenode) 
+            curnode = homenode.copy() 
             label = self.labels[self.labels!=-1]
             strength = np.full(len(label),1,dtype=float)
             amount = len(homenode) # amount of particles
@@ -250,7 +250,7 @@ class ParticleCompetitionAndCooperation():
             dominance = np.full(shape=(amount,len(self.unique_labels)), fill_value=float(1/self.c),dtype=float)
             # it is important to copy the labels instead of referencing them
             # otherwise, the input vector would be changed.
-            label = np.copy(self.labels)
+            label = self.labels.copy()
             dominance[label != -1] = 0
             for l in np.unique(label[label!=-1]):
                 dominance[label == l,l] = 1
