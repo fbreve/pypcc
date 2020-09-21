@@ -42,6 +42,10 @@ Changes:
 14. Changed fit/predict to a single fit_predict method, as it makes more sense
     for a transductive SSL method. graph_gen() is available as a separate
     function since one may want to run multiples executions with the same graph.
+     
+Note:
+ 1. Node dominances and particle strenght are using float64 because it is a
+    little faster than float32, though we don't really need 64 bits precision
 
 """
 
@@ -84,7 +88,7 @@ class ParticleCompetitionAndCooperation():
        
         # this is to avoid re-creating this zero-ed array for every particle 
         # move in the update function
-        self.zerovec = np.zeros(self.c)
+        self.zerovec = np.zeros(self.c, dtype=np.float64)
                 
         # maximum amount of stop creteria positive checks before stopping early
         stop_max = round((self.node.amount/self.part.amount) * round(self.es_chk * 0.1));
@@ -185,7 +189,7 @@ class ParticleCompetitionAndCooperation():
         # for some reason, 1/pow(x,2) is more efficient than pow(x,-2) in Python
         # probably because the pow() is performed with integers in the first case,
         # and it has to be converted to float in the second case.        
-        dist_list = 1/pow(1 + self.part.dist_table[neighbors,p_i].astype(int),2)
+        dist_list = 1/pow(1 + self.part.dist_table[neighbors,p_i].astype(np.int32),2)
         
         # let's calculate the neighbor probabilty and keep the accumulated 
         # probabilities for a more efficient roullete step
@@ -219,7 +223,7 @@ class ParticleCompetitionAndCooperation():
             # otherwise the home nodes would change with the current nodes
             curnode = homenode.copy() 
             label = self.labels[self.labels!=-1]
-            strength = np.full(len(label),1,dtype=float)
+            strength = np.full(len(label),1,dtype=np.float64)
             amount = len(homenode) # amount of particles
             
             # I changed distance table from 'int' to 'uint8' to save on memory space, 
@@ -229,7 +233,7 @@ class ParticleCompetitionAndCooperation():
             # function, which makes greedy walk only a little slower.
             # This could be an option in the future, to be used only with large datasets.
             
-            dist_table = np.full(shape=(len(self.data),amount), fill_value=min(len(self.data)-1,255),dtype='uint8')
+            dist_table = np.full(shape=(len(self.data),amount), fill_value=min(len(self.data)-1,255),dtype=np.uint8)
     
             for h,i in zip(homenode,range(amount)):
                 dist_table[h,i] = 0
@@ -247,7 +251,7 @@ class ParticleCompetitionAndCooperation():
         @dataclass
         class Nodes():
             amount = len(self.data)
-            dominance = np.full(shape=(amount,len(self.unique_labels)), fill_value=float(1/self.c),dtype=float)
+            dominance = np.full(shape=(amount,len(self.unique_labels)), fill_value=float(1/self.c),dtype=np.float64)
             # it is important to copy the labels instead of referencing them
             # otherwise, the input vector would be changed.
             label = self.labels.copy()
