@@ -8,19 +8,6 @@ Breve, Fabricio Aparecido; Zhao, Liang; Quiles, Marcos Gonçalves; Pedrycz, Wito
 Knowledge and Data Engineering, IEEE Transactions on , vol.24, no.9, pp.1686,1698, Sept. 2012
 doi: 10.1109/TKDE.2011.119
 
-To Do:
- 1. fit, predict doesn't make much sense in transductive learning, it would
-    be better to have a method to generate the graph, and another to run
-    particle competition and cooperation. 
-    Idea: graph_gen(data) - optional (k_nn)
-          fit_predict(data,label) - optional (k_nn, p_grd, delta_v, max_iter, etc...)
-    maybe automatically check if data and k didn't change and automatically
-    call graph_gen if needed.
-    note: fit_predict matches the scikit-learn scheme
-    could use a flag to not reset particles, nodes, distances, and just continue
-    the iterations.
- 2. The distance table is a particle attribute, it should be in the Particle class.
-  
 Fixed:
  1. Graph was generating dictonaries with int and int64 numbers. 
  2. dict/list access was too slow, changed to matrix.
@@ -51,6 +38,10 @@ Changes:
 11. Moved execution time evaluation to the example.
 12. Vectorized the update() method and did some other tweaks to improve
     speed.
+13. Moved the distance table to the particle attributes.
+14. Changed fit/predict to a single fit_predict method, as it makes more sense
+    for a transductive SSL method. graph_gen() is available as a separate
+    function since one may want to run multiples executions with the same graph.
 
 """
 
@@ -60,61 +51,35 @@ from dataclasses import dataclass
 
 class ParticleCompetitionAndCooperation():
 
-    def __init__(self, k_nn=10, p_grd=0.5, delta_v=0.1, max_iter=500000, es_chk=2000):
+    def __init__(self):
+        self.data = None
 
+    def build_graph(self, data, k_nn=10):
+        
+        self.data = data
         self.k_nn = k_nn
+        self.neib_list, self.neib_qt = self.__genGraph()
+        
+    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, max_iter=500000, es_chk=2000):
+
+        if (self.data is None):
+            print("Error: You must build the graph first using build_graph(data)")
+            return(-1)
+        
+        self.labels = labels
         self.p_grd = p_grd
         self.delta_v = delta_v
-        self.max_iter = max_iter
+        self.max_iter = max_iter       
         # early stop control, decrease it to run faster, but accuracy may be lower
         self.es_chk= 2000 
-        self.c = 0
-        self.labels = None
-        self.data = None
-        self.unique_labels = None
-        self.spent = 0
-        self.neib_list = None
-        self.neib_qt = None
-
-
-    def fit(self, data, labels):
-
-        #start = time.time()
-
-        self.data = data
-        self.labels = labels
         self.unique_labels = np.unique(self.labels) # list of classes
         self.unique_labels = self.unique_labels[self.unique_labels != -1] # excluding the "unlabeled label" (-1)
-        self.c = len(self.unique_labels) # amount of classes        
+        self.c = len(self.unique_labels) # amount of classes                
         self.part = self.__genParticles()
         self.node = self.__genNodes()
-        self.dist_table = self.__genDistTable()
-
-        self.neib_list, self.neib_qt = self.__genGraph()
-
-        #end = time.time()
-
-        #print('finished with time: '+"{0:.5f}".format(end-start)+'s')
-
-
-    def predict(self, data):
-
-        #start = time.time()
-
         self.__labelPropagation()
-
-        #end = time.time()
-
-        # time spent with greedy walk        
-        #print('finished with time: '+"{0:.5f}".format(self.spent)+'s')
-        
-        # time spent in total
-        #print('finished with time: '+"{0:.5f}".format(end-start)+'s')
-
         return self.node.label
-
-
-    
+  
     def __labelPropagation(self):
        
         # this is to avoid re-creating this zero-ed array for every particle 
@@ -192,8 +157,8 @@ class ParticleCompetitionAndCooperation():
 
         # update distance table
         current_node = self.part.curnode[p_i]
-        if(self.dist_table[n_i,p_i] > (self.dist_table[current_node,p_i]+1)):
-            self.dist_table[n_i,p_i] = self.dist_table[current_node,p_i]+1
+        if(self.part.dist_table[n_i,p_i] > (self.part.dist_table[current_node,p_i]+1)):
+            self.part.dist_table[n_i,p_i] = self.part.dist_table[current_node,p_i]+1
 
         # if there isn't a shock, move the particle to the new node
         # note: argmax is cleaner, but slower; np.amax is also slower than max
@@ -220,7 +185,7 @@ class ParticleCompetitionAndCooperation():
         # for some reason, 1/pow(x,2) is more efficient than pow(x,-2) in Python
         # probably because the pow() is performed with integers in the first case,
         # and it has to be converted to float in the second case.        
-        dist_list = 1/pow(1 + self.dist_table[neighbors,p_i].astype(int),2)
+        dist_list = 1/pow(1 + self.part.dist_table[neighbors,p_i].astype(int),2)
         
         # let's calculate the neighbor probabilty and keep the accumulated 
         # probabilities for a more efficient roullete step
@@ -257,6 +222,18 @@ class ParticleCompetitionAndCooperation():
             strength = np.full(len(label),1,dtype=float)
             amount = len(homenode) # amount of particles
             
+            # I changed distance table from 'int' to 'uint8' to save on memory space, 
+            # but this makes the pow calculation in greedy walk much slower, since
+            # it probably converts uint8 to float before the operation.         
+            # As a workaround I am explicitly converting from uint8 to int in the pow()
+            # function, which makes greedy walk only a little slower.
+            # This could be an option in the future, to be used only with large datasets.
+            
+            dist_table = np.full(shape=(len(self.data),amount), fill_value=min(len(self.data)-1,255),dtype='uint8')
+    
+            for h,i in zip(homenode,range(amount)):
+                dist_table[h,i] = 0
+            
         part = Particles()
 
         return part
@@ -282,22 +259,6 @@ class ParticleCompetitionAndCooperation():
 
         return node
 
-
-    def __genDistTable(self):
-
-        # I changed distance table from 'int' to 'uint8' to save on memory space, 
-        # but this makes the pow calculation in greedy walk much slower, since
-        # it probably converts uint8 to float before the operation.         
-        # As a workaround I am explicitly converting from uint8 to int in the pow()
-        # function, which makes greedy walk only a little slower.
-        # This could be an option in the future, to be used only with large datasets.
-        
-        dist_table = np.full(shape=(len(self.data),self.part.amount), fill_value=min(len(self.data)-1,255),dtype='uint8')
-
-        for h,i in zip(self.part.homenode,range(self.part.amount)):
-            dist_table[h,i] = 0
-
-        return dist_table
 
     def __genGraph(self):
 

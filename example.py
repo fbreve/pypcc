@@ -58,9 +58,9 @@ masked_labels = hideLabels(labels, 0.1)
 
 #RUN THE MODEL
 start = time.time()
-model = ParticleCompetitionAndCooperation(k_nn=10)
-model.fit(data, masked_labels)
-pred = np.array(model.predict(data))
+model = ParticleCompetitionAndCooperation()
+model.build_graph(data,k_nn=10)
+pred = np.array(model.fit_predict(masked_labels))
 end = time.time()
 
 #SEPARATE PREDICTED SAMPLES
