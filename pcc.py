@@ -244,10 +244,7 @@ class ParticleCompetitionAndCooperation():
 
 
     def __genNodes(self):
-
-        # matrix to hold nodes domination levels, first column hold the labels
-        # holding labels as float64 is a waste of space, change that!
-        
+       
         @dataclass
         class Nodes():
             amount = len(self.data)
