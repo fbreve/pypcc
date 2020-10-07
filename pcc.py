@@ -64,7 +64,7 @@ class ParticleCompetitionAndCooperation():
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = self.__genGraph()
         
-    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, max_iter=500000, es_chk=2000):
+    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, max_iter=500000, early_stop=True, es_chk=2000):
 
         if (self.data is None):
             print("Error: You must build the graph first using build_graph(data)")
@@ -74,8 +74,9 @@ class ParticleCompetitionAndCooperation():
         self.p_grd = p_grd
         self.delta_v = delta_v
         self.max_iter = max_iter       
+        self.early_stop = early_stop
         # early stop control, decrease it to run faster, but accuracy may be lower
-        self.es_chk= 2000 
+        self.es_chk= es_chk        
         self.unique_labels = np.unique(self.labels) # list of classes
         self.unique_labels = self.unique_labels[self.unique_labels != -1] # excluding the "unlabeled label" (-1)
         self.c = len(self.unique_labels) # amount of classes                
@@ -90,12 +91,13 @@ class ParticleCompetitionAndCooperation():
         # move in the update function
         self.zerovec = np.zeros(self.c, dtype=np.float64)
                 
-        # maximum amount of stop creteria positive checks before stopping early
-        stop_max = round((self.node.amount/self.part.amount) * round(self.es_chk * 0.1));
-        # mean of each node maximum dominance level
-        max_mmpot = 0;
-        # counter of stop creteria positive checks
-        stop_cnt = 0;        
+        if (self.early_stop):
+            # maximum amount of stop creteria positive checks before stopping early
+            stop_max = round((self.node.amount/(self.part.amount*self.k_nn)) * round(self.es_chk * 0.1));
+            # mean of each node maximum dominance level
+            max_mmpot = 0;
+            # counter of stop creteria positive checks
+            stop_cnt = 0;        
 
         for it in range(0,self.max_iter):
 
@@ -117,7 +119,7 @@ class ParticleCompetitionAndCooperation():
                 self.__update(next_node, p_i)
                 
             # check stop criteria
-            if (np.mod(it,10)==0):
+            if (self.early_stop and np.mod(it,10)==0):
                 # get mean of all nodes maximum dominance level
                 mmpot = np.mean(np.amax(self.node.dominance,1))   
                 # check if it is larger than the maximum we've seen so far
