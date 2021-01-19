@@ -4,7 +4,7 @@ Python code for the semi-supervised learning method "Particle Competition and Co
 This is a fork of Caio Carneloz' implementation:
 https://github.com/caiocarneloz/pycc
 
-This fork has a few bug fixes and lots of optimizations for faster execution. It also includes the early stop creteria from the original article.
+This fork has a few bug fixes and lots of optimizations for faster execution. It also includes the early stop criteria from the original article.
 
 However, if you need more speed, the pure Matlab version is still ~10 times faster. And the Matlab MEX version is ~100 times faster. They are available at:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
