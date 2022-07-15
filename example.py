@@ -49,14 +49,17 @@ def hideLabels(true_labels, percentage):
     return np.array(labels).astype(int)
 
 #IMPORT DATASETS
+print("Loading the Wine dataset...")
 wine = load_wine()
 data = normalize(wine.data,axis=0)
 labels = wine.target
 
 #GENERATE UNLABELED DATA
+print("Randomly selecting 10% of the elements to be presented to the algorithm with their labels...")
 masked_labels = hideLabels(labels, 0.1)
 
 #RUN THE MODEL
+print('Running the algorithm...')
 start = time.time()
 model = ParticleCompetitionAndCooperation()
 model.build_graph(data,k_nn=10)
