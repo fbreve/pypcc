@@ -21,7 +21,7 @@ git clone https://github.com/fbreve/pypcc.git
 ```
 
 ## Usage
-The usage of this class is pretty similar to [semi-supervised algorithms at scikit-learn](https://scikit-learn.org/stable/modules/label_propagation.html). An "example" code is available in this repository.
+The usage of this class is pretty similar to semi-supervised algorithms at scikit-learn. An "example" code is available in this repository.
 
 ## Parameters
 As arguments, **pypcc** receives the values explained below:
