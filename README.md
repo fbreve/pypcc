@@ -13,7 +13,7 @@ https://github.com/fbreve/Particle-Competition-and-Cooperation
 #### Installation
 You need Python 3.7 or later to use **pypcc**. You can find it at [python.org](https://www.python.org/).
 
-The only required package for **pypcc** is **numpy**. However, the example also uses **scikit-learn** to load the example dataset (Wine Dataset), to normalize the data, to calculate the accuracy, and to build the confusion matrix.
+The only required package for **pypcc** is **numpy**. However, the included example also uses **scikit-learn** to load the example dataset (Wine Dataset), to normalize the data, to calculate the accuracy, and to build the confusion matrix.
 
 You can clone this repo to your local machine using:
 ```
