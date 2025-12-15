@@ -7,6 +7,13 @@ Created on Wed Oct  7 14:41:55 2020
 
 Date Format: DD/MM/YY
 
+15/12/2025:
+- Made some optimization in the code based on Perplexity tips.
+- Made a numba version of the main loop, based on Perplexity tips. The pure
+Numpy version was renamed to pcc_numpy. The Numba version is ~75 times faster
+then the pure Numpy version.
+
+
 07/10/2020:
 - Changed the stop criterion to be less conservative. It now considers the
 amount of nodes, the amound of particles and also the amount of k-nearest 

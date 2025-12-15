@@ -53,96 +53,6 @@ Note:
 import numpy as np
 from dataclasses import dataclass
 
-from numba import njit  # quando for testar Numba
-
-@njit  # depois de validar a versão pura em Python, você pode ligar o Numba
-def _pcc_step(neib_list, neib_qt,
-              labels, p_grd, delta_v, c, zerovec,
-              part_curnode, part_label, part_strength, dist_table,
-              dominance):
-    """
-    Executa UMA iteração do PCC sobre todas as partículas.
-
-    Parâmetros (todos NumPy arrays / escalares):
-      neib_list: int32/uint32 [n_nodes, max_deg]
-      neib_qt:   int32/uint32 [n_nodes]
-      labels:    int32        [n_nodes]
-      p_grd:     float64
-      delta_v:   float64
-      c:         int (n_classes)
-      zerovec:   float64      [c]
-      part_curnode: int32     [n_particles]
-      part_label:   int32     [n_particles]
-      part_strength: float64  [n_particles]
-      dist_table:    uint8    [n_nodes, n_particles]
-      dominance:     float64  [n_nodes, c]
-    """
-
-    n_particles = part_curnode.shape[0]
-
-    for p_i in range(n_particles):
-        curnode = part_curnode[p_i]
-        k = neib_qt[curnode]
-        # vizinhos do nó atual
-        neighbors = neib_list[curnode, :k]
-
-        # greedy x random
-        if np.random.random() < p_grd:
-            # --- greedy walk ---
-            label = part_label[p_i]
-
-            # dom_list: dominância da classe da partícula em cada vizinho
-            dom_list = dominance[neighbors, label]
-
-            # dist_list: 1 / (1 + d)^2
-            # (mantém a lógica da sua versão atual)
-            d = dist_table[neighbors, p_i].astype(np.float64)
-            dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
-
-            # slices acumulados
-            prob = dom_list * dist_list
-            slices = np.cumsum(prob)
-
-            # roleta
-            rand = np.random.uniform(0.0, slices[-1])
-            choice = np.searchsorted(slices, rand)
-            next_node = neighbors[choice]
-        else:
-            # --- random walk ---
-            k = neighbors.shape[0]
-            idx = np.random.randint(k)
-            next_node = neighbors[idx]
-
-        # --- update dominance / força / dist_table / posição da partícula ---
-
-        # para nó não rotulado
-        if labels[next_node] == -1:
-            dom = dominance[next_node, :]
-            step = part_strength[p_i] * (delta_v / (c - 1))
-
-            # redução: dom - max(dom - step, 0)
-            reduc = dom - np.maximum(dom - step, zerovec)
-
-            # aplica redução
-            dom -= reduc
-            # soma tudo na classe da partícula
-            dom[part_label[p_i]] += np.sum(reduc)
-
-        # atualiza força
-        part_strength[p_i] = dominance[next_node, part_label[p_i]]
-
-        # dist_table
-        current_node = curnode
-        if dist_table[next_node, p_i] > dist_table[current_node, p_i] + 1:
-            dist_table[next_node, p_i] = dist_table[current_node, p_i] + 1
-
-        # move partícula se não houve choque
-        if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
-            part_curnode[p_i] = next_node
-
-    # a função opera in-place; não precisa retornar nada
-
-
 class ParticleCompetitionAndCooperation():
 
     def __init__(self):
@@ -176,110 +86,71 @@ class ParticleCompetitionAndCooperation():
         return self.node.label
   
     def __labelPropagation(self):
-      self.zerovec = np.zeros(self.c, dtype=np.float64)
-
-      early_stop = self.early_stop
-      node = self.node
-      part = self.part
-      k_nn = self.k_nn
-      es_chk = self.es_chk
-      max_iter = self.max_iter
-      neib_list = self.neib_list
-      neib_qt = self.neib_qt
-      
-      if early_stop:
-          stop_max = round((node.amount/(part.amount*k_nn)) * round(es_chk * 0.1))
-          max_mmpot = 0.0
-          stop_cnt = 0
-      
-      for it in range(max_iter):
-          _pcc_step(neib_list, neib_qt,
-                    self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
-                    part.curnode, part.label, part.strength, part.dist_table,
-                    node.dominance)
-      
-          if early_stop and it % 10 == 0:
-              mmpot = np.mean(np.amax(node.dominance, 1))
-              if mmpot > max_mmpot:
-                  max_mmpot = mmpot
-                  stop_cnt = 0
-              else:
-                  stop_cnt += 1
-                  if stop_cnt > stop_max:
-                      break
-      
-      unlabeled = node.label == -1
-      node.label[unlabeled] = self.unique_labels[
-          np.argmax(node.dominance[unlabeled, :], axis=1)
-      ]
-  
-  
-    # def __labelPropagation(self):
        
-    #     # this is to avoid re-creating this zero-ed array for every particle 
-    #     # move in the update function
-    #     self.zerovec = np.zeros(self.c, dtype=np.float64)
+        # this is to avoid re-creating this zero-ed array for every particle 
+        # move in the update function
+        self.zerovec = np.zeros(self.c, dtype=np.float64)
 
-    #     # local aliases        
-    #     early_stop = self.early_stop
-    #     node = self.node
-    #     part = self.part
-    #     k_nn = self.k_nn
-    #     es_chk = self.es_chk
-    #     max_iter = self.max_iter
-    #     neib_list = self.neib_list
-    #     neib_qt = self.neib_qt
-    #     p_grd = self.p_grd
-    #     unique_labels = self.unique_labels
+        # local aliases        
+        early_stop = self.early_stop
+        node = self.node
+        part = self.part
+        k_nn = self.k_nn
+        es_chk = self.es_chk
+        max_iter = self.max_iter
+        neib_list = self.neib_list
+        neib_qt = self.neib_qt
+        p_grd = self.p_grd
+        unique_labels = self.unique_labels
                 
-    #     if (early_stop):
-    #         # maximum amount of stop creteria positive checks before stopping early
-    #         stop_max = round((node.amount/(part.amount*k_nn)) * round(es_chk * 0.1));
-    #         # mean of each node maximum dominance level
-    #         max_mmpot = 0;
-    #         # counter of stop creteria positive checks
-    #         stop_cnt = 0;        
+        if (early_stop):
+            # maximum amount of stop creteria positive checks before stopping early
+            stop_max = round((node.amount/(part.amount*k_nn)) * round(es_chk * 0.1));
+            # mean of each node maximum dominance level
+            max_mmpot = 0;
+            # counter of stop creteria positive checks
+            stop_cnt = 0;        
 
-    #     for it in range(0,max_iter):
+        for it in range(0,max_iter):
 
-    #         for p_i in range(0,part.amount):
-    #             # get the current node the particle is visiting
-    #             curnode = part.curnode[p_i]
-    #             # get the list of neighbors of the particle current node
-    #             curnode_neib = neib_list[curnode, :neib_qt[curnode]]
+            for p_i in range(0,part.amount):
+                # get the current node the particle is visiting
+                curnode = part.curnode[p_i]
+                # get the list of neighbors of the particle current node
+                curnode_neib = neib_list[curnode, :neib_qt[curnode]]
                 
-    #             # generating one random number at a time is slow in MATLAB, but
-    #             # in Python I couldn't notice any difference between this and
-    #             # generating a random numbers vector in the outer loop.
+                # generating one random number at a time is slow in MATLAB, but
+                # in Python I couldn't notice any difference between this and
+                # generating a random numbers vector in the outer loop.
 
-    #             if(np.random.random() < p_grd):                    
-    #                 next_node = self.__greedyWalk(p_i, curnode_neib)
-    #             else:
-    #                 next_node = self.__randomWalk(curnode_neib)
+                if(np.random.random() < p_grd):                    
+                    next_node = self.__greedyWalk(p_i, curnode_neib)
+                else:
+                    next_node = self.__randomWalk(curnode_neib)
 
-    #             self.__update(next_node, p_i)
+                self.__update(next_node, p_i)
                 
-    #         # check stop criteria
-    #         if early_stop and it % 10 == 0:
-    #             # get mean of all nodes maximum dominance level
-    #             mmpot = np.mean(np.amax(node.dominance,1))   
-    #             # check if it is larger than the maximum we've seen so far
-    #             if (mmpot>max_mmpot):
-    #                 # update the maximum we've seen                   
-    #                 max_mmpot = mmpot;
-    #                 # reset the counter of stop criterion positive check
-    #                 stop_cnt = 0;
-    #             else:
-    #                 # increase the counter of stop criterion positive check
-    #                 stop_cnt += 1;
-    #                 # if the counter of positive checks is larger than the 
-    #                 # threshold, we stop earlier
-    #                 if (stop_cnt > stop_max):
-    #                     break
+            # check stop criteria
+            if early_stop and it % 10 == 0:
+                # get mean of all nodes maximum dominance level
+                mmpot = np.mean(np.amax(node.dominance,1))   
+                # check if it is larger than the maximum we've seen so far
+                if (mmpot>max_mmpot):
+                    # update the maximum we've seen                   
+                    max_mmpot = mmpot;
+                    # reset the counter of stop criterion positive check
+                    stop_cnt = 0;
+                else:
+                    # increase the counter of stop criterion positive check
+                    stop_cnt += 1;
+                    # if the counter of positive checks is larger than the 
+                    # threshold, we stop earlier
+                    if (stop_cnt > stop_max):
+                        break
 
-    #     # labeling the unlabeled nodes
-    #     unlabeled = node.label==-1        
-    #     node.label[unlabeled] = unique_labels[np.argmax(node.dominance[unlabeled,:],axis=1)]
+        # labeling the unlabeled nodes
+        unlabeled = node.label==-1        
+        node.label[unlabeled] = unique_labels[np.argmax(node.dominance[unlabeled,:],axis=1)]
 
 
     def __update(self, n_i, p_i):

@@ -23,8 +23,9 @@ Changes:
 import numpy as np
 import random
 import time
-from sklearn.datasets import load_wine
 from pcc import ParticleCompetitionAndCooperation
+# change 'pcc' to 'pcc_numpy' in the previous line if you want to use the pure
+# Numpy version.
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import normalize
@@ -50,9 +51,15 @@ def hideLabels(true_labels, percentage):
 
 #IMPORT DATASETS
 print("Loading the Wine dataset...")
-wine = load_wine()
-data = normalize(wine.data,axis=0)
-labels = wine.target
+from sklearn.datasets import load_wine
+dataset = load_wine()
+
+#print("Loading the Digits dataset...")
+#from sklearn.datasets import load_digits
+#dataset = load_digits()
+
+data = normalize(dataset.data,axis=0)
+labels = dataset.target
 
 #GENERATE UNLABELED DATA
 print("Randomly selecting 10% of the elements to be presented to the algorithm with their labels...")
