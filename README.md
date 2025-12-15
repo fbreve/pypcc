@@ -15,12 +15,9 @@ Alternatively, the pure MATLAB version is still ~6 times faster than the pure Py
 
 These numbers are based on the execution on the Wine Dataset for 500,000 iteration (without early stop) using MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1, running on a Intel Core i9 14900K with 128GB of RAM.
 
-MATLAB MEX:        ~ 0.97s
-
-Python Numba:      ~ 2.5s
-
-MATLAB pure:       ~ 33s
-
+MATLAB MEX:        ~ 0.97s \
+Python Numba:      ~ 2.5s \
+MATLAB pure:       ~ 33s \
 Python Numpy only: ~ 190s
 
 ## Getting Started
