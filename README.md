@@ -15,9 +15,9 @@ However, keep in mind that the Numba version is up to ~55 times faster than the 
 
 Benchmarks:
 
-Machine: Intel Core i9 14900K with 128GB of RAM
-Softwares: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1
-Dataset: Wine Dataset
+Machine: Intel Core i9 14900K with 128GB of RAM \
+Softwares: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1 \
+Dataset: Wine Dataset \
 Repetitions: 100
 
 With early_stop=true (default) and max_iter=500000 (default):
