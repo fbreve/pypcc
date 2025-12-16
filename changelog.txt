@@ -7,6 +7,9 @@ Created on Wed Oct  7 14:41:55 2020
 
 Date Format: DD/MM/YY
 
+16/12/2025:
+- Included a benchmark script to compute the speedup of the Numba version.
+
 15/12/2025:
 - Made some optimization in the code based on Perplexity tips.
 - Made a numba version of the main loop, based on Perplexity tips. The pure

@@ -6,19 +6,34 @@ https://github.com/caiocarneloz/pycc
 
 This fork has a few bug fixes and lots of optimizations for faster execution. It also includes the early stop criteria from the original article.
 
-If you need more speed, the MATLAB MEX version is still ~2.5 times faster than the Python Numba version. It is available at:
+If you need more speed, the MATLAB MEX version is still up to ~2-3 times faster than the Python Numba version. It is available at:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
 
-If you do not want or cannot use **numba**, a pure Numpy version is available, though it is much slower. Import **ParticleCompetitionAndCooperation()** from **pcc_numpy** instead of **pcc**.
+If you do not want or cannot use **numba**, a pure Numpy version is available.\   
+Import **ParticleCompetitionAndCooperation()** from **pcc_numpy** instead of **pcc**.\
+However, keep in mind that the Numba version is up to ~55 times faster than the pure Numpy version.
 
-Alternatively, the pure MATLAB version is still ~6 times faster than the pure Python Numpy version, though ~35 times slower than the MATLAB MEX version, which is the fastest.
+Benchmarks:
 
-These numbers are based on the execution on the Wine Dataset for 500,000 iteration (without early stop) using MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1, running on a Intel Core i9 14900K with 128GB of RAM.
+Machine: Intel Core i9 14900K with 128GB of RAM
+Softwares: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1
+Dataset: Wine Dataset
+Repetitions: 100
 
-MATLAB MEX:        ~ 0.97s
-Python Numba:      ~ 2.5s
-MATLAB pure:       ~ 33s
-Python Numpy only: ~ 190s
+With early_stop=true (default) and max_iter=500000 (default):
+
+MATLAB MEX:         0.040s \
+MATLAB pure:        0.903s \
+Python Numba:       0.033s \
+Python Numpy only:  1.381s
+
+With early_stop=False and max_iter=500000 (500,000 fixed iterations):
+
+MATLAB MEX:           1.000s \
+MATLAB pure:         34.478s \
+Python Numba:         2.250s \
+Python Numpy only:  121.410s
+
 
 ## Getting Started
 #### Installation
