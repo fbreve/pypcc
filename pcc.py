@@ -251,54 +251,6 @@ class ParticleCompetitionAndCooperation():
         if(node.dominance[n_i,part.label[p_i]] == np.max(node.dominance[n_i,:])):
             part.curnode[p_i] = n_i
 
-
-    def __greedyWalk(self, p_i, neighbors):
-    
-        # p_i is the particle index
-        # neighbors is the list of neighbors of the current node
-
-        #start = time.time()
-        
-        # get the particle label
-        label = self.part.label[p_i]
-                                                                
-        # get the domination levels for the particle in all neighbors of the
-        # current node
-        dom_list = self.node.dominance[neighbors,label]
-        
-        # get the distance from all labels of the current node and apply
-        # the exponential and inversion.
-        # for some reason, 1/pow(x,2) is more efficient than pow(x,-2) in Python
-        # probably because the pow() is performed with integers in the first case,
-        # and it has to be converted to float in the second case.        
-        #dist_list = 1/pow(1 + self.part.dist_table[neighbors,p_i].astype(np.int32),2)        
-        d = self.part.dist_table[neighbors, p_i].astype(np.float64)
-        dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
-
-        
-        # let's calculate the neighbor probabilty and keep the accumulated 
-        # probabilities for a more efficient roullete step
-        slices = np.cumsum(np.multiply(dom_list,dist_list))
-        
-        # randomly choose a neighbor given the probabilities
-        rand = np.random.uniform(0,slices[-1])
-                  
-        # find which neighbor corresponds to the random number chosen
-        # np.searchsorted uses binary search, which must be fast for large amounts of neighbors
-        choice = np.searchsorted(slices, rand)
-            
-        #end = time.time()
-
-        #self.spent += end - start
-            
-        return neighbors[choice]
-
-
-    def __randomWalk(self, neighbors):
-        
-        return neighbors[np.random.choice(len(neighbors))]
-
-
     def __genParticles(self):
         
         @dataclass
