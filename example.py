@@ -13,75 +13,77 @@ Changes:
        example.
     3) Added the accuracy score.
     4) Renamed demo.py to example.py to match the Matlab implementation.
-    5) Added data normalization step (l2)
+    5) Added data normalization step (StandardScaler)
     6) Raised the amount of iterations to get higher accuracy
     7) hideLabels() now use round() for rounding instead of int(), which rounds
        to the lowest integer
     
 """
 
+LABEL_PERCENTAGE = 0.1
+K_NN = 10
+SEED = 0
+
 import numpy as np
-import random
 import time
 from pcc import ParticleCompetitionAndCooperation
 # change 'pcc' to 'pcc_numpy' in the previous line if you want to use the pure
 # Numpy version.
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
-from sklearn.preprocessing import normalize
+from sklearn.datasets import load_wine
+#from sklearn.datasets import load_digits
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.preprocessing import StandardScaler
 
-#FUNCTION FOR ENCODING STRING LABELS AND GENERATING "UNLABELED DATA"
-def hideLabels(true_labels, percentage):
-
-    mask = np.ones((1,len(true_labels)),dtype=bool)[0]
+#FUNCTION FOR ENCODING STRING LABELS AND GENERATING "UNLABELED DATA"    
+def hideLabels(true_labels, percentage, rng):
     labels = true_labels.copy()
-    
-    for l, enc in zip(np.unique(true_labels),range(0,len(np.unique(true_labels)))):
-        
-        deck = np.argwhere(true_labels == l).flatten()
-        random.shuffle(deck)
-        
-        mask[deck[:round(percentage * len(true_labels[true_labels == l]))]] = False
+    mask = np.ones(len(true_labels), dtype=bool)
 
+    unique_labels = np.unique(true_labels)
+    for enc, l in enumerate(unique_labels):
+        idx = np.where(true_labels == l)[0]
+        rng.shuffle(idx)
+        n_hide = round(percentage * len(idx))
+        mask[idx[:n_hide]] = False
         labels[labels == l] = enc
 
     labels[mask] = -1
+    return labels.astype(int)
+
+def main():
     
-    return np.array(labels).astype(int)
-
-#IMPORT DATASETS
-print("Loading the Wine dataset...")
-from sklearn.datasets import load_wine
-dataset = load_wine()
-
-#print("Loading the Digits dataset...")
-#from sklearn.datasets import load_digits
-#dataset = load_digits()
-
-data = normalize(dataset.data,axis=0)
-labels = dataset.target
-
-#GENERATE UNLABELED DATA
-print("Randomly selecting 10% of the elements to be presented to the algorithm with their labels...")
-masked_labels = hideLabels(labels, 0.1)
-
-#RUN THE MODEL
-print('Running the algorithm...')
-start = time.time()
-model = ParticleCompetitionAndCooperation()
-model.build_graph(data,k_nn=10)
-pred = np.array(model.fit_predict(masked_labels))
-end = time.time()
-
-#SEPARATE PREDICTED SAMPLES
-hidden_labels = np.array(labels[masked_labels == -1]).astype(int)
-hidden_pred = pred[masked_labels == -1]
-
-#PRINT ACCURACY SCORE
-print("Accuracy Score:", accuracy_score(hidden_labels,hidden_pred))
-
-#PRINT TIME
-print("Execution Time: " + "{0:.4f}".format(end-start) +'s')
-
-#PRINT CONFUSION MATRIX
-print("Confusion Matrix:\n", confusion_matrix(hidden_labels, hidden_pred))
+    #IMPORT DATASETS
+    print("Loading the Wine dataset...")
+    dataset = load_wine()  
+    #dataset = load_digits()
+    
+    scaler = StandardScaler()
+    data = scaler.fit_transform(dataset.data)
+    labels = dataset.target
+    
+    #GENERATE UNLABELED DATA
+    print(f"Randomly selecting {LABEL_PERCENTAGE*100:.0f}% of the elements to be presented to the algorithm with their labels...")
+    rng = np.random.RandomState(SEED)
+    masked_labels = hideLabels(labels, LABEL_PERCENTAGE, rng)
+    
+    #RUN THE MODEL
+    print('Running the algorithm...')
+    start = time.time()
+    model = ParticleCompetitionAndCooperation()
+    model.build_graph(data,k_nn=K_NN)
+    pred = np.array(model.fit_predict(masked_labels))
+    end = time.time()
+    
+    #SEPARATE PREDICTED SAMPLES
+    hidden_labels = np.array(labels[masked_labels == -1]).astype(int)
+    hidden_pred = pred[masked_labels == -1]
+    
+    #PRINT RESULTS
+    print(f"\nAccuracy Score: {accuracy_score(hidden_labels, hidden_pred):.4f}")
+    print(f"Execution Time: {end - start:.4f}s")
+    print("\nConfusion Matrix:\n", confusion_matrix(hidden_labels, hidden_pred))
+    print("\nClassification Report:\n")
+    print(classification_report(hidden_labels, hidden_pred))
+    
+if __name__ == "__main__":
+    main()    

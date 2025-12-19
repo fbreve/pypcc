@@ -1,15 +1,16 @@
+# -*- coding: utf-8 -*-
 """
 Semi-Supervised Learning with Particle Competition and Cooperation
 ==================================================================
 
 If you use this algorithm, please cite:
-Breve, Fabricio Aparecido; Zhao, Liang; Quiles, Marcos Gonçalves; Pedrycz, Witold; Liu, Jiming, 
-"Particle Competition and Cooperation in Networks for Semi-Supervised Learning," 
+Breve, Fabricio Aparecido; Zhao, Liang; Quiles, Marcos Gonçalves; Pedrycz, Witold; Liu, Jiming,
+"Particle Competition and Cooperation in Networks for Semi-Supervised Learning,"
 Knowledge and Data Engineering, IEEE Transactions on , vol.24, no.9, pp.1686,1698, Sept. 2012
 doi: 10.1109/TKDE.2011.119
 
 Fixed:
- 1. Graph was generating dictonaries with int and int64 numbers. 
+ 1. Graph was generating dictonaries with int and int64 numbers.
  2. dict/list access was too slow, changed to matrix.
  3. Bug in GreedyWalk, probability vector was being normalized but
     the vector sum wasn't adjusted to 1.
@@ -19,19 +20,19 @@ Fixed:
 Changes:
  1. Changed __genGraph() to use sklearn.neighbors, which chooses the most
     efficient method to find the neighbors (usually not brute force).
- 2. Nearest Neighbors lists now use uint32 instead of the mix of int/int64.
- 3. Nearest Neighbors list is now a matrix of uint32 instead of dic/list 
-   (the matrix access is much more efficient).
+ 2. Nearest Neighbors lists now use int32 instead of the mix of int/int64/uint32.
+ 3. Nearest Neighbors list is now a matrix instead of dict/list
+    (the matrix access is much more efficient).
  4. GreedyWalk now avoid loops (vectorization) and has some other tweaks
     to drammatically improve speed.
  5. Changed int type to uint8 in the distance table (saves memory space at
     a small computational cost, check comments)
  6. Changed the particle matrix into a particle class to fix the particle
-    strength being held in a int type matrix. 
+    strength being held in a int type matrix.
  7. Changed the nodes matrix into a nodes class to keep labels and dominance
     levels separated and with proper data types.
- 8. Removed class_map to avoid unnecessary overhead (though it is small). 
-    This kind of treatment could be reimplemented to be active only twice: 
+ 8. Removed class_map to avoid unnecessary overhead (though it is small).
+    This kind of treatment could be reimplemented to be active only twice:
     on input and on output.
  9. Eliminated the loop in the 'labeling the unlabeled nodes' step.
 10. Added the early stop criteria.
@@ -42,18 +43,32 @@ Changes:
 14. Changed fit/predict to a single fit_predict method, as it makes more sense
     for a transductive SSL method. graph_gen() is available as a separate
     function since one may want to run multiples executions with the same graph.
-     
+
 Note:
  1. Node dominances and particle strenght are using float64 because it is a
     little faster than float32, though we don't really need 64 bits precision
-
 """
 
-#import time
 import numpy as np
 from dataclasses import dataclass
+from numba import njit  # opcional; pode ser comentado para depuração pura em Python
 
-from numba import njit  # quando for testar Numba
+
+@dataclass
+class Particles:
+    homenode: np.ndarray        # int64 [n_particles]
+    curnode: np.ndarray         # int64 [n_particles]
+    label: np.ndarray           # int64 [n_particles]
+    strength: np.ndarray        # float64 [n_particles]
+    amount: int                 # número de partículas
+    dist_table: np.ndarray      # uint8 [n_nodes, n_particles]
+
+
+@dataclass
+class Nodes:
+    amount: int                 # número de nós
+    dominance: np.ndarray       # float64 [n_nodes, n_classes]
+    label: np.ndarray           # int64 [n_nodes]
 
 @njit  # depois de validar a versão pura em Python, você pode ligar o Numba
 def _pcc_step(neib_list, neib_qt,
@@ -64,18 +79,18 @@ def _pcc_step(neib_list, neib_qt,
     Executa UMA iteração do PCC sobre todas as partículas.
 
     Parâmetros (todos NumPy arrays / escalares):
-      neib_list: int32/uint32 [n_nodes, max_deg]
-      neib_qt:   int32/uint32 [n_nodes]
-      labels:    int32        [n_nodes]
+      neib_list: int64 [n_nodes, max_deg]
+      neib_qt:   int64 [n_nodes]
+      labels:    int64 [n_nodes]
       p_grd:     float64
       delta_v:   float64
-      c:         int (n_classes)
-      zerovec:   float64      [c]
-      part_curnode: int32     [n_particles]
-      part_label:   int32     [n_particles]
-      part_strength: float64  [n_particles]
-      dist_table:    uint8    [n_nodes, n_particles]
-      dominance:     float64  [n_nodes, c]
+      c:         int64 (n_classes)
+      zerovec:   float64 [c]
+      part_curnode: int64 [n_particles]
+      part_label:   int64 [n_particles]
+      part_strength: float64 [n_particles]
+      dist_table:    uint8  [n_nodes, n_particles]
+      dominance:     float64 [n_nodes, c]
     """
 
     n_particles = part_curnode.shape[0]
@@ -83,6 +98,7 @@ def _pcc_step(neib_list, neib_qt,
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
         k = neib_qt[curnode]
+
         # vizinhos do nó atual
         neighbors = neib_list[curnode, :k]
 
@@ -91,15 +107,13 @@ def _pcc_step(neib_list, neib_qt,
             # --- greedy walk ---
             label = part_label[p_i]
 
-            # dom_list: dominância da classe da partícula em cada vizinho
+            # dominância da classe da partícula em cada vizinho
             dom_list = dominance[neighbors, label]
 
             # dist_list: 1 / (1 + d)^2
-            # (mantém a lógica da sua versão atual)
             d = dist_table[neighbors, p_i].astype(np.float64)
             dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
 
-            # slices acumulados
             prob = dom_list * dist_list
             slices = np.cumsum(prob)
 
@@ -109,13 +123,13 @@ def _pcc_step(neib_list, neib_qt,
             next_node = neighbors[choice]
         else:
             # --- random walk ---
-            k = neighbors.shape[0]
-            idx = np.random.randint(k)
+            k_rand = neighbors.shape[0]
+            idx = np.random.randint(k_rand)
             next_node = neighbors[idx]
 
         # --- update dominance / força / dist_table / posição da partícula ---
 
-        # para nó não rotulado
+        # apenas nós não rotulados sofrem atualização de dominância
         if labels[next_node] == -1:
             dom = dominance[next_node, :]
             step = part_strength[p_i] * (delta_v / (c - 1))
@@ -123,9 +137,7 @@ def _pcc_step(neib_list, neib_qt,
             # redução: dom - max(dom - step, 0)
             reduc = dom - np.maximum(dom - step, zerovec)
 
-            # aplica redução
             dom -= reduc
-            # soma tudo na classe da partícula
             dom[part_label[p_i]] += np.sum(reduc)
 
         # atualiza força
@@ -140,209 +152,227 @@ def _pcc_step(neib_list, neib_qt,
         if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
             part_curnode[p_i] = next_node
 
-    # a função opera in-place; não precisa retornar nada
-
-
-class ParticleCompetitionAndCooperation():
+class ParticleCompetitionAndCooperation:
 
     def __init__(self):
         self.data = None
+        self.k_nn = None
+        self.neib_list = None
+        self.neib_qt = None
+        self.labels = None
+        self.unique_labels = None
+        self.c = None
+        self.p_grd = None
+        self.delta_v = None
+        self.max_iter = None
+        self.early_stop = None
+        self.es_chk = None
+        self.part = None
+        self.node = None
+        self.zerovec = None
 
     def build_graph(self, data, k_nn=10):
-        
+        """
+        Gera o grafo k-NN a partir dos dados e guarda
+        neib_list e neib_qt.
+        """
         self.data = data
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = self.__genGraph()
-        
-    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, max_iter=500000, early_stop=True, es_chk=2000):
 
-        if (self.data is None):
+    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
+                    max_iter=500000, early_stop=True, es_chk=2000):
+        """
+        Executa o PCC de forma transdutiva e retorna um vetor de rótulos
+        (incluindo os nós originalmente não rotulados).
+        """
+
+        if self.data is None:
             print("Error: You must build the graph first using build_graph(data)")
-            return(-1)
-        
-        self.labels = labels
-        self.p_grd = p_grd
-        self.delta_v = delta_v
-        self.max_iter = max_iter       
-        self.early_stop = early_stop
-        # early stop control, decrease it to run faster, but accuracy may be lower
-        self.es_chk= es_chk        
-        self.unique_labels = np.unique(self.labels) # list of classes
-        self.unique_labels = self.unique_labels[self.unique_labels != -1] # excluding the "unlabeled label" (-1)
-        self.c = len(self.unique_labels) # amount of classes                
+            return -1
+
+        self.labels = labels.astype(np.int64)
+        self.p_grd = float(p_grd)
+        self.delta_v = float(delta_v)
+        self.max_iter = int(max_iter)
+        self.early_stop = bool(early_stop)
+        self.es_chk = int(es_chk)
+
+        # classes reais (sem -1)
+        self.unique_labels = np.unique(self.labels)
+        self.unique_labels = self.unique_labels[self.unique_labels != -1]
+        self.c = len(self.unique_labels)
+
+        # gera partículas e nós
         self.part = self.__genParticles()
         self.node = self.__genNodes()
+
+        # propaga rótulos
         self.__labelPropagation()
+
         return self.node.label
-  
+
     def __labelPropagation(self):
-      self.zerovec = np.zeros(self.c, dtype=np.float64)
+        """
+        Loop principal de iterações do PCC com critério de early stop.
+        """
+        self.zerovec = np.zeros(self.c, dtype=np.float64)
 
-      early_stop = self.early_stop
-      node = self.node
-      part = self.part
-      k_nn = self.k_nn
-      es_chk = self.es_chk
-      max_iter = self.max_iter
-      neib_list = self.neib_list
-      neib_qt = self.neib_qt
-      
-      if early_stop:
-          stop_max = round((node.amount/(part.amount*k_nn)) * round(es_chk * 0.1))
-          max_mmpot = 0.0
-          stop_cnt = 0
-      
-      for it in range(max_iter):
-          _pcc_step(neib_list, neib_qt,
-                    self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
-                    part.curnode, part.label, part.strength, part.dist_table,
-                    node.dominance)
-      
-          if early_stop and it % 10 == 0:
-              mmpot = np.mean(np.amax(node.dominance, 1))
-              if mmpot > max_mmpot:
-                  max_mmpot = mmpot
-                  stop_cnt = 0
-              else:
-                  stop_cnt += 1
-                  if stop_cnt > stop_max:
-                      break
-      
-      unlabeled = node.label == -1
-      node.label[unlabeled] = self.unique_labels[
-          np.argmax(node.dominance[unlabeled, :], axis=1)
-      ]
-
-    def __update(self, n_i, p_i):
-               
-        #local aliases
-        labels = self.labels
+        early_stop = self.early_stop
         node = self.node
         part = self.part
-        delta_v = self.delta_v
-        c = self.c
-        zerovec = self.zerovec
-        
-        # for unlabeled nodes, perform the dominance vector update
-        if(labels[n_i] == -1):
-            # calculate the dominance levels reduction according to particle 
-            # strength and delta_v, taking care that no reductions would
-            # set a level below zero.
-            # Note: numpy.clip is cleaner but much slower them np.maximum + np.zeros
-            deltadom = node.dominance[n_i,:] - np.maximum(
-                node.dominance[n_i,:] - part.strength[p_i]*(delta_v/(c-1)), zerovec)
-            # reducing the domination levels according to the calculated 
-            # reduction. Don't worry about reducing the level corresponding
-            # to the particle label, it will be re-added later.
-            node.dominance[n_i,:] -= deltadom
-            # everything that was reduced from all the levels is added to the
-            # level corresponding to the particle label.
-            node.dominance[n_i,part.label[p_i]] += np.sum(deltadom)
-        
-        part.strength[p_i] = node.dominance[n_i,part.label[p_i]]
+        k_nn = self.k_nn
+        es_chk = self.es_chk
+        max_iter = self.max_iter
+        neib_list = self.neib_list
+        neib_qt = self.neib_qt
 
-        # update distance table
-        current_node = part.curnode[p_i]
-        if(part.dist_table[n_i,p_i] > (part.dist_table[current_node,p_i]+1)):
-            part.dist_table[n_i,p_i] = part.dist_table[current_node,p_i]+1
+        if early_stop:
+            # heurística baseada em média de iterações por nó/partícula
+            stop_max = round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1))
+            max_mmpot = 0.0
+            stop_cnt = 0
 
-        # if there isn't a shock, move the particle to the new node
-        # note: argmax is cleaner, but slower; np.amax is also slower than max
-        if(node.dominance[n_i,part.label[p_i]] == np.max(node.dominance[n_i,:])):
-            part.curnode[p_i] = n_i
+        for it in range(max_iter):
+            _pcc_step(neib_list, neib_qt,
+                      self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
+                      part.curnode, part.label, part.strength, part.dist_table,
+                      node.dominance)
 
-    def __genParticles(self):
-        
-        @dataclass
-        class Particles():
-            homenode = np.where(self.labels!=-1)[0]
-            # it is important to copy the vector instead of referencing it,
-            # otherwise the home nodes would change with the current nodes
-            curnode = homenode.copy() 
-            label = self.labels[self.labels!=-1]
-            strength = np.full(len(label),1,dtype=np.float64)
-            amount = len(homenode) # amount of particles
-            
-            # I changed distance table from 'int' to 'uint8' to save on memory space, 
-            # but this makes the pow calculation in greedy walk much slower, since
-            # it probably converts uint8 to float before the operation.         
-            # As a workaround I am explicitly converting from uint8 to int in the pow()
-            # function, which makes greedy walk only a little slower.
-            # This could be an option in the future, to be used only with large datasets.
-            
-            dist_table = np.full(shape=(len(self.data),amount), fill_value=min(len(self.data)-1,255),dtype=np.uint8)
-    
-            for h,i in zip(homenode,range(amount)):
-                dist_table[h,i] = 0
-            
-        part = Particles()
+            if early_stop and it % 10 == 0:
+                # potencial médio de dominância
+                mmpot = np.mean(np.amax(node.dominance, 1))
+                if mmpot > max_mmpot:
+                    max_mmpot = mmpot
+                    stop_cnt = 0
+                else:
+                    stop_cnt += 1
+                    if stop_cnt > stop_max:
+                        break
 
-        return part
+        # rotula nós originalmente não rotulados
+        unlabeled = node.label == -1
+        node.label[unlabeled] = self.unique_labels[
+            np.argmax(node.dominance[unlabeled, :], axis=1)
+        ]
 
 
-    def __genNodes(self):
-       
-        @dataclass
-        class Nodes():
-            amount = len(self.data)
-            dominance = np.full(shape=(amount,len(self.unique_labels)), fill_value=float(1/self.c),dtype=np.float64)
-            # it is important to copy the labels instead of referencing them
-            # otherwise, the input vector would be changed.
-            label = self.labels.copy()
-            dominance[label != -1] = 0
-            for l in np.unique(label[label!=-1]):
-                dominance[label == l,l] = 1
-            
-        node = Nodes()
+    def __genParticles(self) -> Particles:
+        """
+        Cria as partículas a partir dos nós rotulados.
+        """
 
-        return node
+        homenode = np.where(self.labels != -1)[0].astype(np.int64)
+        curnode = homenode.copy()
+        label = self.labels[self.labels != -1].astype(np.int64)
+        amount = int(homenode.shape[0])
+        strength = np.full(amount, 1.0, dtype=np.float64)
 
+        # distância máxima limitada a 255 (uint8)
+        max_dist = min(self.data.shape[0] - 1, 255)
+        dist_table = np.full(
+            shape=(self.data.shape[0], amount),
+            fill_value=max_dist,
+            dtype=np.uint8,
+        )
+
+        # distância 0 nos nós de origem das partículas
+        dist_table[homenode, np.arange(amount)] = 0
+
+        return Particles(
+            homenode=homenode,
+            curnode=curnode,
+            label=label,
+            strength=strength,
+            amount=amount,
+            dist_table=dist_table,
+        )
+
+    def __genNodes(self) -> Nodes:
+        """
+        Inicializa dominâncias e rótulos dos nós.
+        """
+
+        amount = self.data.shape[0]
+        n_classes = self.c
+
+        # dominância inicial uniforme
+        dominance = np.full(
+            shape=(amount, n_classes),
+            fill_value=float(1.0 / n_classes),
+            dtype=np.float64,
+        )
+
+        # cópia dos rótulos
+        label = self.labels.copy().astype(np.int64)
+
+        # nós rotulados começam com dominância zero em todas as classes
+        dominance[label != -1, :] = 0.0
+
+        # para cada classe real, dominância 1 na respectiva coluna
+        for l in self.unique_labels:
+            dominance[label == l, l] = 1.0
+
+        return Nodes(
+            amount=amount,
+            dominance=dominance,
+            label=label,
+        )
 
     def __genGraph(self):
-
+        """
+        Gera o grafo k-NN (simétrico) usando sklearn.neighbors.
+        Retorna:
+          neib_list: int64 [n_nodes, max_deg]
+          neib_qt:   int64 [n_nodes]
+        """
         from sklearn.neighbors import NearestNeighbors
-        # find the k-neirest neighbors
-        nbrs = NearestNeighbors(n_neighbors=self.k_nn+1, algorithm='auto', n_jobs=-1).fit(self.data)
-        neib_list = np.uint32(nbrs.kneighbors(self.data, return_distance=False))
-        # discard self-distance
-        neib_list = np.delete(neib_list, 0, 1) 
-        
-        # define the total amount of nodes
-        qt_node = len(neib_list)
-        # define the amount of neighbors of each node (intially it is k)
-        neib_qt = np.full(qt_node, self.k_nn, dtype=np.uint32)
 
-        # keep track of how many columns the neib_list matrix has
+        # k+1 porque o primeiro vizinho é o próprio nó
+        nbrs = NearestNeighbors(
+            n_neighbors=self.k_nn + 1,
+            algorithm="auto",
+            n_jobs=-1,
+        ).fit(self.data)
+
+        # índices dos vizinhos (descartando o próprio nó)
+        neib_list = nbrs.kneighbors(self.data, return_distance=False)
+        neib_list = neib_list[:, 1:]  # remove self
+        neib_list = neib_list.astype(np.int64)
+
+        qt_node = neib_list.shape[0]
+
+        # quantidade de vizinhos inicial (k) por nó
+        neib_qt = np.full(qt_node, self.k_nn, dtype=np.int64)
+
+        # quantidade de colunas atualmente alocadas
         ind_cols = self.k_nn
 
-        # add the reciprocal connections
-        for i in range(0,qt_node):
-            for j in range(0,self.k_nn):
-                target = neib_list[i,j]
-                # check if there is space for the new element, if not increase matrix size
-                if neib_qt[target]==ind_cols:
-                    # increase by 20% + 1
+        # garante conexões recíprocas
+        for i in range(qt_node):
+            for j in range(self.k_nn):
+                target = neib_list[i, j]
+
+                # se não há espaço, aumenta o número de colunas
+                if neib_qt[target] == ind_cols:
                     new_cols_qt = round(ind_cols * 0.2) + 1
-                    # add the new columns to the matrix
-                    neib_list = np.append(neib_list, np.empty([qt_node, new_cols_qt],dtype=np.uint32), axis=1)
-                    # increase the cols counter
+                    extra = np.empty((qt_node, new_cols_qt), dtype=np.int64)
+                    neib_list = np.append(neib_list, extra, axis=1)
                     ind_cols += new_cols_qt
-                # add the reciprocal connection
+
+                # adiciona conexão recíproca
                 neib_list[target, neib_qt[target]] = i
-                # increase the amount of neighbors of the target
                 neib_qt[target] += 1
-                
-        # remove the duplicate neighbors for each node
-        for i in range(0,qt_node):
-            # generate the list of unique neighbors
-            unique = np.unique(neib_list[i,:neib_qt[i]])
-            # get the amount of unique neighbors
-            neib_qt[i] = len(unique)
-            # copy the list of unique neighbors to the matrix row
-            neib_list[i,:neib_qt[i]] = unique
-            
-        # remove the now unused last columns
-        ind_cols = max(neib_qt)
-        neib_list = np.delete(neib_list, np.s_[ind_cols:], 1)
-        
+
+        # remove duplicatas em cada linha
+        for i in range(qt_node):
+            k_i = neib_qt[i]
+            unique = np.unique(neib_list[i, :k_i])
+            neib_qt[i] = unique.shape[0]
+            neib_list[i, :neib_qt[i]] = unique
+
+        # descarta colunas não usadas
+        ind_cols = int(np.max(neib_qt))
+        neib_list = neib_list[:, :ind_cols]
+
         return neib_list, neib_qt
