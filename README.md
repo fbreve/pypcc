@@ -24,15 +24,15 @@ With early_stop=true (default) and max_iter=500000 (default):
 
 MATLAB MEX:         0.040s \
 MATLAB pure:        0.903s \
-Python Numba:       0.033s \
-Python Numpy only:  1.381s
+Python Numba:       0.029s \
+Python Numpy only:  1.296s
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations):
 
 MATLAB MEX:           1.000s \
 MATLAB pure:         34.478s \
-Python Numba:         2.250s \
-Python Numpy only:  121.410s
+Python Numba:         2.018s \
+Python Numpy only:  129.612s
 
 
 ## Getting Started

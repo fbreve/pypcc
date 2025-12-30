@@ -12,21 +12,21 @@ Software: Python 3.12.12, Numpy 2.3.5, and Numba 0.62.1
 EARLY_STOP = True
 
 === Wine ===
-Numba: mean time = 0.033s (std = 0.009s), mean acc = 0.9352
-Numpy: mean time = 1.381s (std = 0.375s), mean acc = 0.9335
-Speedup (Numpy / Numba): 41.6x
+Numba: mean time = 0.029s (std = 0.009s), mean acc = 0.9309
+Numpy: mean time = 1.296s (std = 0.372s), mean acc = 0.9304
+Speedup (Numpy / Numba): 44.0x
 
 === Digits ===
-Numba: mean time = 0.737s (std = 0.250s), mean acc = 0.9529
-Numpy: mean time = 43.597s (std = 21.726s), mean acc = 0.9532
-Speedup (Numpy / Numba): 59.1x
+Numba: mean time = 0.607s (std = 0.132s), mean acc = 0.9532
+Numpy: mean time = 57.465s (std = 34.906s), mean acc = 0.9544
+Speedup (Numpy / Numba): 94.7x
 
 EARLY_STOP = False
 
 === Wine ===
-Numba: mean time = 2.250s (std = 0.449s), mean acc = 0.9330
-Numpy: mean time = 121.410s (std = 9.180s), mean acc = 0.9322
-Speedup (Numpy / Numba): 54.0x
+Numba: mean time = 2.018s (std = 0.015s), mean acc = 0.9340
+Numpy: mean time = 129.612s (std = 21.768s), mean acc = 0.9326
+Speedup (Numpy / Numba): 64.2x
 
 """
 
