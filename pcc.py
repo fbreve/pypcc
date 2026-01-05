@@ -74,7 +74,7 @@ class Nodes:
 def _pcc_step(neib_list, neib_qt,
               labels, p_grd, delta_v, c, zerovec,
               part_curnode, part_label, part_strength, dist_table,
-              dominance):
+              dominance, owndeg):    
     """
     Executa UMA iteração do PCC sobre todas as partículas.
 
@@ -91,6 +91,7 @@ def _pcc_step(neib_list, neib_qt,
       part_strength: float64 [n_particles]
       dist_table:    uint8  [n_nodes, n_particles]
       dominance:     float64 [n_nodes, c]
+      owndeg:       float64 [n_nodes, c]
     """
 
     n_particles = part_curnode.shape[0]
@@ -103,8 +104,10 @@ def _pcc_step(neib_list, neib_qt,
         neighbors = neib_list[curnode, :k]
 
         # greedy x random
-        if np.random.random() < p_grd:
+        if np.random.random() < p_grd:                      
             # --- greedy walk ---
+            greedy = True
+            
             label = part_label[p_i]
 
             # dominância da classe da partícula em cada vizinho
@@ -123,6 +126,8 @@ def _pcc_step(neib_list, neib_qt,
             next_node = neighbors[choice]
         else:
             # --- random walk ---
+            greedy = False
+            
             k_rand = neighbors.shape[0]
             idx = np.random.randint(k_rand)
             next_node = neighbors[idx]
@@ -148,6 +153,10 @@ def _pcc_step(neib_list, neib_qt,
         if dist_table[next_node, p_i] > dist_table[current_node, p_i] + 1:
             dist_table[next_node, p_i] = dist_table[current_node, p_i] + 1
 
+        # se foi movimento aleatório, acumula owndeg
+        if not greedy:
+            owndeg[next_node, part_label[p_i]] += part_strength[p_i]
+
         # move partícula se não houve choque
         if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
             part_curnode[p_i] = next_node
@@ -170,6 +179,7 @@ class ParticleCompetitionAndCooperation:
         self.part = None
         self.node = None
         self.zerovec = None
+        self.owndeg = None
 
     def build_graph(self, data, k_nn=10):
         """
@@ -180,6 +190,7 @@ class ParticleCompetitionAndCooperation:
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = self.__genGraph()
 
+   
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
                     max_iter=500000, early_stop=True, es_chk=2000):
         """
@@ -237,7 +248,7 @@ class ParticleCompetitionAndCooperation:
             _pcc_step(neib_list, neib_qt,
                       self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
                       part.curnode, part.label, part.strength, part.dist_table,
-                      node.dominance)
+                      node.dominance, self.owndeg)
 
             if early_stop and it % 10 == 0:
                 # potencial médio de dominância
@@ -255,6 +266,12 @@ class ParticleCompetitionAndCooperation:
         node.label[unlabeled] = self.unique_labels[
             np.argmax(node.dominance[unlabeled, :], axis=1)
         ]
+               
+        # normaliza owndeg por linha (como no MATLAB)
+        row_sums = np.sum(self.owndeg, axis=1, keepdims=True)
+        row_sums[row_sums == 0.0] = 1.0
+        self.owndeg = self.owndeg / row_sums
+
 
 
     def __genParticles(self) -> Particles:
@@ -313,11 +330,19 @@ class ParticleCompetitionAndCooperation:
         for l in self.unique_labels:
             dominance[label == l, l] = 1.0
 
+        # acumulador owndeg como no MATLAB
+        self.owndeg = np.full(
+            shape=(amount, n_classes),
+            fill_value=np.finfo(float).tiny,
+            dtype=np.float64,
+        )
+
         return Nodes(
             amount=amount,
             dominance=dominance,
             label=label,
         )
+           
 
     def __genGraph(self):
         """

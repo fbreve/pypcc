@@ -5,7 +5,7 @@ Created on Thu Aug 27 10:10:07 2020
 @author: Fabricio Breve
 
 based on Caio's demo:
-https://github.com/caiocarneloz/pycc/blob/master/demo.py
+[https://github.com/caiocarneloz/pycc/blob/master/demo.py](https://github.com/caiocarneloz/pycc/blob/master/demo.py)
             
 Changes:
     1) Changed function name maskData() to hideLabels(), which seems more accurate.
@@ -50,8 +50,8 @@ def hideLabels(true_labels, percentage, rng):
     labels[mask] = -1
     return labels.astype(int)
 
-def main():
-    
+
+def run_pcc_example():
     #IMPORT DATASETS
     print("Loading the Wine dataset...")
     dataset = load_wine()  
@@ -70,9 +70,18 @@ def main():
     print('Running the algorithm...')
     start = time.time()
     model = ParticleCompetitionAndCooperation()
-    model.build_graph(data,k_nn=K_NN)
+    model.build_graph(data, k_nn=K_NN)
     pred = np.array(model.fit_predict(masked_labels))
     end = time.time()
+
+    elapsed = end - start
+
+    # retorna tudo que pode ser útil para inspeção
+    return model, pred, labels, masked_labels, elapsed
+
+
+def main():
+    model, pred, labels, masked_labels, elapsed = run_pcc_example()
     
     #SEPARATE PREDICTED SAMPLES
     hidden_labels = np.array(labels[masked_labels == -1]).astype(int)
@@ -80,10 +89,11 @@ def main():
     
     #PRINT RESULTS
     print(f"\nAccuracy Score: {accuracy_score(hidden_labels, hidden_pred):.4f}")
-    print(f"Execution Time: {end - start:.4f}s")
+    print(f"Execution Time: {elapsed:.4f}s")
     print("\nConfusion Matrix:\n", confusion_matrix(hidden_labels, hidden_pred))
     print("\nClassification Report:\n")
     print(classification_report(hidden_labels, hidden_pred))
-    
+
+
 if __name__ == "__main__":
-    main()    
+    main()
