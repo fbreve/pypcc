@@ -52,7 +52,7 @@ Note:
 import numpy as np
 from dataclasses import dataclass
 from numba import njit  # opcional; pode ser comentado para depuração pura em Python
-
+from pcc_graph import build_knn_graph
 
 @dataclass
 class Particles:
@@ -182,24 +182,26 @@ class ParticleCompetitionAndCooperation:
         self.owndeg = None
 
     def build_graph(self, data, k_nn=10):
-        """
-        Gera o grafo k-NN a partir dos dados e guarda
-        neib_list e neib_qt.
-        """
         self.data = data
         self.k_nn = k_nn
-        self.neib_list, self.neib_qt = self.__genGraph()
+        self.neib_list, self.neib_qt = build_knn_graph(data, k_nn)
 
+    def set_graph(self, neib_list, neib_qt):
+        self.neib_list = neib_list.astype(np.int64)
+        self.neib_qt = neib_qt.astype(np.int64)
+        self.data = None
    
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
-                    max_iter=500000, early_stop=True, es_chk=2000):
+                max_iter=500000, early_stop=True, es_chk=2000):
         """
         Executa o PCC de forma transdutiva e retorna um vetor de rótulos
         (incluindo os nós originalmente não rotulados).
         """
-
-        if self.data is None:
-            print("Error: You must build the graph first using build_graph(data)")
+    
+        # precisa ter neib_list e neib_qt definidos, independente de data
+        if self.neib_list is None or self.neib_qt is None:
+            print("Error: You must build or set the graph first "
+                  "using build_graph(data) or set_graph(neib_list, neib_qt).")
             return -1
 
         self.labels = labels.astype(np.int64)
@@ -232,7 +234,11 @@ class ParticleCompetitionAndCooperation:
         early_stop = self.early_stop
         node = self.node
         part = self.part
+
         k_nn = self.k_nn
+        if k_nn is None:
+            k_nn = int(np.mean(self.neib_qt)) if self.neib_qt is not None else 10
+
         es_chk = self.es_chk
         max_iter = self.max_iter
         neib_list = self.neib_list
@@ -272,30 +278,30 @@ class ParticleCompetitionAndCooperation:
         row_sums[row_sums == 0.0] = 1.0
         self.owndeg = self.owndeg / row_sums
 
-
-
     def __genParticles(self) -> Particles:
         """
         Cria as partículas a partir dos nós rotulados.
         """
-
+    
         homenode = np.where(self.labels != -1)[0].astype(np.int64)
         curnode = homenode.copy()
         label = self.labels[self.labels != -1].astype(np.int64)
         amount = int(homenode.shape[0])
         strength = np.full(amount, 1.0, dtype=np.float64)
-
+    
+        # número de nós vem do grafo
+        n_nodes = self.neib_list.shape[0]
+    
         # distância máxima limitada a 255 (uint8)
-        max_dist = min(self.data.shape[0] - 1, 255)
+        max_dist = min(n_nodes - 1, 255)
         dist_table = np.full(
-            shape=(self.data.shape[0], amount),
+            shape=(n_nodes, amount),
             fill_value=max_dist,
             dtype=np.uint8,
         )
-
-        # distância 0 nos nós de origem das partículas
+    
         dist_table[homenode, np.arange(amount)] = 0
-
+    
         return Particles(
             homenode=homenode,
             curnode=curnode,
@@ -309,95 +315,30 @@ class ParticleCompetitionAndCooperation:
         """
         Inicializa dominâncias e rótulos dos nós.
         """
-
-        amount = self.data.shape[0]
+    
+        amount = self.neib_list.shape[0]  # número de nós
         n_classes = self.c
-
-        # dominância inicial uniforme
+    
         dominance = np.full(
             shape=(amount, n_classes),
             fill_value=float(1.0 / n_classes),
             dtype=np.float64,
         )
-
-        # cópia dos rótulos
+    
         label = self.labels.copy().astype(np.int64)
-
-        # nós rotulados começam com dominância zero em todas as classes
         dominance[label != -1, :] = 0.0
-
-        # para cada classe real, dominância 1 na respectiva coluna
+    
         for l in self.unique_labels:
             dominance[label == l, l] = 1.0
-
-        # acumulador owndeg como no MATLAB
+    
         self.owndeg = np.full(
             shape=(amount, n_classes),
             fill_value=np.finfo(float).tiny,
             dtype=np.float64,
         )
-
+    
         return Nodes(
             amount=amount,
             dominance=dominance,
             label=label,
         )
-           
-
-    def __genGraph(self):
-        """
-        Gera o grafo k-NN (simétrico) usando sklearn.neighbors.
-        Retorna:
-          neib_list: int64 [n_nodes, max_deg]
-          neib_qt:   int64 [n_nodes]
-        """
-        from sklearn.neighbors import NearestNeighbors
-
-        # k+1 porque o primeiro vizinho é o próprio nó
-        nbrs = NearestNeighbors(
-            n_neighbors=self.k_nn + 1,
-            algorithm="auto",
-            n_jobs=-1,
-        ).fit(self.data)
-
-        # índices dos vizinhos (descartando o próprio nó)
-        neib_list = nbrs.kneighbors(self.data, return_distance=False)
-        neib_list = neib_list[:, 1:]  # remove self
-        neib_list = neib_list.astype(np.int64)
-
-        qt_node = neib_list.shape[0]
-
-        # quantidade de vizinhos inicial (k) por nó
-        neib_qt = np.full(qt_node, self.k_nn, dtype=np.int64)
-
-        # quantidade de colunas atualmente alocadas
-        ind_cols = self.k_nn
-
-        # garante conexões recíprocas
-        for i in range(qt_node):
-            for j in range(self.k_nn):
-                target = neib_list[i, j]
-
-                # se não há espaço, aumenta o número de colunas
-                if neib_qt[target] == ind_cols:
-                    new_cols_qt = round(ind_cols * 0.2) + 1
-                    extra = np.empty((qt_node, new_cols_qt), dtype=np.int64)
-                    neib_list = np.append(neib_list, extra, axis=1)
-                    ind_cols += new_cols_qt
-
-                # adiciona conexão recíproca
-                neib_list[target, neib_qt[target]] = i
-                neib_qt[target] += 1
-
-        # remove duplicatas em cada linha
-        for i in range(qt_node):
-            k_i = neib_qt[i]
-            unique = np.unique(neib_list[i, :k_i])
-            neib_qt[i] = unique.shape[0]
-            neib_list[i, :neib_qt[i]] = unique
-
-        # descarta colunas não usadas
-        ind_cols = int(np.max(neib_qt))
-        neib_list = neib_list[:, :ind_cols]
-
-        return neib_list, neib_qt

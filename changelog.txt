@@ -7,6 +7,17 @@ Created on Wed Oct  7 14:41:55 2020
 
 Date Format: DD/MM/YY
 
+07/01/26:
+- Separated graph construction from the PCC core into the module pcc_graph
+  (build_knn_graph and build_graph_from_edge_index).
+- Added the set_graph(neib_list, neib_qt) method to allow using pre-defined
+  graphs (e.g., citation networks such as Cora).
+- Modified the PCC internals to depend only on the graph size (n_nodes) from
+  neib_list instead of the original data matrix, enabling runs without features.
+- Exposed additional outputs related to soft labels: node dominance
+  (node.dominance) and the owndeg matrix, so that soft label information
+  and degree weights can be inspected after fit_predict.
+
 16/12/2025:
 - Included a benchmark script to compute the speedup of the Numba version.
 
