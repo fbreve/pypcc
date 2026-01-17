@@ -14,9 +14,11 @@ In practice, performance depends on the dataset size and structure, so it is
 recommended to benchmark both cython and numba on your data.
 
 Use:
+```python
 ParticleCompetitionAndCooperation(impl="cython") \
 ParticleCompetitionAndCooperation(impl="numba") \
 ParticleCompetitionAndCooperation(impl="numpy") \
+```
 according to the implementation you would like to use.
 
 You may also check the original MATLAB version:
