@@ -15,9 +15,9 @@ recommended to benchmark both cython and numba on your data.
 
 Use:
 ```python
-ParticleCompetitionAndCooperation(impl="cython") \
-ParticleCompetitionAndCooperation(impl="numba") \
-ParticleCompetitionAndCooperation(impl="numpy") \
+ParticleCompetitionAndCooperation(impl="cython")
+ParticleCompetitionAndCooperation(impl="numba")
+ParticleCompetitionAndCooperation(impl="numpy")
 ```
 according to the implementation you would like to use.
 
