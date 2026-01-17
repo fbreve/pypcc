@@ -27,12 +27,12 @@ https://github.com/fbreve/Particle-Competition-and-Cooperation
 For MATLAB, there is a MEX version available, which is comparable in speed to
 the Cython implementation on the same machine.
 
-##Benchmarks:
+## Benchmarks:
 
 Machine: Intel Core i9 14900K with 128GB of RAM \
 Software: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, Numba 0.62.1, and Cython 3.2.2 \
 
-####Dataset: Wine (UCI, 178 instances, 13 features, 3 classes)
+#### Dataset: Wine (UCI, 178 instances, 13 features, 3 classes)
 
 With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 
@@ -54,7 +54,7 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 | Python Numba      |   2.164  |
 | Python NumPy only |  87.506  |
 
-####Dataset: Digits (sklearn, 1797 instances, 64 features, 10 classes)
+#### Dataset: Digits (sklearn, 1797 instances, 64 features, 10 classes)
 
 With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 
