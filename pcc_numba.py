@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jan 16 15:01:28 2026
+Created on Fri Jan 16 15:02:02 2026
 
 @author: fbrev
 """
 
-# pcc_numpy.py
+# pcc_numba.py
 import numpy as np
+from numba import njit
 
-def pcc_step_numpy(neib_list, neib_qt,
-                   labels, p_grd, delta_v, c, zerovec,
-                   part_curnode, part_label, part_strength, dist_table,
-                   dominance, owndeg):
-    """
-    Versão NumPy/Python do _pcc_step (lógica espelhada do Numba/Cython).
-    Tudo in-place.
-    """
+@njit
+def _pcc_step_numba(neib_list, neib_qt,
+                    labels, p_grd, delta_v, c, zerovec,
+                    part_curnode, part_label, part_strength, dist_table,
+                    dominance, owndeg):
     n_particles = part_curnode.shape[0]
 
     for p_i in range(n_particles):
@@ -29,6 +27,7 @@ def pcc_step_numpy(neib_list, neib_qt,
             label = part_label[p_i]
 
             dom_list = dominance[neighbors, label]
+
             d = dist_table[neighbors, p_i].astype(np.float64)
             dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
 
@@ -41,11 +40,11 @@ def pcc_step_numpy(neib_list, neib_qt,
             greedy = True
         else:
             # random
-            idx = np.random.randint(neighbors.shape[0])
+            k_rand = neighbors.shape[0]
+            idx = np.random.randint(k_rand)
             next_node = neighbors[idx]
             greedy = False
 
-        # dominance
         if labels[next_node] == -1:
             dom = dominance[next_node, :]
             step = part_strength[p_i] * (delta_v / (c - 1))
@@ -55,17 +54,17 @@ def pcc_step_numpy(neib_list, neib_qt,
             dom -= reduc
             dom[part_label[p_i]] += np.sum(reduc)
 
-        # strength
         part_strength[p_i] = dominance[next_node, part_label[p_i]]
 
-        # dist_table
         if dist_table[next_node, p_i] > dist_table[curnode, p_i] + 1:
             dist_table[next_node, p_i] = dist_table[curnode, p_i] + 1
 
-        # owndeg
         if not greedy:
             owndeg[next_node, part_label[p_i]] += part_strength[p_i]
 
-        # choque
         if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
             part_curnode[p_i] = next_node
+
+def pcc_step_numba(*args):
+    # wrapper apenas para manter assinatura semelhante às outras
+    return _pcc_step_numba(*args)

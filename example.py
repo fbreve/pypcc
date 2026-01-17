@@ -27,8 +27,6 @@ SEED = 0
 import numpy as np
 import time
 from pcc import ParticleCompetitionAndCooperation
-# change 'pcc' to 'pcc_numpy' in the previous line if you want to use the pure
-# Numpy version.
 from sklearn.datasets import load_wine
 #from sklearn.datasets import load_digits
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
@@ -67,9 +65,9 @@ def run_pcc_example():
     masked_labels = hideLabels(labels, LABEL_PERCENTAGE, rng)
     
     #RUN THE MODEL
-    print('Running the algorithm...')
+    print('Running the algorithm...')    
     start = time.time()
-    model = ParticleCompetitionAndCooperation()
+    model = ParticleCompetitionAndCooperation(impl="cython")
     model.build_graph(data, k_nn=K_NN)
     pred = np.array(model.fit_predict(masked_labels))
     end = time.time()

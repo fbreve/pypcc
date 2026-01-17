@@ -49,121 +49,53 @@ Note:
     little faster than float32, though we don't really need 64 bits precision
 """
 
+# pcc.py
 import numpy as np
+import warnings
+
 from dataclasses import dataclass
-from numba import njit  # opcional; pode ser comentado para depuração pura em Python
+from pcc_numpy import pcc_step_numpy
 from pcc_graph import build_knn_graph
+
+try:
+    from pcc_numba import pcc_step_numba
+    _HAS_NUMBA = True
+except ImportError:
+    pcc_step_numba = None
+    _HAS_NUMBA = False
+
+try:
+    from pcc_step import pcc_step as pcc_step_cython
+    _HAS_CYTHON = True
+except ImportError:
+    pcc_step_cython = None
+    _HAS_CYTHON = False
+
 
 @dataclass
 class Particles:
-    homenode: np.ndarray        # int64 [n_particles]
-    curnode: np.ndarray         # int64 [n_particles]
-    label: np.ndarray           # int64 [n_particles]
-    strength: np.ndarray        # float64 [n_particles]
-    amount: int                 # número de partículas
-    dist_table: np.ndarray      # uint8 [n_nodes, n_particles]
+    homenode: np.ndarray
+    curnode: np.ndarray
+    label: np.ndarray
+    strength: np.ndarray
+    amount: int
+    dist_table: np.ndarray
 
 
 @dataclass
 class Nodes:
-    amount: int                 # número de nós
-    dominance: np.ndarray       # float64 [n_nodes, n_classes]
-    label: np.ndarray           # int64 [n_nodes]
+    amount: int
+    dominance: np.ndarray
+    label: np.ndarray
 
-@njit  # depois de validar a versão pura em Python, você pode ligar o Numba
-def _pcc_step(neib_list, neib_qt,
-              labels, p_grd, delta_v, c, zerovec,
-              part_curnode, part_label, part_strength, dist_table,
-              dominance, owndeg):    
-    """
-    Executa UMA iteração do PCC sobre todas as partículas.
-
-    Parâmetros (todos NumPy arrays / escalares):
-      neib_list: int64 [n_nodes, max_deg]
-      neib_qt:   int64 [n_nodes]
-      labels:    int64 [n_nodes]
-      p_grd:     float64
-      delta_v:   float64
-      c:         int64 (n_classes)
-      zerovec:   float64 [c]
-      part_curnode: int64 [n_particles]
-      part_label:   int64 [n_particles]
-      part_strength: float64 [n_particles]
-      dist_table:    uint8  [n_nodes, n_particles]
-      dominance:     float64 [n_nodes, c]
-      owndeg:       float64 [n_nodes, c]
-    """
-
-    n_particles = part_curnode.shape[0]
-
-    for p_i in range(n_particles):
-        curnode = part_curnode[p_i]
-        k = neib_qt[curnode]
-
-        # vizinhos do nó atual
-        neighbors = neib_list[curnode, :k]
-
-        # greedy x random
-        if np.random.random() < p_grd:                      
-            # --- greedy walk ---
-            greedy = True
-            
-            label = part_label[p_i]
-
-            # dominância da classe da partícula em cada vizinho
-            dom_list = dominance[neighbors, label]
-
-            # dist_list: 1 / (1 + d)^2
-            d = dist_table[neighbors, p_i].astype(np.float64)
-            dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
-
-            prob = dom_list * dist_list
-            slices = np.cumsum(prob)
-
-            # roleta
-            rand = np.random.uniform(0.0, slices[-1])
-            choice = np.searchsorted(slices, rand)
-            next_node = neighbors[choice]
-        else:
-            # --- random walk ---
-            greedy = False
-            
-            k_rand = neighbors.shape[0]
-            idx = np.random.randint(k_rand)
-            next_node = neighbors[idx]
-
-        # --- update dominance / força / dist_table / posição da partícula ---
-
-        # apenas nós não rotulados sofrem atualização de dominância
-        if labels[next_node] == -1:
-            dom = dominance[next_node, :]
-            step = part_strength[p_i] * (delta_v / (c - 1))
-
-            # redução: dom - max(dom - step, 0)
-            reduc = dom - np.maximum(dom - step, zerovec)
-
-            dom -= reduc
-            dom[part_label[p_i]] += np.sum(reduc)
-
-        # atualiza força
-        part_strength[p_i] = dominance[next_node, part_label[p_i]]
-
-        # dist_table
-        current_node = curnode
-        if dist_table[next_node, p_i] > dist_table[current_node, p_i] + 1:
-            dist_table[next_node, p_i] = dist_table[current_node, p_i] + 1
-
-        # se foi movimento aleatório, acumula owndeg
-        if not greedy:
-            owndeg[next_node, part_label[p_i]] += part_strength[p_i]
-
-        # move partícula se não houve choque
-        if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
-            part_curnode[p_i] = next_node
 
 class ParticleCompetitionAndCooperation:
 
-    def __init__(self):
+    def __init__(self, impl="cython"):
+        """
+        impl: 'cython', 'numba' ou 'numpy'
+        """
+        self.impl = impl
         self.data = None
         self.k_nn = None
         self.neib_list = None
@@ -181,6 +113,38 @@ class ParticleCompetitionAndCooperation:
         self.zerovec = None
         self.owndeg = None
 
+    def _step_backend(self,
+                      neib_list, neib_qt,
+                      labels, p_grd, delta_v, c, zerovec,
+                      part_curnode, part_label, part_strength, dist_table,
+                      dominance, owndeg):
+
+        if self.impl == "cython" and _HAS_CYTHON:
+            return pcc_step_cython(neib_list, neib_qt,
+                                   labels, p_grd, delta_v, c, zerovec,
+                                   part_curnode, part_label, part_strength, dist_table,
+                                   dominance, owndeg)
+
+        if self.impl == "numba" and _HAS_NUMBA:
+            return pcc_step_numba(neib_list, neib_qt,
+                                  labels, p_grd, delta_v, c, zerovec,
+                                  part_curnode, part_label, part_strength, dist_table,
+                                  dominance, owndeg)
+
+        if self.impl != "numpy":
+            warnings.warn(
+                f"Backend '{self.impl}' não disponível; usando versão NumPy."
+            )
+
+        return pcc_step_numpy(neib_list, neib_qt,
+                              labels, p_grd, delta_v, c, zerovec,
+                              part_curnode, part_label, part_strength, dist_table,
+                              dominance, owndeg)
+
+    # daqui pra baixo, reutiliza tua implementação original, trocando só o _pcc_step pelo _step_backend:
+
+    from pcc_graph import build_knn_graph  # ajuste import conforme seu projeto
+
     def build_graph(self, data, k_nn=10):
         self.data = data
         self.k_nn = k_nn
@@ -190,18 +154,12 @@ class ParticleCompetitionAndCooperation:
         self.neib_list = neib_list.astype(np.int64)
         self.neib_qt = neib_qt.astype(np.int64)
         self.data = None
-   
+
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
-                max_iter=500000, early_stop=True, es_chk=2000):
-        """
-        Executa o PCC de forma transdutiva e retorna um vetor de rótulos
-        (incluindo os nós originalmente não rotulados).
-        """
-    
-        # precisa ter neib_list e neib_qt definidos, independente de data
+                    max_iter=500000, early_stop=True, es_chk=2000):
+
         if self.neib_list is None or self.neib_qt is None:
-            print("Error: You must build or set the graph first "
-                  "using build_graph(data) or set_graph(neib_list, neib_qt).")
+            print("Error: build or set the graph first.")
             return -1
 
         self.labels = labels.astype(np.int64)
@@ -211,24 +169,18 @@ class ParticleCompetitionAndCooperation:
         self.early_stop = bool(early_stop)
         self.es_chk = int(es_chk)
 
-        # classes reais (sem -1)
         self.unique_labels = np.unique(self.labels)
         self.unique_labels = self.unique_labels[self.unique_labels != -1]
         self.c = len(self.unique_labels)
 
-        # gera partículas e nós
         self.part = self.__genParticles()
         self.node = self.__genNodes()
 
-        # propaga rótulos
         self.__labelPropagation()
 
         return self.node.label
 
     def __labelPropagation(self):
-        """
-        Loop principal de iterações do PCC com critério de early stop.
-        """
         self.zerovec = np.zeros(self.c, dtype=np.float64)
 
         early_stop = self.early_stop
@@ -245,19 +197,17 @@ class ParticleCompetitionAndCooperation:
         neib_qt = self.neib_qt
 
         if early_stop:
-            # heurística baseada em média de iterações por nó/partícula
             stop_max = round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1))
             max_mmpot = 0.0
             stop_cnt = 0
 
         for it in range(max_iter):
-            _pcc_step(neib_list, neib_qt,
-                      self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
-                      part.curnode, part.label, part.strength, part.dist_table,
-                      node.dominance, self.owndeg)
+            self._step_backend(neib_list, neib_qt,
+                               self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
+                               part.curnode, part.label, part.strength, part.dist_table,
+                               node.dominance, self.owndeg)
 
             if early_stop and it % 10 == 0:
-                # potencial médio de dominância
                 mmpot = np.mean(np.amax(node.dominance, 1))
                 if mmpot > max_mmpot:
                     max_mmpot = mmpot
@@ -267,41 +217,31 @@ class ParticleCompetitionAndCooperation:
                     if stop_cnt > stop_max:
                         break
 
-        # rotula nós originalmente não rotulados
         unlabeled = node.label == -1
         node.label[unlabeled] = self.unique_labels[
             np.argmax(node.dominance[unlabeled, :], axis=1)
         ]
-               
-        # normaliza owndeg por linha (como no MATLAB)
+
         row_sums = np.sum(self.owndeg, axis=1, keepdims=True)
         row_sums[row_sums == 0.0] = 1.0
         self.owndeg = self.owndeg / row_sums
 
     def __genParticles(self) -> Particles:
-        """
-        Cria as partículas a partir dos nós rotulados.
-        """
-    
         homenode = np.where(self.labels != -1)[0].astype(np.int64)
         curnode = homenode.copy()
         label = self.labels[self.labels != -1].astype(np.int64)
         amount = int(homenode.shape[0])
         strength = np.full(amount, 1.0, dtype=np.float64)
-    
-        # número de nós vem do grafo
+
         n_nodes = self.neib_list.shape[0]
-    
-        # distância máxima limitada a 255 (uint8)
         max_dist = min(n_nodes - 1, 255)
         dist_table = np.full(
             shape=(n_nodes, amount),
             fill_value=max_dist,
             dtype=np.uint8,
         )
-    
         dist_table[homenode, np.arange(amount)] = 0
-    
+
         return Particles(
             homenode=homenode,
             curnode=curnode,
@@ -312,31 +252,27 @@ class ParticleCompetitionAndCooperation:
         )
 
     def __genNodes(self) -> Nodes:
-        """
-        Inicializa dominâncias e rótulos dos nós.
-        """
-    
-        amount = self.neib_list.shape[0]  # número de nós
+        amount = self.neib_list.shape[0]
         n_classes = self.c
-    
+
         dominance = np.full(
             shape=(amount, n_classes),
             fill_value=float(1.0 / n_classes),
             dtype=np.float64,
         )
-    
+
         label = self.labels.copy().astype(np.int64)
         dominance[label != -1, :] = 0.0
-    
+
         for l in self.unique_labels:
             dominance[label == l, l] = 1.0
-    
+
         self.owndeg = np.full(
             shape=(amount, n_classes),
             fill_value=np.finfo(float).tiny,
             dtype=np.float64,
         )
-    
+
         return Nodes(
             amount=amount,
             dominance=dominance,

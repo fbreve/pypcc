@@ -21,7 +21,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def build_knn_graph(data, k_nn=10):
+def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
     """
     Build a symmetric k-NN graph from a feature matrix.
 
@@ -31,6 +31,15 @@ def build_knn_graph(data, k_nn=10):
         Input feature matrix. Each row is a data item, each column an attribute.
     k_nn : int, optional (default=10)
         Each node is connected to its k nearest neighbors.
+    metric : str or callable, optional (default="minkowski")
+        Distance metric passed to sklearn.neighbors.NearestNeighbors.
+        Common choices:
+            - "minkowski" with p=2: Euclidean distance.
+            - "minkowski" with p=1: Manhattan distance.
+            - Any metric supported by NearestNeighbors.
+    p : int, optional (default=2)
+        Power parameter for the Minkowski metric. Ignored if metric does not
+        use this parameter.
 
     Returns
     -------
@@ -49,6 +58,8 @@ def build_knn_graph(data, k_nn=10):
     nbrs = NearestNeighbors(
         n_neighbors=k_nn + 1,
         algorithm="auto",
+        metric=metric,
+        p=p,
         n_jobs=-1,
     ).fit(data)
 
