@@ -91,9 +91,9 @@ class Nodes:
 
 class ParticleCompetitionAndCooperation:
 
-    def __init__(self, impl="cython"):
+    def __init__(self, impl="auto"):
         """
-        impl: 'cython', 'numba' ou 'numpy'
+        impl: 'auto', 'cython', 'numba' ou 'numpy'
         """
         self.impl = impl
         self.data = None
@@ -119,27 +119,50 @@ class ParticleCompetitionAndCooperation:
                       part_curnode, part_label, part_strength, dist_table,
                       dominance, owndeg):
 
-        if self.impl == "cython" and _HAS_CYTHON:
-            return pcc_step_cython(neib_list, neib_qt,
-                                   labels, p_grd, delta_v, c, zerovec,
-                                   part_curnode, part_label, part_strength, dist_table,
-                                   dominance, owndeg)
+        # Normaliza impl: se vier algo estranho, trata como "auto"
+        impl = self.impl.lower() if isinstance(self.impl, str) else "auto"
+        if impl not in ("cython", "numba", "numpy", "auto"):
+            warnings.warn(f"Backend '{self.impl}' is invalid; using 'auto' (cython→numba→numpy).")
+            impl = "auto"
 
-        if self.impl == "numba" and _HAS_NUMBA:
-            return pcc_step_numba(neib_list, neib_qt,
-                                  labels, p_grd, delta_v, c, zerovec,
-                                  part_curnode, part_label, part_strength, dist_table,
-                                  dominance, owndeg)
+        # Ordem de fallback
+        backends = []
+        if impl == "cython":
+            backends = ["cython", "numba", "numpy"]
+        elif impl == "numba":
+            backends = ["numba", "cython", "numpy"]
+        elif impl == "numpy":
+            backends = ["numpy"]
+        else:  # auto
+            backends = ["cython", "numba", "numpy"]
 
-        if self.impl != "numpy":
-            warnings.warn(
-                f"Backend '{self.impl}' não disponível; usando versão NumPy."
-            )
+        for be in backends:
+            if be == "cython" and _HAS_CYTHON:
+                return pcc_step_cython(neib_list, neib_qt,
+                                       labels, p_grd, delta_v, c, zerovec,
+                                       part_curnode, part_label, part_strength, dist_table,
+                                       dominance, owndeg)
 
-        return pcc_step_numpy(neib_list, neib_qt,
-                              labels, p_grd, delta_v, c, zerovec,
-                              part_curnode, part_label, part_strength, dist_table,
-                              dominance, owndeg)
+            if be == "numba" and _HAS_NUMBA:
+                return pcc_step_numba(neib_list, neib_qt,
+                                      labels, p_grd, delta_v, c, zerovec,
+                                      part_curnode, part_label, part_strength, dist_table,
+                                      dominance, owndeg)
+
+            if be == "numpy":
+                if impl != "numpy":
+                    unavailable = ", ".join(b for b in backends if b != "numpy")
+                    warnings.warn(
+                        f"Backends {unavailable} are not available; using NumPy implementation."
+                    )
+
+                return pcc_step_numpy(neib_list, neib_qt,
+                                      labels, p_grd, delta_v, c, zerovec,
+                                      part_curnode, part_label, part_strength, dist_table,
+                                      dominance, owndeg)
+
+        # Se chegou aqui, algo deu muito errado (nenhum backend disponível)
+        raise RuntimeError("No backend available: cython, numba, or numpy.")
 
     # daqui pra baixo, reutiliza tua implementação original, trocando só o _pcc_step pelo _step_backend:
 

@@ -4,8 +4,8 @@ Python code for the semi-supervised learning method "Particle Competition and Co
 This project is a fork of Caio Carneloz’s original implementation, available at
 https://github.com/caiocarneloz/pycc
 
-This fork has a few bug fixes and lots of optimizations for faster execution. 
-It also includes the early stop criteria from the original article.
+This fork has a few bug fixes and several optimizations for faster execution. 
+It also includes the early stopping criterion from the original article.
 
 For Python, there are three implementations available: **cython**, **numba**, and pure **numpy**.  \
 **cython** is usually faster for larger datasets, while **numba** may be slightly faster for smaller ones.
@@ -15,6 +15,7 @@ recommended to benchmark both cython and numba on your data.
 
 Use:
 ```python
+ParticleCompetitionAndCooperation(impl="auto")
 ParticleCompetitionAndCooperation(impl="cython")
 ParticleCompetitionAndCooperation(impl="numba")
 ParticleCompetitionAndCooperation(impl="numpy")
@@ -36,45 +37,45 @@ Software: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, Numba 0.62.1, and Cython 3
 
 With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 
-| Implementation    | Time (s) |
-|-------------------|---------:|
-| MATLAB MEX        |  0.014   |
-| MATLAB pure       |  0.331   |
-| Python Cython     |  0.033   |
-| Python Numba      |  0.031   |
-| Python NumPy only |  1.044   |
+| Implementation      | Time (s) |
+|---------------------|---------:|
+| MATLAB MEX          |  0.014   |
+| MATLAB pure         |  0.331   |
+| Python Cython       |  0.033   |
+| Python Numba        |  0.031   |
+| Python NumPy (only) |  1.044   |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
-| Implementation    | Time (s) |
-|-------------------|---------:|
-| MATLAB MEX        |   0.972  |
-| MATLAB pure       |  30.697  |
-| Python Cython     |   2.384  |
-| Python Numba      |   2.164  |
-| Python NumPy only |  87.506  |
+| Implementation      | Time (s) |
+|---------------------|---------:|
+| MATLAB MEX          |   0.972  |
+| MATLAB pure         |  30.697  |
+| Python Cython       |   2.384  |
+| Python Numba        |   2.164  |
+| Python NumPy (only) |  87.506  |
 
 #### Dataset: Digits (sklearn, 1797 instances, 64 features, 10 classes)
 
 With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 
-| Implementation    | Time (s) |
-|-------------------|---------:|
-| MATLAB MEX        |   0.357  |
-| MATLAB pure       |   8.738  |
-| Python Cython     |   0.356  |
-| Python Numba      |   0.672  |
-| Python NumPy only |  27.626  |
+| Implementation      | Time (s) |
+|---------------------|---------:|
+| MATLAB MEX          |   0.357  |
+| MATLAB pure         |   8.738  |
+| Python Cython       |   0.356  |
+| Python Numba        |   0.672  |
+| Python NumPy (only) |  27.626  |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
-| Implementation    | Time (s) |
-|-------------------|---------:|
-| MATLAB MEX        |  10.866  |
-| MATLAB pure       | 284.953  |
-| Python Cython     |   9.618  |
-| Python Numba      |  19.568  |
-| Python NumPy only | 942.190  |
+| Implementation      | Time (s) |
+|---------------------|---------:|
+| MATLAB MEX          |  10.866  |
+| MATLAB pure         | 284.953  |
+| Python Cython       |   9.618  |
+| Python Numba        |  19.568  |
+| Python NumPy (only) | 942.190  |
 
 ## Getting Started
 #### Installation
@@ -110,8 +111,8 @@ As arguments, **pypcc** receives the values explained below:
 - **p_grd:** value from 0 to 1 that defines the probability of particles to take the greedy movement. Default: 0.5.
 - **delta_v:** value from 0 to 1 to control the rate of change of the domination levels. Default: 0.1.
 - **max_iter:** number of iterations until the label propagation stops (if the stop criteria is not met before that).
-- **es_chk:** control how many iterations the algorithm performs after reaching some level of stability (stop criteria). Default: 2000. The formula is *(total_number_of_nodes / number_of_labeled_nodes) * es_chk*. Lower **es_chk** to finish earlier, but it may affect accuracy.
-- **impl:** chooses the implementation ("numpy", "numba", or "cython"). Default is "cython", but both "cython" and "numba" fallback to "numpy" if they are not available.
+- **es_chk:** control how many iterations the algorithm performs after reaching some level of stability (stopping criterion). Default: 2000. The formula is *(total_number_of_nodes / number_of_labeled_nodes) * es_chk*. Lower **es_chk** to finish earlier, but it may affect accuracy.
+- **impl:** chooses the implementation ("auto", "numpy", "numba", or "cython"). Default is "auto", which selects the fastest implementation available. "cython" falls back to "numba", and "numba" falls back to "numpy" when a specific implementation is not available.
 ---
 
 ## Citation

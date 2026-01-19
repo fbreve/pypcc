@@ -67,7 +67,7 @@ def run_pcc_example():
     #RUN THE MODEL
     print('Running the algorithm...')    
     start = time.time()
-    model = ParticleCompetitionAndCooperation(impl="cython")
+    model = ParticleCompetitionAndCooperation()
     model.build_graph(data, k_nn=K_NN)
     pred = np.array(model.fit_predict(masked_labels))
     end = time.time()

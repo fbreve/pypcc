@@ -5,15 +5,17 @@ Created on Wed Oct  7 14:41:55 2020
 @author: fbrev
 """
 
-Date Format: DD/MM/YY
+19/01/2026:
+- Implemented 'impl=auto' to auto select the faster implementation available.
+  In order: cython -> numba -> numpy
 
-16/04/26:
+16/04/2026:
 - Implemented Cython version. Now Cython/Numba/Numpy versions can be selected
   through the 'impl' parameter.
 - Benchmark code updated to include Cython.
 - build_graph now supports 'metric' and 'p' parameters.
 
-07/01/26:
+07/01/2026:
 - Separated graph construction from the PCC core into the module pcc_graph
   (build_knn_graph and build_graph_from_edge_index).
 - Added the set_graph(neib_list, neib_qt) method to allow using pre-defined
