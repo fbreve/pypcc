@@ -18,6 +18,7 @@ Both functions return:
 """
 
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -53,54 +54,54 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
     -----
     - Uses sklearn.neighbors.NearestNeighbors, which chooses the most efficient
       method to find the neighbors (usually not brute force).
-    - The graph is symmetrized by adding reciprocal connections.
+    - The graph is symmetrized via a sparse adjacency matrix (vectorized),
+      avoiding Python-level loops.
+    - Self-loops are never included.
     """
+    data = np.asarray(data)
+    if data.ndim != 2:
+        raise ValueError("data must be a 2-D array of shape (n_samples, n_features).")
+
+    n_nodes = data.shape[0]
+
+    if not isinstance(k_nn, int) or k_nn < 1:
+        raise ValueError("k_nn must be a positive integer.")
+
+    if k_nn >= n_nodes:
+        raise ValueError(
+            f"k_nn ({k_nn}) must be smaller than the number of samples ({n_nodes})."
+        )
+
     nbrs = NearestNeighbors(
-        n_neighbors=k_nn + 1,
+        n_neighbors=k_nn + 1,  # +1 because the query point itself is returned
         algorithm="auto",
         metric=metric,
         p=p,
         n_jobs=-1,
     ).fit(data)
 
-    # indices of neighbors (including self as first neighbor)
-    neib_list = nbrs.kneighbors(data, return_distance=False)
-    # discard self
-    neib_list = neib_list[:, 1:]
-    neib_list = neib_list.astype(np.int64)
+    # indices[i, 0] is the query node itself; drop it
+    indices = nbrs.kneighbors(data, return_distance=False)[:, 1:]  # (n_nodes, k_nn)
 
-    qt_node = neib_list.shape[0]
+    # --- vectorized symmetrization via sparse matrix ---
+    rows = np.repeat(np.arange(n_nodes, dtype=np.int64), k_nn)
+    cols = indices.ravel().astype(np.int64)
 
-    # initial amount of neighbors (k) per node
-    neib_qt = np.full(qt_node, k_nn, dtype=np.int64)
+    # Build directed adjacency, then symmetrize: A + A^T > 0
+    ones = np.ones(len(rows), dtype=np.int8)
+    adj = csr_matrix((ones, (rows, cols)), shape=(n_nodes, n_nodes), dtype=np.int8)
+    adj = adj + adj.T                       # symmetric
+    adj.setdiag(0)                          # remove self-loops (safety)
+    adj.eliminate_zeros()
 
-    # current number of allocated columns
-    ind_cols = k_nn
+    # Convert back to dense neighbor lists
+    neib_qt = np.diff(adj.indptr).astype(np.int64)   # degree of each node
+    max_deg = int(neib_qt.max())
 
-    # add reciprocal connections
-    for i in range(qt_node):
-        for j in range(k_nn):
-            target = neib_list[i, j]
-            # if there is no space, increase number of columns
-            if neib_qt[target] == ind_cols:
-                new_cols_qt = round(ind_cols * 0.2) + 1
-                extra = np.empty((qt_node, new_cols_qt), dtype=np.int64)
-                neib_list = np.append(neib_list, extra, axis=1)
-                ind_cols += new_cols_qt
-
-            neib_list[target, neib_qt[target]] = i
-            neib_qt[target] += 1
-
-    # remove duplicate neighbors for each node
-    for i in range(qt_node):
-        k_i = neib_qt[i]
-        unique = np.unique(neib_list[i, :k_i])
-        neib_qt[i] = unique.shape[0]
-        neib_list[i, :neib_qt[i]] = unique
-
-    # discard unused last columns
-    ind_cols = int(np.max(neib_qt))
-    neib_list = neib_list[:, :ind_cols]
+    neib_list = np.full((n_nodes, max_deg), -1, dtype=np.int64)
+    for i in range(n_nodes):
+        start, end = adj.indptr[i], adj.indptr[i + 1]
+        neib_list[i, : end - start] = adj.indices[start:end]
 
     return neib_list, neib_qt
 
@@ -129,29 +130,38 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     -----
     - Assumes an undirected graph and adds reciprocal connections
       by construction (i.e., both (u,v) and (v,u)).
+    - Symmetrization and deduplication are done via a sparse adjacency
+      matrix, avoiding Python-level loops over edges.
+    - Self-loops present in edge_index are silently removed.
     """
     edge_index = np.asarray(edge_index, dtype=np.int64)
-    if edge_index.shape[0] != 2:
+    if edge_index.ndim != 2 or edge_index.shape[0] != 2:
         raise ValueError("edge_index must have shape [2, num_edges].")
 
-    neighbors = [[] for _ in range(num_nodes)]
+    if num_nodes == 0:
+        return np.empty((0, 0), dtype=np.int64), np.empty(0, dtype=np.int64)
 
-    # add edges as undirected
-    for src, dst in edge_index.T:
-        neighbors[src].append(dst)
-        neighbors[dst].append(src)
+    src = edge_index[0]
+    dst = edge_index[1]
 
-    degrees = np.array([len(nei) for nei in neighbors], dtype=np.int64)
-    max_deg = int(degrees.max()) if num_nodes > 0 else 0
+    # Concatenate forward and backward edges for undirected symmetrization
+    rows = np.concatenate([src, dst])
+    cols = np.concatenate([dst, src])
+
+    ones = np.ones(len(rows), dtype=np.int8)
+    adj = csr_matrix((ones, (rows, cols)), shape=(num_nodes, num_nodes), dtype=np.int8)
+    adj.setdiag(0)      # remove self-loops
+    adj.eliminate_zeros()
+
+    # Deduplicate: keep only binary (0/1) entries
+    adj.data[:] = 1
+
+    neib_qt = np.diff(adj.indptr).astype(np.int64)
+    max_deg = int(neib_qt.max()) if num_nodes > 0 else 0
 
     neib_list = np.full((num_nodes, max_deg), -1, dtype=np.int64)
-    for i, nei in enumerate(neighbors):
-        if len(nei) > 0:
-            unique = np.unique(np.array(nei, dtype=np.int64))
-            neib_list[i, :len(unique)] = unique
-            degrees[i] = len(unique)
-        else:
-            degrees[i] = 0
+    for i in range(num_nodes):
+        start, end = adj.indptr[i], adj.indptr[i + 1]
+        neib_list[i, : end - start] = adj.indices[start:end]
 
-    neib_qt = degrees
     return neib_list, neib_qt
