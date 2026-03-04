@@ -22,7 +22,8 @@ def _pcc_step_numba(neib_list, neib_qt,
 
         neighbors = neib_list[curnode, :k]
 
-        if np.random.random() < p_grd:
+        use_greedy = np.random.random() < p_grd
+        if use_greedy:
             # greedy
             label = part_label[p_i]
 
@@ -32,12 +33,20 @@ def _pcc_step_numba(neib_list, neib_qt,
             dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
 
             prob = dom_list * dist_list
-            slices = np.cumsum(prob)
+            total = prob.sum()
 
-            rand = np.random.uniform(0.0, slices[-1])
-            choice = np.searchsorted(slices, rand)
-            next_node = neighbors[choice]
-            greedy = True
+            if total > 0.0:
+                slices = np.cumsum(prob)
+                rand = np.random.uniform(0.0, total)
+                choice = np.searchsorted(slices, rand)
+                next_node = neighbors[choice]
+                greedy = True
+            else:
+                # all neighbors have zero dominance for this label — fall back to random
+                k_rand = neighbors.shape[0]
+                idx = np.random.randint(k_rand)
+                next_node = neighbors[idx]
+                greedy = False
         else:
             # random
             k_rand = neighbors.shape[0]

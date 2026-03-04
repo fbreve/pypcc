@@ -24,7 +24,8 @@ def pcc_step_numpy(neib_list, neib_qt,
 
         neighbors = neib_list[curnode, :k]
 
-        if np.random.random() < p_grd:
+        use_greedy = np.random.random() < p_grd
+        if use_greedy:
             # greedy
             label = part_label[p_i]
 
@@ -33,12 +34,19 @@ def pcc_step_numpy(neib_list, neib_qt,
             dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
 
             prob = dom_list * dist_list
-            slices = np.cumsum(prob)
+            total = prob.sum()
 
-            rand = np.random.uniform(0.0, slices[-1])
-            choice = np.searchsorted(slices, rand)
-            next_node = neighbors[choice]
-            greedy = True
+            if total > 0.0:
+                slices = np.cumsum(prob)
+                rand = np.random.uniform(0.0, total)
+                choice = np.searchsorted(slices, rand)
+                next_node = neighbors[choice]
+                greedy = True
+            else:
+                # all neighbors have zero dominance for this label — fall back to random
+                idx = np.random.randint(neighbors.shape[0])
+                next_node = neighbors[idx]
+                greedy = False
         else:
             # random
             idx = np.random.randint(neighbors.shape[0])
@@ -58,8 +66,8 @@ def pcc_step_numpy(neib_list, neib_qt,
         # strength
         part_strength[p_i] = dominance[next_node, part_label[p_i]]
 
-        # dist_table
-        if dist_table[next_node, p_i] > dist_table[curnode, p_i] + 1:
+        # dist_table — cast to int to avoid uint8 overflow when curnode value is 255
+        if int(dist_table[next_node, p_i]) > int(dist_table[curnode, p_i]) + 1:
             dist_table[next_node, p_i] = dist_table[curnode, p_i] + 1
 
         # owndeg

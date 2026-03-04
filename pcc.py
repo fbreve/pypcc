@@ -138,16 +138,18 @@ class ParticleCompetitionAndCooperation:
 
         for be in backends:
             if be == "cython" and _HAS_CYTHON:
-                return pcc_step_cython(neib_list, neib_qt,
-                                       labels, p_grd, delta_v, c, zerovec,
-                                       part_curnode, part_label, part_strength, dist_table,
-                                       dominance, owndeg)
+                pcc_step_cython(neib_list, neib_qt,
+                                labels, p_grd, delta_v, c, zerovec,
+                                part_curnode, part_label, part_strength, dist_table,
+                                dominance, owndeg)
+                return
 
             if be == "numba" and _HAS_NUMBA:
-                return pcc_step_numba(neib_list, neib_qt,
-                                      labels, p_grd, delta_v, c, zerovec,
-                                      part_curnode, part_label, part_strength, dist_table,
-                                      dominance, owndeg)
+                pcc_step_numba(neib_list, neib_qt,
+                               labels, p_grd, delta_v, c, zerovec,
+                               part_curnode, part_label, part_strength, dist_table,
+                               dominance, owndeg)
+                return
 
             if be == "numpy":
                 if impl != "numpy":
@@ -156,26 +158,24 @@ class ParticleCompetitionAndCooperation:
                         f"Backends {unavailable} are not available; using NumPy implementation."
                     )
 
-                return pcc_step_numpy(neib_list, neib_qt,
-                                      labels, p_grd, delta_v, c, zerovec,
-                                      part_curnode, part_label, part_strength, dist_table,
-                                      dominance, owndeg)
+                pcc_step_numpy(neib_list, neib_qt,
+                               labels, p_grd, delta_v, c, zerovec,
+                               part_curnode, part_label, part_strength, dist_table,
+                               dominance, owndeg)
+                return
 
         # Se chegou aqui, algo deu muito errado (nenhum backend disponível)
         raise RuntimeError("No backend available: cython, numba, or numpy.")
-
-    # daqui pra baixo, reutiliza tua implementação original, trocando só o _pcc_step pelo _step_backend:
-
-    from pcc_graph import build_knn_graph  # ajuste import conforme seu projeto
 
     def build_graph(self, data, k_nn=10):
         self.data = data
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = build_knn_graph(data, k_nn)
 
-    def set_graph(self, neib_list, neib_qt):
+    def set_graph(self, neib_list, neib_qt, k_nn=None):
         self.neib_list = neib_list.astype(np.int64)
         self.neib_qt = neib_qt.astype(np.int64)
+        self.k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
         self.data = None
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
@@ -210,9 +210,7 @@ class ParticleCompetitionAndCooperation:
         node = self.node
         part = self.part
 
-        k_nn = self.k_nn
-        if k_nn is None:
-            k_nn = int(np.mean(self.neib_qt)) if self.neib_qt is not None else 10
+        k_nn = self.k_nn if self.k_nn is not None else int(self.neib_qt.max())
 
         es_chk = self.es_chk
         max_iter = self.max_iter
