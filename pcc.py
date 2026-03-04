@@ -105,6 +105,8 @@ class ParticleCompetitionAndCooperation:
         self.c = None
         self.p_grd = None
         self.delta_v = None
+        self.deltap = None
+        self.dexp = None
         self.max_iter = None
         self.early_stop = None
         self.es_chk = None
@@ -117,7 +119,7 @@ class ParticleCompetitionAndCooperation:
                       neib_list, neib_qt,
                       labels, p_grd, delta_v, c, zerovec,
                       part_curnode, part_label, part_strength, dist_table,
-                      dominance, owndeg):
+                      dominance, owndeg, deltap, dexp):
 
         # Normaliza impl: se vier algo estranho, trata como "auto"
         impl = self.impl.lower() if isinstance(self.impl, str) else "auto"
@@ -141,14 +143,14 @@ class ParticleCompetitionAndCooperation:
                 pcc_step_cython(neib_list, neib_qt,
                                 labels, p_grd, delta_v, c, zerovec,
                                 part_curnode, part_label, part_strength, dist_table,
-                                dominance, owndeg)
+                                dominance, owndeg, deltap, dexp)
                 return
 
             if be == "numba" and _HAS_NUMBA:
                 pcc_step_numba(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
-                               dominance, owndeg)
+                               dominance, owndeg, deltap, dexp)
                 return
 
             if be == "numpy":
@@ -161,7 +163,7 @@ class ParticleCompetitionAndCooperation:
                 pcc_step_numpy(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
-                               dominance, owndeg)
+                               dominance, owndeg, deltap, dexp)
                 return
 
         # Se chegou aqui, algo deu muito errado (nenhum backend disponível)
@@ -178,7 +180,7 @@ class ParticleCompetitionAndCooperation:
         self.k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
         self.data = None
 
-    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1,
+    def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
                     max_iter=500000, early_stop=True, es_chk=2000):
 
         if self.neib_list is None or self.neib_qt is None:
@@ -188,6 +190,8 @@ class ParticleCompetitionAndCooperation:
         self.labels = labels.astype(np.int64)
         self.p_grd = float(p_grd)
         self.delta_v = float(delta_v)
+        self.deltap = float(deltap)
+        self.dexp = float(dexp)
         self.max_iter = int(max_iter)
         self.early_stop = bool(early_stop)
         self.es_chk = int(es_chk)
@@ -226,7 +230,8 @@ class ParticleCompetitionAndCooperation:
             self._step_backend(neib_list, neib_qt,
                                self.labels, self.p_grd, self.delta_v, self.c, self.zerovec,
                                part.curnode, part.label, part.strength, part.dist_table,
-                               node.dominance, self.owndeg)
+                               node.dominance, self.owndeg,
+                               self.deltap, self.dexp)
 
             if early_stop and it % 10 == 0:
                 mmpot = np.mean(np.amax(node.dominance, 1))

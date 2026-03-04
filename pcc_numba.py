@@ -13,7 +13,7 @@ from numba import njit
 def _pcc_step_numba(neib_list, neib_qt,
                     labels, p_grd, delta_v, c, zerovec,
                     part_curnode, part_label, part_strength, dist_table,
-                    dominance, owndeg):
+                    dominance, owndeg, deltap, dexp):
     n_particles = part_curnode.shape[0]
 
     for p_i in range(n_particles):
@@ -30,7 +30,7 @@ def _pcc_step_numba(neib_list, neib_qt,
             dom_list = dominance[neighbors, label]
 
             d = dist_table[neighbors, p_i].astype(np.float64)
-            dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
+            dist_list = 1.0 / ((1.0 + d) ** dexp)
 
             prob = dom_list * dist_list
             total = prob.sum()
@@ -63,7 +63,7 @@ def _pcc_step_numba(neib_list, neib_qt,
             dom -= reduc
             dom[part_label[p_i]] += np.sum(reduc)
 
-        part_strength[p_i] = dominance[next_node, part_label[p_i]]
+        part_strength[p_i] += (dominance[next_node, part_label[p_i]] - part_strength[p_i]) * deltap
 
         if dist_table[next_node, p_i] > dist_table[curnode, p_i] + 1:
             dist_table[next_node, p_i] = dist_table[curnode, p_i] + 1
@@ -74,6 +74,12 @@ def _pcc_step_numba(neib_list, neib_qt,
         if dominance[next_node, part_label[p_i]] == np.max(dominance[next_node, :]):
             part_curnode[p_i] = next_node
 
-def pcc_step_numba(*args):
+def pcc_step_numba(neib_list, neib_qt,
+                   labels, p_grd, delta_v, c, zerovec,
+                   part_curnode, part_label, part_strength, dist_table,
+                   dominance, owndeg, deltap=1.0, dexp=2.0):
     # wrapper apenas para manter assinatura semelhante às outras
-    return _pcc_step_numba(*args)
+    return _pcc_step_numba(neib_list, neib_qt,
+                           labels, p_grd, delta_v, c, zerovec,
+                           part_curnode, part_label, part_strength, dist_table,
+                           dominance, owndeg, deltap, dexp)

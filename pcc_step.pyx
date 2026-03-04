@@ -28,6 +28,8 @@ cpdef pcc_step(
     np.uint8_t[:, :] dist_table,
     double[:, :]     dominance,
     double[:, :]     owndeg,
+    double           deltap = 1.0,
+    double           dexp   = 2.0,
 ):
     """
     Atualiza uma iteração do PCC sobre todas as partículas.
@@ -91,11 +93,11 @@ cpdef pcc_step(
             for i in range(k):
                 dom_list[i] = dominance[neighbors_view[i], label]
 
-            # dist_list: 1 / (1 + d)^2
+            # dist_list: 1 / (1 + d)^dexp
             for i in range(k):
                 d_val = <double>dist_table[neighbors_view[i], p_i]
                 tmp = 1.0 + d_val
-                dist_list[i] = 1.0 / (tmp * tmp)
+                dist_list[i] = 1.0 / (tmp ** dexp)
 
             for i in range(k):
                 prob[i] = dom_list[i] * dist_list[i]
@@ -161,7 +163,7 @@ cpdef pcc_step(
                 dominance[next_node, i] = dom_row[i]
 
         label = part_label[p_i]
-        part_strength[p_i] = dominance[next_node, label]
+        part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
 
         # dist_table
         if dist_table[next_node, p_i] > dist_table[curnode, p_i] + 1:

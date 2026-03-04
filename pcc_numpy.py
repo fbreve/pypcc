@@ -11,7 +11,7 @@ import numpy as np
 def pcc_step_numpy(neib_list, neib_qt,
                    labels, p_grd, delta_v, c, zerovec,
                    part_curnode, part_label, part_strength, dist_table,
-                   dominance, owndeg):
+                   dominance, owndeg, deltap=1.0, dexp=2.0):
     """
     Versão NumPy/Python do _pcc_step (lógica espelhada do Numba/Cython).
     Tudo in-place.
@@ -31,7 +31,7 @@ def pcc_step_numpy(neib_list, neib_qt,
 
             dom_list = dominance[neighbors, label]
             d = dist_table[neighbors, p_i].astype(np.float64)
-            dist_list = 1.0 / ((1.0 + d) * (1.0 + d))
+            dist_list = 1.0 / ((1.0 + d) ** dexp)
 
             prob = dom_list * dist_list
             total = prob.sum()
@@ -64,7 +64,7 @@ def pcc_step_numpy(neib_list, neib_qt,
             dom[part_label[p_i]] += np.sum(reduc)
 
         # strength
-        part_strength[p_i] = dominance[next_node, part_label[p_i]]
+        part_strength[p_i] += (dominance[next_node, part_label[p_i]] - part_strength[p_i]) * deltap
 
         # dist_table — cast to int to avoid uint8 overflow when curnode value is 255
         if int(dist_table[next_node, p_i]) > int(dist_table[curnode, p_i]) + 1:
