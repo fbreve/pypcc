@@ -9,43 +9,47 @@ Benchmark PCC: Numpy x Numba x Cython
 Some results:
     
 Machine: Intel Core i9 14900K with 128GB of RAM
-Software: Python 3.12.12, Numpy 2.3.5, Numba 0.63.1, and Cython 3.2.2
+Software: Python 3.12.12, Numpy 2.4.4, Numba 0.64.0, and Cython 3.2.4
 
-EARLY_STOP = True, N_RUNS=100
+==================================================
+CONFIG: EARLY_STOP=True, N_RUNS=100
+==================================================
 
-=== Wine ===
-Numpy: mean time = 1.044s (std = 0.304s), mean acc = 0.9322
-Numba: mean time = 0.031s (std = 0.007s), mean acc = 0.9330
-Cython: mean time = 0.033s (std = 0.009s), mean acc = 0.9316
-Speedup (Numpy / Numba):  33.6x
-Speedup (Numpy / Cython): 31.3x
-Speedup (Numba / Cython): 0.93x
+=== Wine (N_RUNS=100, EARLY_STOP=True) ===
+Numpy: mean time = 0.409s (std = 0.122s), mean acc = 0.9330
+Numba: mean time = 0.006s (std = 0.002s), mean acc = 0.9357
+Cython: mean time = 0.004s (std = 0.001s), mean acc = 0.9330
+Speedup (Numpy / Numba):  70.0x
+Speedup (Numpy / Cython): 103.9x
+Speedup (Numba / Cython): 1.48x
 
-=== Digits ===
-Numpy: mean time = 27.626s (std = 7.295s), mean acc = 0.9535
-Numba: mean time = 0.672s (std = 0.146s), mean acc = 0.9532
-Cython: mean time = 0.356s (std = 0.081s), mean acc = 0.9530
-Speedup (Numpy / Numba):  41.1x
-Speedup (Numpy / Cython): 77.5x
-Speedup (Numba / Cython): 1.89x
+=== Digits (N_RUNS=100, EARLY_STOP=True) ===
+Numpy: mean time = 2.027s (std = 0.514s), mean acc = 0.9529
+Numba: mean time = 0.168s (std = 0.038s), mean acc = 0.9538
+Cython: mean time = 0.161s (std = 0.035s), mean acc = 0.9538
+Speedup (Numpy / Numba):  12.1x
+Speedup (Numpy / Cython): 12.6x
+Speedup (Numba / Cython): 1.04x
 
-EARLY_STOP = False, N_RUNS=10
+==================================================
+CONFIG: EARLY_STOP=False, N_RUNS=10
+==================================================
 
-=== Wine ===
-Numpy: mean time = 87.506s (std = 0.562s), mean acc = 0.9161
-Numba: mean time = 2.164s (std = 0.011s), mean acc = 0.9180
-Cython: mean time = 2.384s (std = 0.114s), mean acc = 0.9124
-Speedup (Numpy / Numba):  40.4x
-Speedup (Numpy / Cython): 36.7x
-Speedup (Numba / Cython): 0.91x
+=== Wine (N_RUNS=10, EARLY_STOP=False) ===
+Numpy: mean time = 38.546s (std = 9.475s), mean acc = 0.9168
+Numba: mean time = 0.617s (std = 0.056s), mean acc = 0.9161
+Cython: mean time = 0.391s (std = 0.038s), mean acc = 0.9143
+Speedup (Numpy / Numba):  62.5x
+Speedup (Numpy / Cython): 98.6x
+Speedup (Numba / Cython): 1.58x
 
-=== Digits ===
-Numpy: mean time = 942.190s (std = 4.391s), mean acc = 0.9603
-Numba: mean time = 19.568s (std = 0.071s), mean acc = 0.9605
-Cython: mean time = 9.618s (std = 0.058s), mean acc = 0.9595
-Speedup (Numpy / Numba):  48.1x
-Speedup (Numpy / Cython): 98.0x
-Speedup (Numba / Cython): 2.03x
+=== Digits (N_RUNS=10, EARLY_STOP=False) ===
+Numpy: mean time = 113.889s (std = 19.781s), mean acc = 0.9588
+Numba: mean time = 7.420s (std = 0.213s), mean acc = 0.9583
+Cython: mean time = 6.725s (std = 0.168s), mean acc = 0.9567
+Speedup (Numpy / Numba):  15.3x
+Speedup (Numpy / Cython): 16.9x
+Speedup (Numba / Cython): 1.10x
 
 """
 
@@ -57,12 +61,11 @@ from sklearn.metrics import accuracy_score
 
 from pcc import ParticleCompetitionAndCooperation  # classe única com impl='...'
 
-N_RUNS = 100
+# Configurações padrão (podem ser sobrescritas)
 K_NN = 10
 P_GRD = 0.5
 DELTA_V = 0.1
 MAX_ITER = 500000
-EARLY_STOP = True
 ES_CHK = 2000
 LABELED_FRACTION = 0.1  # fração de exemplos rotulados
 
@@ -79,7 +82,7 @@ def make_ssl_labels(y, labeled_fraction, rng):
     return y_ssl, labeled_idx, unlabeled_idx
 
 
-def run_impl(X, y, impl, label):
+def run_impl(X, y, impl, label, n_runs, early_stop):
     times = []
     accs = []
 
@@ -90,10 +93,10 @@ def run_impl(X, y, impl, label):
     pcc.build_graph(X, k_nn=K_NN)
     pcc.fit_predict(
         y_ssl, p_grd=P_GRD, delta_v=DELTA_V,
-        max_iter=MAX_ITER, early_stop=EARLY_STOP, es_chk=ES_CHK
+        max_iter=MAX_ITER, early_stop=early_stop, es_chk=ES_CHK
     )
 
-    for r in range(N_RUNS):
+    for r in range(n_runs):
         rng = np.random.RandomState(r)
         y_ssl, labeled_idx, unlabeled_idx = make_ssl_labels(
             y, LABELED_FRACTION, rng
@@ -105,29 +108,35 @@ def run_impl(X, y, impl, label):
         t0 = time.perf_counter()
         y_pred = pcc.fit_predict(
             y_ssl, p_grd=P_GRD, delta_v=DELTA_V,
-            max_iter=MAX_ITER, early_stop=EARLY_STOP, es_chk=ES_CHK
+            max_iter=MAX_ITER, early_stop=early_stop, es_chk=ES_CHK
         )
         t1 = time.perf_counter()
         times.append(t1 - t0)
 
-        accs.append(accuracy_score(y[unlabeled_idx], y_pred[unlabeled_idx]))
+        acc = accuracy_score(y[unlabeled_idx], y_pred[unlabeled_idx])
+        accs.append(acc)
+
+        # display progress with running mean
+        avg_time = np.mean(times)
+        avg_acc = np.mean(accs)
+        print(f"  [{impl}] Run {r+1}/{n_runs}: avg_time={avg_time:.3f}s, avg_acc={avg_acc:.4f}      ", end='\r')
 
     times = np.array(times)
     accs = np.array(accs)
-    print(f"{label}: mean time = {times.mean():.3f}s "
+    print(f"\n{label}: mean time = {times.mean():.3f}s "
           f"(std = {times.std():.3f}s), "
           f"mean acc = {accs.mean():.4f}")
     return times.mean()
 
 
-def run_benchmark_dataset(name, X, y):
-    print(f"\n=== {name} ===")
+def run_benchmark_dataset(name, X, y, n_runs, early_stop):
+    print(f"\n=== {name} (N_RUNS={n_runs}, EARLY_STOP={early_stop}) ===")
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
 
-    t_numpy = run_impl(X, y, impl="numpy",  label="Numpy")
-    t_numba = run_impl(X, y, impl="numba",  label="Numba")
-    t_cyth  = run_impl(X, y, impl="cython", label="Cython")
+    t_numpy = run_impl(X, y, impl="numpy",  label="Numpy",  n_runs=n_runs, early_stop=early_stop)
+    t_numba = run_impl(X, y, impl="numba",  label="Numba",  n_runs=n_runs, early_stop=early_stop)
+    t_cyth  = run_impl(X, y, impl="cython", label="Cython", n_runs=n_runs, early_stop=early_stop)
 
     print(f"Speedup (Numpy / Numba):  {t_numpy / t_numba:.1f}x")
     print(f"Speedup (Numpy / Cython): {t_numpy / t_cyth:.1f}x")
@@ -135,11 +144,25 @@ def run_benchmark_dataset(name, X, y):
 
 
 def main():
-    wine = load_wine()
-    run_benchmark_dataset("Wine", wine.data, wine.target)
+    datasets = [
+        ("Wine", load_wine()),
+        ("Digits", load_digits())
+    ]
 
-    digits = load_digits()
-    run_benchmark_dataset("Digits", digits.data, digits.target)
+    configs = [
+        {"early_stop": True,  "n_runs": 100},
+        {"early_stop": False, "n_runs": 10}
+    ]
+
+    for config in configs:
+        print("\n" + "="*50)
+        print(f"CONFIG: EARLY_STOP={config['early_stop']}, N_RUNS={config['n_runs']}")
+        print("="*50)
+        
+        for name, data in datasets:
+            run_benchmark_dataset(name, data.data, data.target, 
+                                 n_runs=config['n_runs'], 
+                                 early_stop=config['early_stop'])
 
 
 if __name__ == "__main__":

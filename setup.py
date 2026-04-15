@@ -13,7 +13,8 @@ extensions = [
     Extension(
         "pcc_step",
         ["pcc_step.pyx"],
-        extra_compile_args=["-O3", "-march=native"],
+        extra_compile_args=["/O2"],
+        extra_link_args=[],
     )
 ]
 

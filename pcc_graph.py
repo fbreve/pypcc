@@ -22,7 +22,7 @@ from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 
 
-def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
+def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
     """
     Build a symmetric k-NN graph from a feature matrix.
 
@@ -41,6 +41,8 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
     p : int, optional (default=2)
         Power parameter for the Minkowski metric. Ignored if metric does not
         use this parameter.
+    n_jobs : int, optional (default=None)
+        The number of parallel jobs to run for neighbors search. None means 1.
 
     Returns
     -------
@@ -49,14 +51,6 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
         of node i. Columns beyond neib_qt[i] are undefined.
     neib_qt : ndarray, shape (n_nodes,), dtype=int64
         Degree (number of neighbors) of each node.
-
-    Notes
-    -----
-    - Uses sklearn.neighbors.NearestNeighbors, which chooses the most efficient
-      method to find the neighbors (usually not brute force).
-    - The graph is symmetrized via a sparse adjacency matrix (vectorized),
-      avoiding Python-level loops.
-    - Self-loops are never included.
     """
     data = np.asarray(data)
     if data.ndim != 2:
@@ -77,7 +71,7 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
         algorithm="auto",
         metric=metric,
         p=p,
-        n_jobs=-1,
+        n_jobs=n_jobs,
     ).fit(data)
 
     # indices[i, 0] is the query node itself; drop it
@@ -93,6 +87,7 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2):
     adj = adj + adj.T                       # symmetric
     adj.setdiag(0)                          # remove self-loops (safety)
     adj.eliminate_zeros()
+    adj.data[:] = 1                         # binarize
 
     # Convert back to dense neighbor lists
     neib_qt = np.diff(adj.indptr).astype(np.int64)   # degree of each node

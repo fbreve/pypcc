@@ -8,7 +8,7 @@ This fork has a few bug fixes and several optimizations for faster execution.
 It also includes the early stopping criterion from the original article.
 
 For Python, there are three implementations available: **cython**, **numba**, and pure **numpy**.  \
-**cython** is usually faster for larger datasets, while **numba** may be slightly faster for smaller ones.
+**cython** and **numba** are much faster than **numpy**.
 
 In practice, performance depends on the dataset size and structure, so it is
 recommended to benchmark both cython and numba on your data.
@@ -20,7 +20,8 @@ ParticleCompetitionAndCooperation(impl="cython")
 ParticleCompetitionAndCooperation(impl="numba")
 ParticleCompetitionAndCooperation(impl="numpy")
 ```
-according to the implementation you would like to use.
+according to the implementation you would like to use. 
+**auto** chooses the fastest implementation available.
 
 You may also check the original MATLAB version:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
@@ -41,9 +42,9 @@ With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 |---------------------|---------:|
 | MATLAB MEX          |  0.014   |
 | MATLAB pure         |  0.331   |
-| Python Cython       |  0.033   |
-| Python Numba        |  0.031   |
-| Python NumPy (only) |  1.044   |
+| Python Cython       |  0.004   |
+| Python Numba        |  0.006   |
+| Python NumPy (only) |  0.409   |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
@@ -51,9 +52,9 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 |---------------------|---------:|
 | MATLAB MEX          |   0.972  |
 | MATLAB pure         |  30.697  |
-| Python Cython       |   2.384  |
-| Python Numba        |   2.164  |
-| Python NumPy (only) |  87.506  |
+| Python Cython       |   0.391  |
+| Python Numba        |   0.617  |
+| Python NumPy (only) |  38.546  |
 
 #### Dataset: Digits (sklearn, 1797 instances, 64 features, 10 classes)
 
@@ -63,9 +64,9 @@ With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 |---------------------|---------:|
 | MATLAB MEX          |   0.357  |
 | MATLAB pure         |   8.738  |
-| Python Cython       |   0.356  |
-| Python Numba        |   0.672  |
-| Python NumPy (only) |  27.626  |
+| Python Cython       |   0.161  |
+| Python Numba        |   0.168  |
+| Python NumPy (only) |   2.027  |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
@@ -73,9 +74,9 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 |---------------------|---------:|
 | MATLAB MEX          |  10.866  |
 | MATLAB pure         | 284.953  |
-| Python Cython       |   9.618  |
-| Python Numba        |  19.568  |
-| Python NumPy (only) | 942.190  |
+| Python Cython       |   6.725  |
+| Python Numba        |   7.420  |
+| Python NumPy (only) | 113.889  |
 
 ## Getting Started
 #### Installation
