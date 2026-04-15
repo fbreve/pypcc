@@ -6,7 +6,7 @@ from libc.stdlib cimport malloc, free
 
 # Fast XORShift RNG (Sequential version)
 @cython.cdivision(True)
-cdef inline unsigned int xorshift32(unsigned int *state) nogil:
+cdef inline unsigned int xorshift32(unsigned int *state) noexcept nogil:
     cdef unsigned int x = state[0]
     x ^= x << 13
     x ^= x >> 17
@@ -15,14 +15,14 @@ cdef inline unsigned int xorshift32(unsigned int *state) nogil:
     return x
 
 @cython.cdivision(True)
-cdef inline double rand_double(unsigned int *state) nogil:
+cdef inline double rand_double(unsigned int *state) noexcept nogil:
     cdef unsigned int x = xorshift32(state)
     return <double>x / 4294967295.0
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize_t c) nogil:
+cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize_t c) noexcept nogil:
     cdef Py_ssize_t i, j
     cdef double row_max, total_max = 0.0
     for i in range(n_nodes):
@@ -103,7 +103,7 @@ cdef void pcc_step_sequential(
     double           dexp,
     double[:]        dist_weights,
     unsigned int    *rng_state
-) nogil:
+) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
     cdef Py_ssize_t p_i, curnode, k, i, choice, next_node
