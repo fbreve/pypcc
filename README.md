@@ -32,7 +32,7 @@ the Cython implementation on the same machine.
 ## Benchmarks:
 
 Machine: Intel Core i9 14900K with 128GB of RAM \
-Software: MATLAB R2025b, Python 3.12.12, Numpy 2.3.5, Numba 0.62.1, and Cython 3.2.2 \
+Software: MATLAB R2025b, Python 3.12.12, Numpy 2.4.4, Numba 0.64.0, and Cython 3.2.4 \
 
 #### Dataset: Wine (UCI, 178 instances, 13 features, 3 classes)
 
