@@ -116,11 +116,10 @@ cdef void pcc_step_sequential(
     # Stack buffers for efficiency (up to 1024 neighbors)
     cdef double stack_prob[1024]
     cdef double stack_slices[1024]
-    cdef double* p_prob = stack_prob
-    cdef double* p_slices = stack_slices
-    cdef int allocated = 0
-
     for p_i in range(n_particles):
+        allocated = 0
+        p_prob = stack_prob
+        p_slices = stack_slices
         curnode = part_curnode[p_i]
         if curnode < 0 or curnode >= n_nodes: continue
 
@@ -139,10 +138,6 @@ cdef void pcc_step_sequential(
                 allocated = 0
             else:
                 allocated = 1
-        else:
-            p_prob = stack_prob
-            p_slices = stack_slices
-            allocated = 0
 
         label = part_label[p_i]
         if label < 0 or label >= c:
