@@ -66,21 +66,22 @@ cpdef pcc_propagate(
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
     
-    for it in range(max_iter):
-        pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
-                           part_curnode, part_label, part_strength, dist_table,
-                           dominance, owndeg, deltap, dexp,
-                           dist_weights, &rng_state)
+    with nogil:
+        for it in range(max_iter):
+            pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+                               part_curnode, part_label, part_strength, dist_table,
+                               dominance, owndeg, deltap, dexp,
+                               dist_weights, prob, slices, &rng_state)
 
-        if early_stop != 0 and it % 10 == 0:
-            mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
-            if mmpot > max_mmpot:
-                max_mmpot = mmpot
-                stop_cnt = 0
-            else:
-                stop_cnt += 1
-                if stop_cnt > stop_max:
-                    break
+            if early_stop != 0 and it % 10 == 0:
+                mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
+                if mmpot > max_mmpot:
+                    max_mmpot = mmpot
+                    stop_cnt = 0
+                else:
+                    stop_cnt += 1
+                    if stop_cnt > stop_max:
+                        break
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -102,6 +103,8 @@ cdef void pcc_step_sequential(
     double           deltap,
     double           dexp,
     double[:]        dist_weights,
+    double[:]        prob_buf,
+    double[:]        slices_buf,
     unsigned int    *rng_state
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
@@ -113,37 +116,24 @@ cdef void pcc_step_sequential(
     cdef unsigned char cur_d, next_d
     cdef int greedy
     
-    # Stack buffers for efficiency (up to 1024 neighbors)
-    cdef double stack_prob[1024]
-    cdef double stack_slices[1024]
+    # Pre-allocated buffers (must be at least max_degree)
+    cdef double* p_prob = &prob_buf[0]
+    cdef double* p_slices = &slices_buf[0]
+    cdef Py_ssize_t max_buf_size = prob_buf.shape[0]
+
     for p_i in range(n_particles):
-        allocated = 0
-        p_prob = stack_prob
-        p_slices = stack_slices
         curnode = part_curnode[p_i]
         if curnode < 0 or curnode >= n_nodes: continue
 
         k = neib_qt[curnode]
         if k <= 0: continue
         
-        # Dynamic allocation if degree exceeds stack buffer size
-        if k > 1024:
-            p_prob = <double*>malloc(k * sizeof(double))
-            p_slices = <double*>malloc(k * sizeof(double))
-            if not p_prob or not p_slices:
-                # Fallback to stack and cap at 1024 on allocation failure
-                p_prob = stack_prob
-                p_slices = stack_slices
-                k = 1024
-                allocated = 0
-            else:
-                allocated = 1
+        # Safety: cap degree at buffer size
+        if k > max_buf_size:
+            k = max_buf_size
 
         label = part_label[p_i]
         if label < 0 or label >= c:
-            if allocated:
-                free(p_prob)
-                free(p_slices)
             continue
             
         randval = rand_double(rng_state)
@@ -214,10 +204,6 @@ cdef void pcc_step_sequential(
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
 
-        if allocated:
-            free(p_prob)
-            free(p_slices)
-
 cpdef pcc_step(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
@@ -234,16 +220,16 @@ cpdef pcc_step(
     double[:, :]     owndeg,
     double           deltap = 1.0,
     double           dexp   = 2.0,
-    double[:]        dom_row = None,
-    double[:]        reduc = None,
-    double[:]        dom_list = None,
-    double[:]        dist_list = None,
     double[:]        prob = None,
     double[:]        slices = None,
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
-    pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
-                       part_curnode, part_label, part_strength, dist_table,
-                       dominance, owndeg, deltap, dexp,
-                       dist_weights, &rng_state)
+    if dist_weights is None:
+        dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
+    
+    with nogil:
+        pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+                           part_curnode, part_label, part_strength, dist_table,
+                           dominance, owndeg, deltap, dexp,
+                           dist_weights, prob, slices, &rng_state)
