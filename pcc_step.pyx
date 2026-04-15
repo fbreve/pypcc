@@ -113,9 +113,12 @@ cdef void pcc_step_sequential(
     cdef unsigned char cur_d, next_d
     cdef int greedy
     
-    # Stack buffers for efficiency
-    cdef double[1024] local_prob
-    cdef double[1024] local_slices
+    # Stack buffers for efficiency (up to 1024 neighbors)
+    cdef double stack_prob[1024]
+    cdef double stack_slices[1024]
+    cdef double* p_prob = stack_prob
+    cdef double* p_slices = stack_slices
+    cdef int allocated = 0
 
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
@@ -123,9 +126,31 @@ cdef void pcc_step_sequential(
 
         k = neib_qt[curnode]
         if k <= 0: continue
-        if k > 1024: k = 1024
+        
+        # Dynamic allocation if degree exceeds stack buffer size
+        if k > 1024:
+            p_prob = <double*>malloc(k * sizeof(double))
+            p_slices = <double*>malloc(k * sizeof(double))
+            if not p_prob or not p_slices:
+                # Fallback to stack and cap at 1024 on allocation failure
+                p_prob = stack_prob
+                p_slices = stack_slices
+                k = 1024
+                allocated = 0
+            else:
+                allocated = 1
+        else:
+            p_prob = stack_prob
+            p_slices = stack_slices
+            allocated = 0
 
         label = part_label[p_i]
+        if label < 0 or label >= c:
+            if allocated:
+                free(p_prob)
+                free(p_slices)
+            continue
+            
         randval = rand_double(rng_state)
 
         if randval < p_grd:
@@ -133,15 +158,19 @@ cdef void pcc_step_sequential(
             prob_sum = 0.0
             for i in range(k):
                 next_node = neib_list[curnode, i]
-                local_prob[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
-                prob_sum += local_prob[i]
-                local_slices[i] = prob_sum
+                # lookup with bounds check
+                if next_node < 0 or next_node >= n_nodes:
+                    p_prob[i] = 0.0
+                else:
+                    p_prob[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                prob_sum += p_prob[i]
+                p_slices[i] = prob_sum
             
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
                 for i in range(k):
-                    if randval <= local_slices[i]:
+                    if randval <= p_slices[i]:
                         choice = i
                         break
                 next_node = neib_list[curnode, choice]
@@ -154,7 +183,8 @@ cdef void pcc_step_sequential(
             next_node = neib_list[curnode, xorshift32(rng_state) % k]
             greedy = 0
 
-        if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
+        # update
+        if next_node >= 0 and next_node < n_nodes:
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
@@ -188,6 +218,10 @@ cdef void pcc_step_sequential(
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
+
+        if allocated:
+            free(p_prob)
+            free(p_slices)
 
 cpdef pcc_step(
     np.int64_t[:, :] neib_list,
