@@ -9,8 +9,6 @@ Created on Fri Jan 16 15:02:02 2026
 import numpy as np
 from numba import njit
 
-from numba import njit
-
 @njit
 def _pcc_step_numba_sequential(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
@@ -183,9 +181,9 @@ def pcc_step_numba(neib_list, neib_qt,
     if dist_weights is None:
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
         
-    return _pcc_step_numba(neib_list, neib_qt,
-                           labels, p_grd, delta_v, c, zerovec,
-                           part_curnode, part_label, part_strength, dist_table,
-                           dominance, owndeg, deltap, dexp,
-                           dom_row, reduc, dom_list, dist_list, prob, slices,
-                           dist_weights)
+    return _pcc_step_numba_sequential(neib_list, neib_qt,
+                                       labels, p_grd, delta_v, c, zerovec,
+                                       part_curnode, part_label, part_strength, dist_table,
+                                       dominance, owndeg, deltap, dexp,
+                                       dom_row, reduc, dom_list, dist_list, prob, slices,
+                                       dist_weights)

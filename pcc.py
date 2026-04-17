@@ -196,7 +196,7 @@ class ParticleCompetitionAndCooperation:
         # Create a mapped labels array for internal use
         # Optimization: Use Fortran order for tables often indexed by [neighbors, column]
         # This makes the columns contiguous in memory (better cache locality)
-        self.mapped_labels = np.full(self.labels.shape, -1, dtype=np.int64, order='F')
+        self.mapped_labels = np.full(self.labels.shape, -1, dtype=np.int64)
         for lbl, idx in self.label_to_idx.items():
             self.mapped_labels[self.labels == lbl] = idx
 
@@ -219,7 +219,6 @@ class ParticleCompetitionAndCooperation:
         self.__labelPropagation()
 
         # Unmap labels before returning
-        unlabeled = self.node.label == -1
         final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
         for idx, lbl in self.idx_to_label.items():
             final_labels[self.node.label == idx] = lbl
@@ -229,7 +228,7 @@ class ParticleCompetitionAndCooperation:
         self.zerovec = np.zeros(self.c, dtype=np.float64)
         
         # Pre-allocate buffers for backends that use them (Cython/Legacy Numba)
-        max_deg = int(self.neib_qt.max())
+        max_deg = max(int(self.neib_qt.max()), 1)
         self.buf_dom_row = np.empty(self.c, dtype=np.float64)
         self.buf_reduc = np.empty(self.c, dtype=np.float64)
         self.buf_dom_list = np.empty(max_deg, dtype=np.float64)
@@ -244,8 +243,9 @@ class ParticleCompetitionAndCooperation:
         k_nn = self.k_nn if self.k_nn is not None else int(self.neib_qt.max())
         es_chk = self.es_chk
         
-        # Calculate stop_max for early stop logic
-        stop_max = round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1))
+        # Calculate stop_max for early stop logic. Clamp to at least 1 to prevent 
+        # premature stopping on large graphs where node/particle ratio might be small.
+        stop_max = max(1, round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1)))
 
         # DIRECT call to the backend propagation function
         propagate_fn = self._get_backend_fn()

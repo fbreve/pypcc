@@ -115,11 +115,6 @@ cdef void pcc_step_sequential(
     cdef double prob_sum, max_dom
     cdef unsigned char cur_d, next_d
     cdef int greedy
-    
-    # Pre-allocated buffers (must be at least max_degree)
-    cdef double* p_prob = &prob_buf[0]
-    cdef double* p_slices = &slices_buf[0]
-    cdef Py_ssize_t max_buf_size = prob_buf.shape[0]
 
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
@@ -127,15 +122,11 @@ cdef void pcc_step_sequential(
 
         k = neib_qt[curnode]
         if k <= 0: continue
-        
-        # Safety: cap degree at buffer size
-        if k > max_buf_size:
-            k = max_buf_size
 
         label = part_label[p_i]
         if label < 0 or label >= c:
             continue
-            
+
         randval = rand_double(rng_state)
 
         if randval < p_grd:
@@ -145,17 +136,17 @@ cdef void pcc_step_sequential(
                 next_node = neib_list[curnode, i]
                 # lookup with bounds check
                 if next_node < 0 or next_node >= n_nodes:
-                    p_prob[i] = 0.0
+                    prob_buf[i] = 0.0
                 else:
-                    p_prob[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
-                prob_sum += p_prob[i]
-                p_slices[i] = prob_sum
-            
+                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                prob_sum += prob_buf[i]
+                slices_buf[i] = prob_sum
+
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
                 for i in range(k):
-                    if randval <= p_slices[i]:
+                    if randval <= slices_buf[i]:
                         choice = i
                         break
                 next_node = neib_list[curnode, choice]

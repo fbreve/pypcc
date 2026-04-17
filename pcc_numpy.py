@@ -89,7 +89,7 @@ def pcc_step_numpy(neib_list, neib_qt,
         no_prob = ~has_prob
         if np.any(no_prob):
             np_idx = np.where(no_prob)[0]
-            rand_choices = (np.random.random(len(np_idx)) * k_vals_g[np_idx]).astype(np.int32)
+            rand_choices = (np.random.random(len(np_idx)) * k_vals_g[np_idx]).astype(np.int64)
             next_nodes[g_indices[np_idx]] = neighbors_g[np_idx, rand_choices]
 
     # 4. Process Random Walks
@@ -99,7 +99,7 @@ def pcc_step_numpy(neib_list, neib_qt,
         k_vals_r = neib_qt[cur_nodes_r]
         
         # Pick random neighbor index
-        rand_choices = (np.random.random(len(r_indices)) * k_vals_r).astype(np.int32)
+        rand_choices = (np.random.random(len(r_indices)) * k_vals_r).astype(np.int64)
         # Efficiently extract selected neighbors
         # We can't easily 2D index if rows have different k, but here next_nodes 
         # is just neib_list[cur_node, choice]

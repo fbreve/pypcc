@@ -94,9 +94,14 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
     max_deg = int(neib_qt.max())
 
     neib_list = np.full((n_nodes, max_deg), -1, dtype=np.int64)
-    for i in range(n_nodes):
-        start, end = adj.indptr[i], adj.indptr[i + 1]
-        neib_list[i, : end - start] = adj.indices[start:end]
+    # Vectorized fill: use the CSR indptr to assign each row's neighbors at once.
+    # np.repeat broadcasts row offsets; we then scatter directly without a Python loop.
+    degrees = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)  # == neib_qt
+    row_idx = np.repeat(np.arange(n_nodes, dtype=np.int64), degrees)
+    col_idx = np.concatenate(
+        [np.arange(d, dtype=np.int64) for d in degrees]
+    ) if n_nodes > 0 else np.empty(0, dtype=np.int64)
+    neib_list[row_idx, col_idx] = adj.indices.astype(np.int64)
 
     return neib_list, neib_qt
 
@@ -128,6 +133,7 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     - Symmetrization and deduplication are done via a sparse adjacency
       matrix, avoiding Python-level loops over edges.
     - Self-loops present in edge_index are silently removed.
+    - All neighbor edges are preserved; no degree cap is applied.
     """
     edge_index = np.asarray(edge_index, dtype=np.int64)
     if edge_index.ndim != 2 or edge_index.shape[0] != 2:
@@ -154,9 +160,14 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     neib_qt = np.diff(adj.indptr).astype(np.int64)
     max_deg = int(neib_qt.max()) if num_nodes > 0 else 0
 
-    neib_list = np.full((num_nodes, max_deg), -1, dtype=np.int64)
-    for i in range(num_nodes):
-        start, end = adj.indptr[i], adj.indptr[i + 1]
-        neib_list[i, : end - start] = adj.indices[start:end]
+    neib_list = np.full((num_nodes, max(max_deg, 1)), -1, dtype=np.int64)
+    # Vectorized fill: same CSR-based scatter as build_knn_graph.
+    degrees2 = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)
+    row_idx2 = np.repeat(np.arange(num_nodes, dtype=np.int64), degrees2)
+    col_idx2 = np.concatenate(
+        [np.arange(d, dtype=np.int64) for d in degrees2]
+    ) if num_nodes > 0 else np.empty(0, dtype=np.int64)
+    if len(row_idx2) > 0:
+        neib_list[row_idx2, col_idx2] = adj.indices.astype(np.int64)
 
     return neib_list, neib_qt
