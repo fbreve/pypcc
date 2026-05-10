@@ -16,40 +16,40 @@ CONFIG: EARLY_STOP=True, N_RUNS=100
 ==================================================
 
 === Wine (N_RUNS=100, EARLY_STOP=True) ===
-Numpy: mean time = 0.409s (std = 0.122s), mean acc = 0.9330
-Numba: mean time = 0.006s (std = 0.002s), mean acc = 0.9357
+Numpy: mean time = 0.426s (std = 0.125s), mean acc = 0.9331
+Numba: mean time = 0.006s (std = 0.002s), mean acc = 0.9322
 Cython: mean time = 0.004s (std = 0.001s), mean acc = 0.9330
-Speedup (Numpy / Numba):  70.0x
-Speedup (Numpy / Cython): 103.9x
-Speedup (Numba / Cython): 1.48x
+Speedup (Numpy / Numba):  72.9x
+Speedup (Numpy / Cython): 99.6x
+Speedup (Numba / Cython): 1.37x
 
 === Digits (N_RUNS=100, EARLY_STOP=True) ===
-Numpy: mean time = 2.027s (std = 0.514s), mean acc = 0.9529
-Numba: mean time = 0.168s (std = 0.038s), mean acc = 0.9538
-Cython: mean time = 0.161s (std = 0.035s), mean acc = 0.9538
-Speedup (Numpy / Numba):  12.1x
-Speedup (Numpy / Cython): 12.6x
-Speedup (Numba / Cython): 1.04x
+Numpy: mean time = 1.921s (std = 0.436s), mean acc = 0.9533
+Numba: mean time = 0.170s (std = 0.036s), mean acc = 0.9528
+Cython: mean time = 0.181s (std = 0.038s), mean acc = 0.9538
+Speedup (Numpy / Numba):  11.3x
+Speedup (Numpy / Cython): 10.6x
+Speedup (Numba / Cython): 0.94x
 
 ==================================================
 CONFIG: EARLY_STOP=False, N_RUNS=10
 ==================================================
 
 === Wine (N_RUNS=10, EARLY_STOP=False) ===
-Numpy: mean time = 38.546s (std = 9.475s), mean acc = 0.9168
-Numba: mean time = 0.617s (std = 0.056s), mean acc = 0.9161
-Cython: mean time = 0.391s (std = 0.038s), mean acc = 0.9143
-Speedup (Numpy / Numba):  62.5x
-Speedup (Numpy / Cython): 98.6x
-Speedup (Numba / Cython): 1.58x
+Numpy: mean time = 33.110s (std = 0.802s), mean acc = 0.9155
+Numba: mean time = 0.465s (std = 0.011s), mean acc = 0.9186
+Cython: mean time = 0.341s (std = 0.013s), mean acc = 0.9143
+Speedup (Numpy / Numba):  71.2x
+Speedup (Numpy / Cython): 97.0x
+Speedup (Numba / Cython): 1.36x
 
 === Digits (N_RUNS=10, EARLY_STOP=False) ===
-Numpy: mean time = 113.889s (std = 19.781s), mean acc = 0.9588
-Numba: mean time = 7.420s (std = 0.213s), mean acc = 0.9583
-Cython: mean time = 6.725s (std = 0.168s), mean acc = 0.9567
-Speedup (Numpy / Numba):  15.3x
-Speedup (Numpy / Cython): 16.9x
-Speedup (Numba / Cython): 1.10x
+Numpy: mean time = 63.906s (std = 0.844s), mean acc = 0.9588
+Numba: mean time = 5.009s (std = 0.031s), mean acc = 0.9588
+Cython: mean time = 5.054s (std = 0.072s), mean acc = 0.9567
+Speedup (Numpy / Numba):  12.8x
+Speedup (Numpy / Cython): 12.6x
+Speedup (Numba / Cython): 0.99x
 
 """
 

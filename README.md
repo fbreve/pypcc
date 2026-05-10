@@ -44,7 +44,7 @@ With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 | MATLAB pure         |  0.331   |
 | Python Cython       |  0.004   |
 | Python Numba        |  0.006   |
-| Python NumPy (only) |  0.409   |
+| Python NumPy (only) |  0.426   |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
@@ -52,9 +52,9 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 |---------------------|---------:|
 | MATLAB MEX          |   0.972  |
 | MATLAB pure         |  30.697  |
-| Python Cython       |   0.391  |
-| Python Numba        |   0.617  |
-| Python NumPy (only) |  38.546  |
+| Python Cython       |   0.341  |
+| Python Numba        |   0.465  |
+| Python NumPy (only) |  33.110  |
 
 #### Dataset: Digits (sklearn, 1797 instances, 64 features, 10 classes)
 
@@ -64,9 +64,9 @@ With early_stop=True (default), max_iter=500000 (default), 100 repetitions:
 |---------------------|---------:|
 | MATLAB MEX          |   0.357  |
 | MATLAB pure         |   8.738  |
-| Python Cython       |   0.161  |
-| Python Numba        |   0.168  |
-| Python NumPy (only) |   2.027  |
+| Python Cython       |   0.181  |
+| Python Numba        |   0.170  |
+| Python NumPy (only) |   1.921  |
 
 With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetitions:
 
@@ -74,9 +74,9 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 |---------------------|---------:|
 | MATLAB MEX          |  10.866  |
 | MATLAB pure         | 284.953  |
-| Python Cython       |   6.725  |
-| Python Numba        |   7.420  |
-| Python NumPy (only) | 113.889  |
+| Python Cython       |   5.054  |
+| Python Numba        |   5.009  |
+| Python NumPy (only) |  63.906  |
 
 ## Getting Started
 #### Installation
