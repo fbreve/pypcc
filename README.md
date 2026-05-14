@@ -23,6 +23,15 @@ ParticleCompetitionAndCooperation(impl="numpy")
 according to the implementation you would like to use. 
 **auto** chooses the fastest implementation available.
 
+For graph construction, you can choose the nearest-neighbor method in `build_graph`:
+
+```python
+model.build_graph(X, k_nn=10, nn_method="sklearn")
+model.build_graph(X, k_nn=10, nn_method="covariance_qdtree")
+# alias accepted:
+model.build_graph(X, k_nn=10, nn_method="covariance-qdtree")
+```
+
 You may also check the original MATLAB version:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
 
@@ -104,16 +113,34 @@ pip install -e .  # installs pypcc and builds the Cython extension
 The usage of this class is pretty similar to semi-supervised algorithms at scikit-learn. 
 An "example" code is available in this repository.
 
+For comprehensive accuracy benchmarks comparing different KNN graph construction methods (`sklearn` vs `covariance_qdtree`) across many datasets (including optional OpenML and local Chapelle-style .mat files), use:
+
+```bash
+python benchmark_knn_accuracy.py --suite extended
+python benchmark_knn_accuracy.py --suite all --openml-datasets letter,mnist_784
+python benchmark_knn_accuracy.py --suite all --chapelle-dir path/to/chapelle_mat
+```
+
+Useful options:
+
+```bash
+python benchmark_knn_accuracy.py --help
+python benchmark_knn_accuracy.py --n-runs 20 --n-workers 8
+```
+
 ## Parameters
 As arguments, **pypcc** receives the values explained below:
 
 ---
 - **k_nn:** value that represents the number of k-nearest neighbours used to build the graph (Euclidean distance).
+- **nn_method:** nearest-neighbor graph construction method. Options: `"sklearn"` (default) or `"covariance_qdtree"` (`"covariance-qdtree"` alias).
 - **p_grd:** value from 0 to 1 that defines the probability of particles to take the greedy movement. Default: 0.5.
 - **delta_v:** value from 0 to 1 to control the rate of change of the domination levels. Default: 0.1.
 - **max_iter:** number of iterations until the label propagation stops (if the stop criteria is not met before that).
 - **es_chk:** control how many iterations the algorithm performs after reaching some level of stability (stopping criterion). Default: 2000. The formula is *(total_number_of_nodes / number_of_labeled_nodes) * es_chk*. Lower **es_chk** to finish earlier, but it may affect accuracy.
 - **impl:** chooses the implementation ("auto", "numpy", "numba", or "cython"). Default is "auto", which selects the fastest implementation available. "cython" falls back to "numba", and "numba" falls back to "numpy" when a specific implementation is not available.
+- **qdtree_max_depth:** optional cap for `covariance_qdtree` tree depth.
+- **qdtree_min_points_split:** minimum points required to split a tree node in `covariance_qdtree` (default 2).
 ---
 
 ## Citation

@@ -23,6 +23,7 @@ Changes:
 LABEL_PERCENTAGE = 0.1
 K_NN = 10
 SEED = 0
+NN_METHOD = "sklearn"  # "sklearn" or "covariance_qdtree"
 
 import numpy as np
 import time
@@ -68,7 +69,7 @@ def run_pcc_example():
     print('Running the algorithm...')    
     start = time.time()
     model = ParticleCompetitionAndCooperation()
-    model.build_graph(data, k_nn=K_NN)
+    model.build_graph(data, k_nn=K_NN, nn_method=NN_METHOD)
     pred = np.array(model.fit_predict(masked_labels))
     end = time.time()
 

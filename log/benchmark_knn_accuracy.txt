@@ -1,0 +1,144 @@
+(pcc) PS C:\Users\fbrev\Documents\Acadêmico\Simulações\Python\pypcc> python .\benchmark_knn_accuracy.py --suite extended --chapelle-dir "C:\Users\fbrev\Documents\Acadêmico\Simulações\Matlab\Geral\ssl-book" --n-runs 20 --n-workers 8
+Loaded Chapelle-like dataset 'SSL,set=1,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=2,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=3,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=4,data.mat' with 400 samples.
+Loaded Chapelle-like dataset 'SSL,set=5,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=6,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=7,data.mat' with 1500 samples.
+Loaded Chapelle-like dataset 'SSL,set=8,data.mat' with 5000 samples.
+Loaded Chapelle-like dataset 'SSL,set=9,data.mat' with 1500 samples.
+
+Benchmark configuration
+======================================================================
+focus=accuracy
+early_stop=True (fixed)
+impl=numba
+k_nn=10, labeled_fraction=0.1, n_runs=20
+datasets=15
+
+======================================================================
+Dataset: Wine [sklearn] (n=178, d=13, classes=3)
+======================================================================
+
+=== Wine [sklearn] (n=178, d=13, classes=3, runs=20) ===
+sklearn mean=0.9606 std=0.0099 | covariance_qdtree mean=0.9594 std=0.0109 | delta(mean)=-0.0013 | wins/draws/losses=7/1/12
+
+======================================================================
+Dataset: Digits [sklearn] (n=1797, d=64, classes=10)
+======================================================================
+
+=== Digits [sklearn] (n=1797, d=64, classes=10, runs=20) ===
+sklearn mean=0.9620 std=0.0068 | covariance_qdtree mean=0.9598 std=0.0067 | delta(mean)=-0.0023 | wins/draws/losses=6/0/14
+
+======================================================================
+Dataset: Iris [sklearn] (n=150, d=4, classes=3)
+======================================================================
+
+=== Iris [sklearn] (n=150, d=4, classes=3, runs=20) ===
+sklearn mean=0.9081 std=0.0535 | covariance_qdtree mean=0.9137 std=0.0477 | delta(mean)=+0.0056 | wins/draws/losses=10/3/7
+
+======================================================================
+Dataset: BreastCancer [sklearn] (n=569, d=30, classes=2)
+======================================================================
+
+=== BreastCancer [sklearn] (n=569, d=30, classes=2, runs=20) ===
+sklearn mean=0.9505 std=0.0096 | covariance_qdtree mean=0.9525 std=0.0104 | delta(mean)=+0.0021 | wins/draws/losses=14/2/4
+
+======================================================================
+Dataset: Moons2k [synthetic] (n=2000, d=2, classes=2)
+======================================================================
+
+=== Moons2k [synthetic] (n=2000, d=2, classes=2, runs=20) ===
+sklearn mean=1.0000 std=0.0000 | covariance_qdtree mean=1.0000 std=0.0000 | delta(mean)=+0.0000 | wins/draws/losses=0/20/0
+
+======================================================================
+Dataset: Circles2k [synthetic] (n=2000, d=2, classes=2)
+======================================================================
+
+=== Circles2k [synthetic] (n=2000, d=2, classes=2, runs=20) ===
+sklearn mean=1.0000 std=0.0000 | covariance_qdtree mean=1.0000 std=0.0000 | delta(mean)=+0.0000 | wins/draws/losses=0/20/0
+
+======================================================================
+Dataset: Chapelle:SSL,set=1,data [chapelle] (n=1500, d=241, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=1,data [chapelle] (n=1500, d=241, classes=2, runs=20) ===
+sklearn mean=0.9568 std=0.0093 | covariance_qdtree mean=0.9571 std=0.0100 | delta(mean)=+0.0003 | wins/draws/losses=10/3/7
+
+======================================================================
+Dataset: Chapelle:SSL,set=2,data [chapelle] (n=1500, d=241, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=2,data [chapelle] (n=1500, d=241, classes=2, runs=20) ===
+sklearn mean=0.9394 std=0.0101 | covariance_qdtree mean=0.9400 std=0.0097 | delta(mean)=+0.0006 | wins/draws/losses=8/3/9
+
+======================================================================
+Dataset: Chapelle:SSL,set=3,data [chapelle] (n=1500, d=241, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=3,data [chapelle] (n=1500, d=241, classes=2, runs=20) ===
+sklearn mean=0.8877 std=0.0158 | covariance_qdtree mean=0.8889 std=0.0173 | delta(mean)=+0.0012 | wins/draws/losses=12/0/8
+
+======================================================================
+Dataset: Chapelle:SSL,set=4,data [chapelle] (n=400, d=117, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=4,data [chapelle] (n=400, d=117, classes=2, runs=20) ===
+sklearn mean=0.5136 std=0.0311 | covariance_qdtree mean=0.5142 std=0.0286 | delta(mean)=+0.0006 | wins/draws/losses=10/0/10
+
+======================================================================
+Dataset: Chapelle:SSL,set=5,data [chapelle] (n=1500, d=241, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=5,data [chapelle] (n=1500, d=241, classes=2, runs=20) ===
+sklearn mean=0.7265 std=0.0132 | covariance_qdtree mean=0.7254 std=0.0129 | delta(mean)=-0.0011 | wins/draws/losses=10/0/10
+
+======================================================================
+Dataset: Chapelle:SSL,set=6,data [chapelle] (n=1500, d=241, classes=6)
+======================================================================
+
+=== Chapelle:SSL,set=6,data [chapelle] (n=1500, d=241, classes=6, runs=20) ===
+sklearn mean=0.8208 std=0.0199 | covariance_qdtree mean=0.8207 std=0.0209 | delta(mean)=-0.0000 | wins/draws/losses=13/0/7
+
+======================================================================
+Dataset: Chapelle:SSL,set=7,data [chapelle] (n=1500, d=241, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=7,data [chapelle] (n=1500, d=241, classes=2, runs=20) ===
+sklearn mean=0.5142 std=0.0500 | covariance_qdtree mean=0.5133 std=0.0574 | delta(mean)=-0.0009 | wins/draws/losses=7/2/11
+
+======================================================================
+Dataset: Chapelle:SSL,set=8,data [chapelle] (n=5000, d=15, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=8,data [chapelle] (n=5000, d=15, classes=2, runs=20) ===
+sklearn mean=0.5389 std=0.0079 | covariance_qdtree mean=0.5389 std=0.0104 | delta(mean)=-0.0001 | wins/draws/losses=9/1/10
+
+======================================================================
+Dataset: Chapelle:SSL,set=9,data [chapelle] (n=1500, d=11960, classes=2)
+======================================================================
+
+=== Chapelle:SSL,set=9,data [chapelle] (n=1500, d=11960, classes=2, runs=20) ===
+sklearn mean=0.5790 std=0.0239 | covariance_qdtree mean=0.5787 std=0.0336 | delta(mean)=-0.0003 | wins/draws/losses=12/0/8
+
+========================================================================================================================
+KNN METHOD ACCURACY SUMMARY (early_stop=True)
+========================================================================================================================
+dataset | source | n | d | cls | sk_mean | qd_mean | delta(qd-sk) | sk_std | qd_std | wins/draws/losses
+------------------------------------------------------------------------------------------------------------------------
+Wine                 | sklearn  |   178 |   13 |   3 | 0.9606 | 0.9594 | -0.0013 | 0.0099 | 0.0109 | 7/1/12
+Digits               | sklearn  |  1797 |   64 |  10 | 0.9620 | 0.9598 | -0.0023 | 0.0068 | 0.0067 | 6/0/14
+Iris                 | sklearn  |   150 |    4 |   3 | 0.9081 | 0.9137 | +0.0056 | 0.0535 | 0.0477 | 10/3/7
+BreastCancer         | sklearn  |   569 |   30 |   2 | 0.9505 | 0.9525 | +0.0021 | 0.0096 | 0.0104 | 14/2/4
+Moons2k              | synthetic |  2000 |    2 |   2 | 1.0000 | 1.0000 | +0.0000 | 0.0000 | 0.0000 | 0/20/0
+Circles2k            | synthetic |  2000 |    2 |   2 | 1.0000 | 1.0000 | +0.0000 | 0.0000 | 0.0000 | 0/20/0
+Chapelle:SSL,set=1,data | chapelle |  1500 |  241 |   2 | 0.9568 | 0.9571 | +0.0003 | 0.0093 | 0.0100 | 10/3/7
+Chapelle:SSL,set=2,data | chapelle |  1500 |  241 |   2 | 0.9394 | 0.9400 | +0.0006 | 0.0101 | 0.0097 | 8/3/9
+Chapelle:SSL,set=3,data | chapelle |  1500 |  241 |   2 | 0.8877 | 0.8889 | +0.0012 | 0.0158 | 0.0173 | 12/0/8
+Chapelle:SSL,set=4,data | chapelle |   400 |  117 |   2 | 0.5136 | 0.5142 | +0.0006 | 0.0311 | 0.0286 | 10/0/10
+Chapelle:SSL,set=5,data | chapelle |  1500 |  241 |   2 | 0.7265 | 0.7254 | -0.0011 | 0.0132 | 0.0129 | 10/0/10
+Chapelle:SSL,set=6,data | chapelle |  1500 |  241 |   6 | 0.8208 | 0.8207 | -0.0000 | 0.0199 | 0.0209 | 13/0/7
+Chapelle:SSL,set=7,data | chapelle |  1500 |  241 |   2 | 0.5142 | 0.5133 | -0.0009 | 0.0500 | 0.0574 | 7/2/11
+Chapelle:SSL,set=8,data | chapelle |  5000 |   15 |   2 | 0.5389 | 0.5389 | -0.0001 | 0.0079 | 0.0104 | 9/1/10
+Chapelle:SSL,set=9,data | chapelle |  1500 | 11960 |   2 | 0.5790 | 0.5787 | -0.0003 | 0.0239 | 0.0336 | 12/0/8

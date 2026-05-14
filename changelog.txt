@@ -5,6 +5,14 @@ Created on Wed Oct  7 14:41:55 2020
 @author: fbrev
 """
 
+13/05/2026:
+- Added a new nearest-neighbor graph builder option based on a
+  covariance-qdtree-inspired search.
+- Added `nn_method` support in `build_graph(...)` so users can select
+  between `"sklearn"` and `"covariance_qdtree"`.
+- Added optional qdtree tuning parameters:
+  `qdtree_max_depth` and `qdtree_min_points_split`.
+
 19/01/2026:
 - Implemented 'impl=auto' to auto select the faster implementation available.
   In order: cython -> numba -> numpy

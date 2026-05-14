@@ -159,11 +159,28 @@ class ParticleCompetitionAndCooperation:
         
         raise RuntimeError("No backend available: cython, numba, or numpy.")
 
-    def build_graph(self, data, k_nn=10, n_jobs=None):
+    def build_graph(
+        self,
+        data,
+        k_nn=10,
+        n_jobs=None,
+        metric="minkowski",
+        p=2,
+        nn_method="sklearn",
+        qdtree_max_depth=None,
+        qdtree_min_points_split=2,
+    ):
         self.data = data
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = build_knn_graph(
-            data, k_nn, n_jobs=n_jobs if n_jobs is not None else self.n_jobs
+            data,
+            k_nn,
+            metric=metric,
+            p=p,
+            n_jobs=n_jobs if n_jobs is not None else self.n_jobs,
+            nn_method=nn_method,
+            qdtree_max_depth=qdtree_max_depth,
+            qdtree_min_points_split=qdtree_min_points_split,
         )
 
     def set_graph(self, neib_list, neib_qt, k_nn=None):

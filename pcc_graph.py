@@ -20,9 +20,50 @@ Both functions return:
 import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
+from pcc_covqdtree import covariance_qdtree_knn_indices
 
 
-def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
+def _symmetrize_indices_to_neighbor_lists(indices, n_nodes):
+    """Convert directed k-NN indices into symmetric PCC neighbor arrays."""
+    if n_nodes == 0:
+        return np.empty((0, 0), dtype=np.int64), np.empty(0, dtype=np.int64)
+
+    k_nn = indices.shape[1]
+    rows = np.repeat(np.arange(n_nodes, dtype=np.int64), k_nn)
+    cols = indices.ravel().astype(np.int64)
+
+    ones = np.ones(len(rows), dtype=np.int8)
+    adj = csr_matrix((ones, (rows, cols)), shape=(n_nodes, n_nodes), dtype=np.int8)
+    adj = adj + adj.T
+    adj.setdiag(0)
+    adj.eliminate_zeros()
+    adj.data[:] = 1
+
+    neib_qt = np.diff(adj.indptr).astype(np.int64)
+    max_deg = int(neib_qt.max()) if n_nodes > 0 else 0
+
+    neib_list = np.full((n_nodes, max(max_deg, 1)), -1, dtype=np.int64)
+    degrees = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)
+    row_idx = np.repeat(np.arange(n_nodes, dtype=np.int64), degrees)
+    col_idx = np.concatenate(
+        [np.arange(d, dtype=np.int64) for d in degrees]
+    ) if n_nodes > 0 else np.empty(0, dtype=np.int64)
+    if len(row_idx) > 0:
+        neib_list[row_idx, col_idx] = adj.indices.astype(np.int64)
+
+    return neib_list, neib_qt
+
+
+def build_knn_graph(
+    data,
+    k_nn=10,
+    metric="minkowski",
+    p=2,
+    n_jobs=None,
+    nn_method="sklearn",
+    qdtree_max_depth=None,
+    qdtree_min_points_split=2,
+):
     """
     Build a symmetric k-NN graph from a feature matrix.
 
@@ -43,6 +84,15 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
         use this parameter.
     n_jobs : int, optional (default=None)
         The number of parallel jobs to run for neighbors search. None means 1.
+    nn_method : str, optional (default="sklearn")
+        Neighbor search method. Supported values:
+            - "sklearn": uses sklearn.neighbors.NearestNeighbors
+            - "covariance_qdtree" / "covariance-qdtree": uses a
+              covariance-qdtree-inspired top-down search.
+    qdtree_max_depth : int, optional
+        Maximum tree depth for covariance-qdtree method.
+    qdtree_min_points_split : int, optional (default=2)
+        Minimum number of points required to split a node for covariance-qdtree.
 
     Returns
     -------
@@ -66,44 +116,35 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
             f"k_nn ({k_nn}) must be smaller than the number of samples ({n_nodes})."
         )
 
-    nbrs = NearestNeighbors(
-        n_neighbors=k_nn + 1,  # +1 because the query point itself is returned
-        algorithm="auto",
-        metric=metric,
-        p=p,
-        n_jobs=n_jobs,
-    ).fit(data)
+    method = str(nn_method).lower()
+    if method == "sklearn":
+        nbrs = NearestNeighbors(
+            n_neighbors=k_nn + 1,
+            algorithm="auto",
+            metric=metric,
+            p=p,
+            n_jobs=n_jobs,
+        ).fit(data)
+        indices = nbrs.kneighbors(data, return_distance=False)[:, 1:]
+    elif method in ("covariance_qdtree", "covariance-qdtree"):
+        # The qdtree method currently uses squared Euclidean distance.
+        if metric != "minkowski" or p != 2:
+            raise ValueError(
+                "covariance-qdtree currently supports only Euclidean metric "
+                "(metric='minkowski', p=2)."
+            )
+        indices = covariance_qdtree_knn_indices(
+            data,
+            k_nn=k_nn,
+            max_depth=qdtree_max_depth,
+            min_points_split=qdtree_min_points_split,
+        )
+    else:
+        raise ValueError(
+            "nn_method must be one of {'sklearn', 'covariance_qdtree', 'covariance-qdtree'}."
+        )
 
-    # indices[i, 0] is the query node itself; drop it
-    indices = nbrs.kneighbors(data, return_distance=False)[:, 1:]  # (n_nodes, k_nn)
-
-    # --- vectorized symmetrization via sparse matrix ---
-    rows = np.repeat(np.arange(n_nodes, dtype=np.int64), k_nn)
-    cols = indices.ravel().astype(np.int64)
-
-    # Build directed adjacency, then symmetrize: A + A^T > 0
-    ones = np.ones(len(rows), dtype=np.int8)
-    adj = csr_matrix((ones, (rows, cols)), shape=(n_nodes, n_nodes), dtype=np.int8)
-    adj = adj + adj.T                       # symmetric
-    adj.setdiag(0)                          # remove self-loops (safety)
-    adj.eliminate_zeros()
-    adj.data[:] = 1                         # binarize
-
-    # Convert back to dense neighbor lists
-    neib_qt = np.diff(adj.indptr).astype(np.int64)   # degree of each node
-    max_deg = int(neib_qt.max())
-
-    neib_list = np.full((n_nodes, max_deg), -1, dtype=np.int64)
-    # Vectorized fill: use the CSR indptr to assign each row's neighbors at once.
-    # np.repeat broadcasts row offsets; we then scatter directly without a Python loop.
-    degrees = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)  # == neib_qt
-    row_idx = np.repeat(np.arange(n_nodes, dtype=np.int64), degrees)
-    col_idx = np.concatenate(
-        [np.arange(d, dtype=np.int64) for d in degrees]
-    ) if n_nodes > 0 else np.empty(0, dtype=np.int64)
-    neib_list[row_idx, col_idx] = adj.indices.astype(np.int64)
-
-    return neib_list, neib_qt
+    return _symmetrize_indices_to_neighbor_lists(indices, n_nodes)
 
 
 def build_graph_from_edge_index(num_nodes, edge_index):
