@@ -37,20 +37,23 @@ os.makedirs(results_dir, exist_ok=True)
 results_path = os.path.join(results_dir, "benchmark_accuracy.txt")
 
 def print(*args, **kwargs):
+    to_file = kwargs.pop("to_file", True)
+    
     # Print to the console
     _print(*args, **kwargs)
     
-    # Also write to results file dynamically
-    import io
-    f = io.StringIO()
-    _print(*args, **kwargs, file=f)
-    val = f.getvalue()
-    try:
-        with open(results_path, "a", encoding="utf-8") as f_out:
-            f_out.write(val)
-            f_out.flush()
-    except Exception:
-        pass
+    # Also write to results file dynamically if requested
+    if to_file:
+        import io
+        f = io.StringIO()
+        _print(*args, **kwargs, file=f)
+        val = f.getvalue()
+        try:
+            with open(results_path, "a", encoding="utf-8") as f_out:
+                f_out.write(val)
+                f_out.flush()
+        except Exception:
+            pass
 
 
 
@@ -150,8 +153,22 @@ def benchmark_dataset(ds, args, pool):
     results = []
     for i, r in enumerate(pool.imap_unordered(_run_trial_unpack, tasks), 1):
         results.append(r)
-        print(f"  Finished trial {i}/{args.n_runs}...", end="\r", flush=True)
-    print(" " * 50, end="\r", flush=True) # Clear line after finishing
+        
+        # Calculate running averages
+        curr_sk = [res[1] for res in results]
+        curr_qd = [res[2] for res in results]
+        mean_sk = np.mean(curr_sk)
+        mean_qd = np.mean(curr_qd)
+        mean_delta = mean_qd - mean_sk
+        
+        print(
+            f"  Finished trial {i}/{args.n_runs} | "
+            f"Running averages: sklearn={mean_sk:.4f}, covariance_qdtree={mean_qd:.4f} (delta={mean_delta:+.4f})...",
+            end="\r",
+            flush=True,
+            to_file=False
+        )
+    print(" " * 120, end="\r", flush=True, to_file=False) # Clear line after finishing
 
     # results: list of tuples (run_seed, a_sk, a_qd)
     results_sorted = sorted(results, key=lambda t: t[0])
