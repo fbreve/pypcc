@@ -32,6 +32,8 @@ class _QDTNode:
     eigenval: np.ndarray
     intrinsic_dim: int
     hyperfaces: List[Polytope]
+    hf_normals: np.ndarray
+    hf_vertices: np.ndarray
 
 
 def _build_hyperqdtree(
@@ -64,12 +66,13 @@ def _build_hyperqdtree(
         eigenvals = np.maximum(eigenvals[idx_sorted], 0.0)
         eigenvecs = eigenvecs[:, idx_sorted].T
         intrinsic_dim = int(np.sum(eigenvals > 1e-15))
+        intrinsic_dim = min(intrinsic_dim, 3)  # Cap split dim to 3 (octree) to avoid exponential child explosion
         if intrinsic_dim == 0:
             intrinsic_dim = 1
     else:
         eigenvals = np.zeros(dim, dtype=np.float64)
         eigenvecs = np.eye(dim, dtype=np.float64)
-        intrinsic_dim = dim
+        intrinsic_dim = min(dim, 3)
 
     root = _QDTNode(
         parent=-1,
@@ -81,6 +84,8 @@ def _build_hyperqdtree(
         eigenval=eigenvals,
         intrinsic_dim=intrinsic_dim,
         hyperfaces=[],
+        hf_normals=np.empty((0, dim), dtype=np.float64),
+        hf_vertices=np.empty((0, dim), dtype=np.float64),
     )
     nodes.append(root)
 
@@ -124,12 +129,13 @@ def _build_hyperqdtree(
                 c_vals = np.maximum(c_vals[idx_sorted], 0.0)
                 c_vecs = c_vecs[:, idx_sorted].T
                 child_intrinsic_dim = int(np.sum(c_vals > 1e-15))
+                child_intrinsic_dim = min(child_intrinsic_dim, 3)  # Cap split dim to 3 (octree)
                 if child_intrinsic_dim == 0:
                     child_intrinsic_dim = 1
             else:
                 c_vals = np.zeros(dim, dtype=np.float64)
                 c_vecs = np.eye(dim, dtype=np.float64)
-                child_intrinsic_dim = dim
+                child_intrinsic_dim = min(dim, 3)
 
             child = _QDTNode(
                 parent=node_id,
@@ -141,6 +147,8 @@ def _build_hyperqdtree(
                 eigenval=c_vals,
                 intrinsic_dim=child_intrinsic_dim,
                 hyperfaces=[],
+                hf_normals=np.empty((0, dim), dtype=np.float64),
+                hf_vertices=np.empty((0, dim), dtype=np.float64),
             )
             child_id = len(nodes)
 
@@ -154,33 +162,42 @@ def _build_hyperqdtree(
             # 2. inherit ancestor walls
             if len(node.hyperfaces) > 0:
                 n_child_faces = len(child.hyperfaces)
+                parent_V = node.hf_vertices
+                parent_N = node.hf_normals
+                child_V = np.array([f.vertex for f in child.hyperfaces])
+                child_N = np.array([f.normal for f in child.hyperfaces])
+
+                diff = parent_V[None, :, :] - child_V[:, None, :]
+                d_lk_l_directed = np.sum(diff * child_N[:, None, :], axis=2)
+                tilt = child_N @ parent_N.T
+                d_lk_l = d_lk_l_directed * tilt
+
                 registered = np.zeros(len(node.hyperfaces), dtype=np.int32)
-                minimal = np.full(n_child_faces, -1, dtype=np.int32)
                 to_append = []
                 for l in range(n_child_faces):
                     mintilt = 0.0
                     mindist = 0.0
-                    minimal[l] = -1
+                    minimal_idx = -1
                     for k in range(len(node.hyperfaces)):
-                        r_lk = node.hyperfaces[k].vertex - child.hyperfaces[l].vertex
-                        d_lk_l_directed = np.dot(r_lk, child.hyperfaces[l].normal)
-                        tilt = np.dot(child.hyperfaces[l].normal, node.hyperfaces[k].normal)
-                        d_lk_l = d_lk_l_directed * tilt
-
+                        t_val = tilt[l, k]
+                        d_val = d_lk_l[l, k]
                         if k == 0:
-                            mindist = d_lk_l
-                            minimal[l] = k
-                            mintilt = min(tilt, mintilt)
-                        elif tilt < mintilt and registered[k] == 0:
-                            mintilt = tilt
-                            if d_lk_l > mindist:
-                                mindist = d_lk_l
-                                minimal[l] = k
+                            mindist = d_val
+                            minimal_idx = k
+                            mintilt = min(t_val, mintilt)
+                        elif t_val < mintilt and registered[k] == 0:
+                            mintilt = t_val
+                            if d_val > mindist:
+                                mindist = d_val
+                                minimal_idx = k
 
-                    if mintilt < 0.0 and minimal[l] > -1 and registered[minimal[l]] == 0:
-                        registered[minimal[l]] = 1
-                        to_append.append(node.hyperfaces[minimal[l]])
+                    if mintilt < 0.0 and minimal_idx > -1 and registered[minimal_idx] == 0:
+                        registered[minimal_idx] = 1
+                        to_append.append(node.hyperfaces[minimal_idx])
                 child.hyperfaces.extend(to_append)
+
+            child.hf_normals = np.array([f.normal for f in child.hyperfaces])
+            child.hf_vertices = np.array([f.vertex for f in child.hyperfaces])
 
             nodes.append(child)
             node.children.append(child_id)
@@ -194,9 +211,7 @@ def Q2NDistance(
     node: _QDTNode,
     nodes: Sequence[_QDTNode],
     distmax: float,
-    eigenvec: np.ndarray,
-    eigenval: np.ndarray,
-    knn_intrinsic_dim: int,
+    scaled_eigenvec: np.ndarray,
 ) -> float:
     """Compute query-to-node boundary distance."""
     if node.parent == -1:
@@ -204,40 +219,37 @@ def Q2NDistance(
 
     parent = nodes[node.parent]
     nfaces = parent.intrinsic_dim
-    l_max = -1
 
-    for l in range(nfaces):
-        normal_projection = np.dot(node.hyperfaces[l].normal, query - node.hyperfaces[l].vertex)
-        if normal_projection > 0:
-            np2 = normal_projection * normal_projection
-            if np2 > distmax:
-                distmax = np2
-                l_max = l
+    # Access pre-computed numpy arrays of hyperface normals/vertices
+    # We only need the first `nfaces` hyperfaces
+    normals = node.hf_normals[:nfaces]
+    vertices = node.hf_vertices[:nfaces]
 
-    if l_max > -1:
-        dist = 0.0
-        normal_lmax = node.hyperfaces[l_max].normal
-        eigenval_safe = np.maximum(eigenval, 1e-15)
-        for l in range(knn_intrinsic_dim):
-            proj = np.dot(normal_lmax, eigenvec[l])
-            dist += distmax * distmax * (proj * proj) / eigenval_safe[l]
-        return dist
+    normal_projections = np.sum(normals * (query - vertices), axis=1)
+    l_max = np.argmax(normal_projections)
+    max_proj = normal_projections[l_max]
+
+    if max_proj > 0.0:
+        np2 = max_proj * max_proj
+        if np2 > distmax:
+            distmax = np2
+            normal_lmax = normals[l_max]
+            proj = scaled_eigenvec @ normal_lmax
+            dist = distmax * distmax * np.dot(proj, proj)
+            return dist
+
     return distmax
 
 
 def Q2PDistance(
     query: np.ndarray,
     point: np.ndarray,
-    eigenvec: np.ndarray,
-    eigenval: np.ndarray,
-    knn_intrinsic_dim: int,
+    scaled_eigenvec: np.ndarray,
 ) -> float:
     """Compute query-to-point distance in Mahalanobis space."""
     diff = query - point
-    proj = eigenvec[:knn_intrinsic_dim] @ diff
-    eigenval_safe = np.maximum(eigenval[:knn_intrinsic_dim], 1e-15)
-    d = np.sum((proj ** 2) / eigenval_safe)
-    return d
+    proj = scaled_eigenvec @ diff
+    return np.dot(proj, proj)
 
 
 class KNNSearchState:
@@ -270,17 +282,12 @@ def _search_knn(
     nodes: Sequence[_QDTNode],
     query: np.ndarray,
     q2nd: float,
-    eigenvec: np.ndarray,
-    eigenval: np.ndarray,
-    knn_intrinsic_dim: int,
+    scaled_eigenvec: np.ndarray,
     state: KNNSearchState,
     data: np.ndarray,
 ):
     """Recursive k-NN tree traversal with branch pruning."""
     node = nodes[node_id]
-
-    # Update query-to-node distance
-    q2nd = Q2NDistance(query, node, nodes, q2nd, eigenvec, eigenval, knn_intrinsic_dim)
 
     # Prune branch
     if len(state.candidates) == state.k and q2nd > state.top_dist:
@@ -288,13 +295,22 @@ def _search_knn(
 
     if node.is_leaf:
         for p in node.points:
-            q2pd = Q2PDistance(query, data[p], eigenvec, eigenval, knn_intrinsic_dim)
+            q2pd = Q2PDistance(query, data[p], scaled_eigenvec)
             if len(state.candidates) == state.k and q2pd > state.top_dist:
                 continue
             state.insert(p, q2pd)
     else:
+        # Compute query-to-node distance for each child
+        child_dists = []
         for child_id in node.children:
-            _search_knn(child_id, nodes, query, q2nd, eigenvec, eigenval, knn_intrinsic_dim, state, data)
+            d = Q2NDistance(query, nodes[child_id], nodes, q2nd, scaled_eigenvec)
+            child_dists.append((d, child_id))
+        
+        # Sort children by distance to traverse closest first
+        child_dists.sort(key=lambda x: x[0])
+        
+        for d, child_id in child_dists:
+            _search_knn(child_id, nodes, query, d, scaled_eigenvec, state, data)
 
 
 def _knn_one_query(
@@ -321,8 +337,12 @@ def _knn_one_query(
         state.candidates = []
         state.top_dist = 0.0
 
+        # Precompute scaled eigenvectors
+        eigenval_safe = np.maximum(eigenval[:knn_intrinsic_dim], 1e-15)
+        scaled_eigenvec = eigenvec[:knn_intrinsic_dim] / np.sqrt(eigenval_safe)[:, None]
+
         # Perform kNN search on current metric
-        _search_knn(0, nodes, query, 0.0, eigenvec, eigenval, knn_intrinsic_dim, state, data)
+        _search_knn(0, nodes, query, 0.0, scaled_eigenvec, state, data)
 
         if len(state.candidates) < k:
             break
@@ -353,7 +373,11 @@ def _knn_one_query(
                     # Converged: do a final query with new metric
                     state.candidates = []
                     state.top_dist = 0.0
-                    _search_knn(0, nodes, query, 0.0, eigenvec, eigenval, knn_intrinsic_dim, state, data)
+                    
+                    eigenval_safe = np.maximum(eigenval[:knn_intrinsic_dim], 1e-15)
+                    scaled_eigenvec = eigenvec[:knn_intrinsic_dim] / np.sqrt(eigenval_safe)[:, None]
+                    
+                    _search_knn(0, nodes, query, 0.0, scaled_eigenvec, state, data)
                     break
             else:
                 break

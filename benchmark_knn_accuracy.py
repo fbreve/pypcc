@@ -10,6 +10,7 @@ This benchmark is accuracy-focused and always runs with early_stop=True.
 
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 
 import numpy as np
@@ -26,6 +27,32 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
 from pcc import ParticleCompetitionAndCooperation
+
+
+_print = print
+
+import os
+results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
+os.makedirs(results_dir, exist_ok=True)
+results_path = os.path.join(results_dir, "benchmark_accuracy.txt")
+
+def print(*args, **kwargs):
+    # Print to the console
+    _print(*args, **kwargs)
+    
+    # Also write to results file dynamically
+    import io
+    f = io.StringIO()
+    _print(*args, **kwargs, file=f)
+    val = f.getvalue()
+    try:
+        with open(results_path, "a", encoding="utf-8") as f_out:
+            f_out.write(val)
+            f_out.flush()
+    except Exception:
+        pass
+
+
 
 
 @dataclass
@@ -344,6 +371,13 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # Clear the results log file at startup (only in main process)
+    try:
+        with open(results_path, "w", encoding="utf-8") as f:
+            f.write("")
+    except Exception:
+        pass
+
     datasets = load_builtin_datasets(args.suite)
 
     openml_names = [x.strip() for x in args.openml_datasets.split(",") if x.strip()]
@@ -381,6 +415,8 @@ def main():
             rows.append(benchmark_dataset(ds, args, pool))
 
     print_summary(rows)
+
+    print("\nBenchmark completed successfully.")
 
 
 if __name__ == "__main__":
