@@ -252,7 +252,17 @@ class ParticleCompetitionAndCooperation:
 
         # DIRECT call to the backend propagation function
         propagate_fn = self._get_backend_fn()
-        
+        if propagate_fn is pcc_propagate_numpy:
+            from functools import partial
+            propagate_fn = partial(propagate_fn, update_mode=self.update_mode)
+        elif self.update_mode == 'parallel':
+            warnings.warn(
+                "update_mode='parallel' is only implemented for NumPy; "
+                "the selected compiled backend uses sequential updates.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         propagate_fn(
             self.neib_list, self.neib_qt,
             self.mapped_labels, self.p_grd, self.delta_v, self.c, self.zerovec,
