@@ -229,8 +229,8 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
 
 
     def test_compiled_and_numpy_sequential_forced_graph(self):
-        # A single neighbor removes destination randomness; p_grd=0 or 1\n        # also removes RNG-dependent greedy/random decisions.
-        from pcc import ParticleCompetitionAndCooperation
+        # A single neighbor removes destination randomness; p_grd=0 or 1
+        # also removes RNG-dependent greedy/random decisions.
         try:
             import pcc_step
         except ImportError:
