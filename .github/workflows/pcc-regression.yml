@@ -1,0 +1,24 @@
+name: PCC regression
+on:
+  push:
+    branches: [fix/numpy-propagation-correctness]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  numpy-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install NumPy
+        run: python -m pip install numpy
+      - name: Compile changed modules
+        run: python -m py_compile pcc_numpy.py pcc.py test_numpy_regression.py
+      - name: Run regression tests
+        run: python -m unittest -v test_numpy_regression
