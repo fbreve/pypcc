@@ -229,7 +229,7 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
 
 
     def test_compiled_and_numpy_sequential_forced_graph(self):
-        # A single neighbor per node removes backend RNG differences.
+        # A single neighbor removes destination randomness; p_grd=0 or 1\n        # also removes RNG-dependent greedy/random decisions.
         from pcc import ParticleCompetitionAndCooperation
         try:
             import pcc_step
@@ -238,7 +238,7 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
         neighbors = np.array([[2], [2], [0]], dtype=np.int64)
         degrees = np.ones(3, dtype=np.int64)
         labels = np.array([0, 1, -1], dtype=np.int64)
-        for p_grd in (0., 0.5, 1.):
+        for p_grd in (0., 1.):
             for delta_v in (0.1, 0.25):
                 with self.subTest(p_grd=p_grd, delta_v=delta_v):
                     self._check_compiled_forced_graph(neighbors, degrees, labels, p_grd, delta_v)
