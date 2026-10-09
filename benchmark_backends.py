@@ -142,9 +142,11 @@ def diagnose_sequential_digits(seed=0, steps=1000):
         previous_positions = numpy_model.part.curnode.copy()
         trace_numpy = np.full((len(previous_positions), 3), -1, dtype=np.int64)
         trace_numba = np.full((len(previous_positions), 3), -1, dtype=np.int64)
+        values_numpy = np.full((len(previous_positions), 2), np.nan)
+        values_numba = np.full((len(previous_positions), 2), np.nan)
         for model, step_fn in ((numpy_model, pcc_step_numpy), (numba_model, pcc_step_numba)):
-            kwargs = ({'update_mode': 'sequential', 'trace': trace_numpy}
-                      if model is numpy_model else {'trace': trace_numba})
+            kwargs = ({'update_mode': 'sequential', 'trace': trace_numpy, 'trace_values': values_numpy}
+                      if model is numpy_model else {'trace': trace_numba, 'trace_values': values_numba})
             step_fn(model.neib_list, model.neib_qt, model.mapped_labels,
                     model.p_grd, model.delta_v, model.c, model.zerovec,
                     model.part.curnode, model.part.label, model.part.strength,
@@ -183,6 +185,14 @@ def diagnose_sequential_digits(seed=0, steps=1000):
                       f'numba_greedy={trace_numba[particle, 1]} '
                       f'numpy_accepted={trace_numpy[particle, 2]} '
                       f'numba_accepted={trace_numba[particle, 2]}', flush=True)
+                print(f'DOMINANCE_DECISION particle={particle} '
+                      f'numpy_class={values_numpy[particle, 0]:.17g} '
+                      f'numpy_max={values_numpy[particle, 1]:.17g} '
+                      f'numba_class={values_numba[particle, 0]:.17g} '
+                      f'numba_max={values_numba[particle, 1]:.17g} '
+                      f'numpy_gap={(values_numpy[particle, 0]-values_numpy[particle, 1]):.17g} '
+                      f'numba_gap={(values_numba[particle, 0]-values_numba[particle, 1]):.17g}',
+                      flush=True)
                 previous = int(previous_positions[particle])
                 degree = int(numpy_model.neib_qt[previous])
                 neighbors = numpy_model.neib_list[previous, :degree]
