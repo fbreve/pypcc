@@ -14,7 +14,7 @@ def pcc_step_numpy(neib_list, neib_qt,
                    part_curnode, part_label, part_strength, dist_table,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
-                   dist_weights=None, update_mode="parallel"):
+                   dist_weights=None, update_mode="parallel", trace=None):
     """
     Versão NumPy/Python do _pcc_step (Fase 5: Layout Fortran e Loops Nativos).
     """
@@ -64,6 +64,9 @@ def pcc_step_numpy(neib_list, neib_qt,
             idx = int(np.random.randint(degree))
 
         nxt = int(neighbors[idx])
+        if trace is not None:
+            trace[p_i, 0] = nxt
+            trace[p_i, 1] = int(greedy)
         if nxt < 0 or nxt >= n_nodes:
             continue
 
@@ -86,7 +89,10 @@ def pcc_step_numpy(neib_list, neib_qt,
         if not greedy:
             owndeg[nxt, cls] += part_strength[p_i]
 
-        if dominance[nxt, cls] >= np.max(dominance[nxt, :]):
+        accepted = dominance[nxt, cls] >= np.max(dominance[nxt, :])
+        if trace is not None:
+            trace[p_i, 2] = int(accepted)
+        if accepted:
             part_curnode[p_i] = nxt
 
 def _pcc_step_numpy_parallel(neib_list, neib_qt,
