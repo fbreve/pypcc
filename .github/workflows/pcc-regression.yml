@@ -10,6 +10,16 @@ on:
         required: false
         default: '30'
         type: string
+      diagnose_seeds:
+        description: 'Comma-separated Digits seeds to diagnose (empty disables)'
+        required: false
+        default: ''
+        type: string
+      diagnose_iterations:
+        description: 'Maximum iterations per diagnostic seed'
+        required: false
+        default: '1000'
+        type: string
 
 jobs:
   numpy-regression:
@@ -44,8 +54,31 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.extended_seeds != '0' && matrix.python-version == '3.12'
         run: python benchmark_backends.py --seeds "${{ inputs.extended_seeds }}" --iterations 1000
 
-      - name: Diagnose dominance decision gaps (temporary)
-        if: matrix.python-version == '3.12'
+      - name: Diagnose Digits seeds (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.diagnose_seeds != '' && matrix.python-version == '3.12'
+        env:
+          DIAGNOSE_SEEDS: ${{ inputs.diagnose_seeds }}
+          DIAGNOSE_ITERATIONS: ${{ inputs.diagnose_iterations }}
         run: |
-          python benchmark_backends.py --diagnose-digits 0 --iterations 1000
-          python benchmark_backends.py --diagnose-digits 8 --iterations 1000
+          set -euo pipefail
+          if [[ ! "$DIAGNOSE_SEEDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+            echo "diagnose_seeds must be comma-separated nonnegative integers" >&2
+            exit 1
+          fi
+          if [[ ! "$DIAGNOSE_ITERATIONS" =~ ^[1-9][0-9]*$ ]]; then
+            echo "diagnose_iterations must be a positive integer" >&2
+            exit 1
+          fi
+          mkdir -p diagnostic-results
+          IFS=',' read -ra SEEDS <<< "$DIAGNOSE_SEEDS"
+          for seed in "${SEEDS[@]}"; do
+            python benchmark_backends.py --diagnose-digits "$seed" --iterations "$DIAGNOSE_ITERATIONS" | tee "diagnostic-results/digits-seed-${seed}.log"
+          done
+
+      - name: Upload Digits diagnostic logs
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.diagnose_seeds != '' && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digits-divergence-diagnostics
+          path: diagnostic-results/
+          if-no-files-found: warn
