@@ -106,26 +106,17 @@ def pcc_step_numpy(neib_list, neib_qt,
         next_nodes[r_indices] = neib_list[cur_nodes_r, rand_choices]
 
     # 5. Dominance Update
-    # Only update for particles on unlabeled nodes
+    # Apply competing visits sequentially: simultaneous reductions calculated
+    # from stale rows can drive dominance below zero on shared destination nodes.
+    # This preserves the per-visit dominance invariant, even with collisions.
     update_mask = (labels[next_nodes] == -1) & valid_mask
-    if np.any(update_mask):
-        upd_idx = np.where(update_mask)[0]
-        nodes_upd = next_nodes[upd_idx]
-        p_labels_upd = part_label[upd_idx]
-        p_strengths_upd = part_strength[upd_idx]
-        
-        # Calculate reductions: min(dominance[node, :], step)
-        step = p_strengths_upd * (delta_v / (c - 1))
-        dom_rows = dominance[nodes_upd, :] # (n_upd, c)
-        
-        reduc_vals = np.minimum(dom_rows, step[:, None])
-        total_reduc = np.sum(reduc_vals, axis=1)
-        
-        # Apply updates using np.add.at/subtract.at to handle node collisions
-        # subtract reduction from all classes
-        np.subtract.at(dominance, (nodes_upd[:, None], np.arange(c)), reduc_vals)
-        # add total reduction to the particle's class
-        np.add.at(dominance, (nodes_upd, p_labels_upd), total_reduc)
+    for p_i in np.flatnonzero(update_mask):
+        node_i = next_nodes[p_i]
+        cls = part_label[p_i]
+        step = part_strength[p_i] * (delta_v / (c - 1))
+        reduction = np.minimum(dominance[node_i, :], step)
+        dominance[node_i, :] -= reduction
+        dominance[node_i, cls] += reduction.sum()
 
     # 6. Strength Update
     # Update strength based on the (potentially updated) dominance at next_node
