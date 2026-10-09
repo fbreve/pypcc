@@ -54,7 +54,7 @@ import numpy as np
 import warnings
 
 from dataclasses import dataclass
-from pcc_numpy import pcc_step_numpy
+from pcc_numpy import pcc_step_numpy, pcc_propagate_numpy
 from pcc_graph import build_knn_graph
 
 try:
@@ -91,11 +91,11 @@ class Nodes:
 
 class ParticleCompetitionAndCooperation:
 
-    def __init__(self, impl="auto", n_jobs=None):
+    def __init__(self, impl="auto", n_jobs=None, update_mode="parallel"):
         """
         impl: 'auto', 'cython', 'numba' ou 'numpy'
         """
-        self.impl = impl
+        if update_mode not in ("parallel", "sequential"):\n            raise ValueError("update_mode must be parallel or sequential")\n        self.update_mode = update_mode\n        self.impl = impl
         self.n_jobs = n_jobs
         self.data = None
         self.k_nn = None
