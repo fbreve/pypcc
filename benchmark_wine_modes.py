@@ -12,7 +12,9 @@ def main():
     data = StandardScaler().fit_transform(wine.data)
     y = wine.target
     n_classes = len(np.unique(y))
-    for seed in (11, 29, 47):
+    scores = {mode: [] for mode in ('parallel', 'sequential')}
+    times = {mode: [] for mode in ('parallel', 'sequential')}
+    for seed in range(30):
         rng = np.random.default_rng(seed)
         labeled = np.concatenate([rng.choice(np.where(y == cls)[0], 3, replace=False)
                                   for cls in range(n_classes)])
@@ -32,8 +34,19 @@ def main():
             assert np.all(np.isfinite(model.node.dominance))
             np.testing.assert_allclose(model.node.dominance.sum(axis=1), 1, atol=1e-8)
             assert np.min(model.node.dominance) >= -1e-10
+            scores[mode].append(accuracy)
+            times[mode].append(elapsed)
             print(f"seed={seed} mode={mode} accuracy={accuracy:.4f} "
                   f"elapsed={elapsed:.4f}s")
+    for mode in ('parallel', 'sequential'):
+        print(f"SUMMARY mode={mode} mean_accuracy={np.mean(scores[mode]):.4f} "
+              f"std_accuracy={np.std(scores[mode], ddof=1):.4f} "
+              f"mean_time={np.mean(times[mode]):.4f}s")
+    diff = np.array(scores['parallel']) - np.array(scores['sequential'])
+    print(f"PAIRED difference_mean={np.mean(diff):.4f} "
+          f"difference_std={np.std(diff, ddof=1):.4f} "
+          f"wins={(diff > 0).sum()} ties={(diff == 0).sum()} "
+          f"losses={(diff < 0).sum()}")
 
 
 if __name__ == "__main__":
