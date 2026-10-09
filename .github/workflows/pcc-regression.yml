@@ -16,8 +16,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install NumPy
-        run: python -m pip install numpy scipy scikit-learn
+      - name: Install dependencies and compiled backends
+        run: |
+          python -m pip install numpy scipy scikit-learn numba cython
+          python -m pip install -e .
       - name: Compile changed modules
         run: python -m py_compile pcc_numpy.py pcc.py test_numpy_regression.py
       - name: Run regression tests
@@ -28,3 +30,5 @@ jobs:
         run: python benchmark_wine_modes.py
       - name: Compare Digits classification modes
         run: python benchmark_digits_modes.py
+      - name: Compare compiled and NumPy backends
+        run: python benchmark_backends.py
