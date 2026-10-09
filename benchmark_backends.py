@@ -18,6 +18,17 @@ def evaluate(name, loader, seeds=10, iterations=1000):
     variants = (('cython', 'sequential'), ('numba', 'sequential'),
                 ('numpy', 'sequential'), ('numpy', 'parallel'))
     results = {variant: {'accuracy': [], 'time': []} for variant in variants}
+    # Warm up compiled/JIT backends outside the timed experiment.
+    warm_x = x
+    warm_y = y
+    warm_labeled = np.concatenate([np.flatnonzero(y == cls)[:3] for cls in np.unique(y)])
+    warm_observed = np.full(len(y), -1, dtype=np.int64)
+    warm_observed[warm_labeled] = warm_y[warm_labeled]
+    for impl, mode in variants:
+        np.random.seed(123456)
+        warm_model = ParticleCompetitionAndCooperation(impl=impl, update_mode=mode)
+        warm_model.build_graph(warm_x, k_nn=10)
+        warm_model.fit_predict(warm_observed, max_iter=2, early_stop=False)
     for seed in range(seeds):
         rng = np.random.default_rng(seed)
         labeled = np.concatenate([
