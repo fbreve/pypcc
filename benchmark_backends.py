@@ -83,7 +83,11 @@ def evaluate(name, loader, seeds=10, iterations=1000):
                   f'accuracy_diff={np.mean(acc_diff):+.4f} '
                   f'accuracy_diff_std={np.std(acc_diff, ddof=1):.4f} '
                   f'dominance_diff={np.mean(dom_diff):+.4f} '
-                  f'dominance_diff_std={np.std(dom_diff, ddof=1):.4f}', flush=True)
+                  f'dominance_diff_std={np.std(dom_diff, ddof=1):.4f} '
+                  f'accuracy_diff_max_abs={np.max(np.abs(acc_diff)):.4f} '
+                  f'accuracy_wins={np.count_nonzero(acc_diff > 1e-12)} '
+                  f'accuracy_ties={np.count_nonzero(np.abs(acc_diff) <= 1e-12)} '
+                  f'accuracy_losses={np.count_nonzero(acc_diff < -1e-12)}', flush=True)
         print(f'SUMMARY dataset={name} backend={impl} mode={mode} '
               f'accuracy={np.mean(data["accuracy"]):.4f} '
               f'std={np.std(data["accuracy"], ddof=1):.4f} '
