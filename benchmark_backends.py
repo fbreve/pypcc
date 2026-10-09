@@ -157,12 +157,17 @@ def diagnose_sequential_digits(seed=0, steps=1000):
         )
         differences = []
         for name, left, right in fields:
-            count = int(np.count_nonzero(left != right))
+            if name in ('positions', 'distance'):
+                mask = left != right
+            else:
+                mask = ~np.isclose(left, right, rtol=1e-12, atol=1e-12)
+            count = int(np.count_nonzero(mask))
             if count:
-                max_abs = float(np.max(np.abs(left.astype(np.float64) - right.astype(np.float64))))
+                max_abs = float(np.max(np.abs(left[mask].astype(np.float64) -
+                                               right[mask].astype(np.float64))))
                 differences.append(f'{name}:{count}:max_abs={max_abs:.3g}')
         if differences:
-            print(f'FIRST_DIVERGENCE dataset=Digits seed={seed} iteration={iteration} '
+            print(f'FIRST_MATERIAL_DIVERGENCE dataset=Digits seed={seed} iteration={iteration} '
                   + ' '.join(differences), flush=True)
             return iteration
     print(f'NO_DIVERGENCE dataset=Digits seed={seed} iterations={steps}', flush=True)
