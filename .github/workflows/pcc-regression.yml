@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies and compiled backends
         run: |
           python -m pip install numpy scipy scikit-learn numba cython
-          python -m pip install -e .
+          python -m pip install --no-build-isolation -e .
       - name: Compile changed modules
         run: python -m py_compile pcc_numpy.py pcc.py test_numpy_regression.py
       - name: Run regression tests
