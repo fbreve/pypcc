@@ -95,7 +95,10 @@ class ParticleCompetitionAndCooperation:
         """
         impl: 'auto', 'cython', 'numba' ou 'numpy'
         """
-        if update_mode not in ("parallel", "sequential"):\n            raise ValueError("update_mode must be parallel or sequential")\n        self.update_mode = update_mode\n        self.impl = impl
+        if update_mode not in ("parallel", "sequential"):
+            raise ValueError("update_mode must be parallel or sequential")
+        self.update_mode = update_mode
+        self.impl = impl
         self.n_jobs = n_jobs
         self.data = None
         self.k_nn = None
