@@ -139,6 +139,7 @@ def diagnose_sequential_digits(seed=0, steps=1000):
     np.random.seed(seed)
     seed_numba(seed)
     for iteration in range(1, steps + 1):
+        previous_positions = numpy_model.part.curnode.copy()
         for model, step_fn in ((numpy_model, pcc_step_numpy), (numba_model, pcc_step_numba)):
             kwargs = {'update_mode': 'sequential'} if model is numpy_model else {}
             step_fn(model.neib_list, model.neib_qt, model.mapped_labels,
@@ -169,6 +170,26 @@ def diagnose_sequential_digits(seed=0, steps=1000):
         if differences:
             print(f'FIRST_MATERIAL_DIVERGENCE dataset=Digits seed={seed} iteration={iteration} '
                   + ' '.join(differences), flush=True)
+            position_mismatch = np.flatnonzero(
+                numpy_model.part.curnode != numba_model.part.curnode)
+            for particle in position_mismatch[:5]:
+                previous = int(previous_positions[particle])
+                degree = int(numpy_model.neib_qt[previous])
+                neighbors = numpy_model.neib_list[previous, :degree]
+                cls = int(numpy_model.part.label[particle])
+                weights_numpy = (numpy_model.node.dominance[neighbors, cls] *
+                                 numpy_model.dist_weights[
+                                     numpy_model.part.dist_table[neighbors, particle]])
+                weights_numba = (numba_model.node.dominance[neighbors, cls] *
+                                 numba_model.dist_weights[
+                                     numba_model.part.dist_table[neighbors, particle]])
+                print(f'POSITION_CONTEXT particle={particle} previous={previous} '
+                      f'numpy={int(numpy_model.part.curnode[particle])} '
+                      f'numba={int(numba_model.part.curnode[particle])} '
+                      f'class={cls} neighbors={neighbors.tolist()} '
+                      f'weights_numpy={weights_numpy.tolist()} '
+                      f'weights_numba={weights_numba.tolist()} '
+                      f'NOTE=weights_are_post_iteration_not_selection_time', flush=True)
             return iteration
     print(f'NO_DIVERGENCE dataset=Digits seed={seed} iterations={steps}', flush=True)
     return None
