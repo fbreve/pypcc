@@ -26,3 +26,5 @@ jobs:
         run: python benchmark_numpy_modes.py
       - name: Compare Wine classification modes
         run: python benchmark_wine_modes.py
+      - name: Compare Digits classification modes
+        run: python benchmark_digits_modes.py
