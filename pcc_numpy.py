@@ -14,7 +14,7 @@ def pcc_step_numpy(neib_list, neib_qt,
                    part_curnode, part_label, part_strength, dist_table,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
-                   dist_weights=None, update_mode="parallel", trace=None):
+                   dist_weights=None, update_mode="parallel", trace=None, trace_values=None):
     """
     Versão NumPy/Python do _pcc_step (Fase 5: Layout Fortran e Loops Nativos).
     """
@@ -89,7 +89,12 @@ def pcc_step_numpy(neib_list, neib_qt,
         if not greedy:
             owndeg[nxt, cls] += part_strength[p_i]
 
-        accepted = dominance[nxt, cls] >= np.max(dominance[nxt, :])
+        class_dom = dominance[nxt, cls]
+        max_dom = np.max(dominance[nxt, :])
+        accepted = class_dom >= max_dom
+        if trace_values is not None:
+            trace_values[p_i, 0] = class_dom
+            trace_values[p_i, 1] = max_dom
         if trace is not None:
             trace[p_i, 2] = int(accepted)
         if accepted:
