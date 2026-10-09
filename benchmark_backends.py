@@ -72,7 +72,18 @@ def evaluate(name, loader, seeds=10, iterations=1000):
                 float(np.max(model.node.dominance, axis=1).mean()))
             print(f'DETAIL dataset={name} seed={seed} backend={impl} mode={mode} '
                   f'accuracy={accuracy:.4f} elapsed={elapsed:.4f}s', flush=True)
+    # Paired differences use the same labeled examples for every backend.
+    reference = results[('numpy', 'sequential')]
     for (impl, mode), data in results.items():
+        if (impl, mode) != ('numpy', 'sequential'):
+            acc_diff = np.asarray(data['accuracy']) - np.asarray(reference['accuracy'])
+            dom_diff = np.asarray(data['dominance']) - np.asarray(reference['dominance'])
+            print(f'PAIRED dataset={name} backend={impl} mode={mode} '
+                  f'reference=numpy/sequential '
+                  f'accuracy_diff={np.mean(acc_diff):+.4f} '
+                  f'accuracy_diff_std={np.std(acc_diff, ddof=1):.4f} '
+                  f'dominance_diff={np.mean(dom_diff):+.4f} '
+                  f'dominance_diff_std={np.std(dom_diff, ddof=1):.4f}', flush=True)
         print(f'SUMMARY dataset={name} backend={impl} mode={mode} '
               f'accuracy={np.mean(data["accuracy"]):.4f} '
               f'std={np.std(data["accuracy"], ddof=1):.4f} '
