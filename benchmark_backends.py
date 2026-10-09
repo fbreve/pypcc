@@ -4,6 +4,7 @@ Note: Cython/Numba are sequential, while NumPy has both update modes.
 Timing excludes graph construction but includes propagation and prediction.
 """
 import time
+import argparse
 import numpy as np
 from sklearn.datasets import load_wine, load_digits
 from sklearn.preprocessing import StandardScaler
@@ -97,5 +98,11 @@ def evaluate(name, loader, seeds=10, iterations=1000):
 
 
 if __name__ == '__main__':
-    evaluate('Wine', load_wine)
-    evaluate('Digits', load_digits)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--seeds', type=int, default=10)
+    parser.add_argument('--iterations', type=int, default=1000)
+    args = parser.parse_args()
+    if args.seeds < 2 or args.iterations < 1:
+        parser.error('--seeds must be >= 2 and --iterations must be >= 1')
+    evaluate('Wine', load_wine, seeds=args.seeds, iterations=args.iterations)
+    evaluate('Digits', load_digits, seeds=args.seeds, iterations=args.iterations)
