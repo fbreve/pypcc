@@ -43,9 +43,3 @@ jobs:
       - name: Extended paired backend comparison
         if: github.event_name == 'workflow_dispatch' && inputs.extended_seeds != '0' && matrix.python-version == '3.12'
         run: python benchmark_backends.py --seeds "${{ inputs.extended_seeds }}" --iterations 1000
-
-      - name: Diagnose Digits NumPy versus Numba seeds 0 and 8 (temporary)
-        if: matrix.python-version == '3.12'
-        run: |
-          python benchmark_backends.py --diagnose-digits 0 --iterations 1000
-          python benchmark_backends.py --diagnose-digits 8 --iterations 1000
