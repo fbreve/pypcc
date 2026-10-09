@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install NumPy
-        run: python -m pip install numpy
+        run: python -m pip install numpy scipy scikit-learn
       - name: Compile changed modules
         run: python -m py_compile pcc_numpy.py pcc.py test_numpy_regression.py
       - name: Run regression tests
