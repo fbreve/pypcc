@@ -24,3 +24,5 @@ jobs:
         run: python -m unittest -v test_numpy_regression
       - name: Run NumPy microbenchmarks
         run: python benchmark_numpy_modes.py
+      - name: Compare Wine classification modes
+        run: python benchmark_wine_modes.py
