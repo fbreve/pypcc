@@ -196,7 +196,7 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
         def seed_numba(value):
             np.random.seed(value)
 
-        def run(backend):
+        def run(backend, seed, p_grd):
             neighbors = np.array([[2, 3], [2, 3], [0, 1], [0, 1]], dtype=np.int64)
             degrees = np.full(4, 2, dtype=np.int64)
             labels = np.array([0, 1, -1, -1], dtype=np.int64)
@@ -206,22 +206,26 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
             distance = np.array([[0, 2], [2, 0], [2, 2], [2, 2]], dtype=np.uint8)
             dominance = np.array([[1., 0.], [0., 1.], [.5, .5], [.5, .5]])
             owndeg = np.zeros((4, 2), dtype=np.float64)
-            np.random.seed(17)
+            np.random.seed(seed)
             if backend is pcc_step_numba:
-                seed_numba(17)
+                seed_numba(seed)
             for _ in range(12):
                 kwargs = {'update_mode': 'sequential'} if backend is pcc_step_numpy else {}
-                backend(neighbors, degrees, labels, 0.5, 0.2, 2, np.zeros(2),
+                backend(neighbors, degrees, labels, p_grd, 0.2, 2, np.zeros(2),
                         positions, classes, strength, distance, dominance, owndeg,
                         0.5, 2., **kwargs)
                 np.testing.assert_allclose(dominance.sum(axis=1), 1., atol=1e-12)
                 self.assertTrue(np.all(dominance >= -1e-12))
             return positions, strength, distance, dominance, owndeg
 
-        numpy_state = run(pcc_step_numpy)
-        numba_state = run(pcc_step_numba)
-        for actual, expected in zip(numba_state, numpy_state):
-            np.testing.assert_allclose(actual, expected, atol=1e-12)
+        for seed in (0, 1, 17, 42):
+            for p_grd in (0., 0.5, 1.):
+                with self.subTest(seed=seed, p_grd=p_grd):
+                    numpy_state = run(pcc_step_numpy, seed, p_grd)
+                    numba_state = run(pcc_step_numba, seed, p_grd)
+                    for actual, expected in zip(numba_state, numpy_state):
+                        np.testing.assert_allclose(actual, expected, atol=1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()
