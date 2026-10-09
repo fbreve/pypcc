@@ -134,5 +134,29 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
             self.assertTrue(np.all((result == 0) | (result == 1)))
 
 
+    def test_numba_and_numpy_sequential_one_step_with_forced_neighbors(self):
+        from pcc_numba import pcc_step_numba
+        reference = None
+        for backend in (pcc_step_numpy, pcc_step_numba):
+            neighbors = np.array([[2], [2], [0]], dtype=np.int64)
+            degrees = np.ones(3, dtype=np.int64)
+            labels = np.array([0, 1, -1], dtype=np.int64)
+            positions = np.array([0, 1], dtype=np.int64)
+            classes = np.array([0, 1], dtype=np.int64)
+            strength = np.ones(2, dtype=np.float64)
+            distance = np.array([[0, 2], [2, 0], [2, 2]], dtype=np.uint8)
+            dominance = np.array([[1., 0.], [0., 1.], [.5, .5]])
+            owndeg = np.zeros((3, 2), dtype=np.float64)
+            kwargs = {'update_mode': 'sequential'} if backend is pcc_step_numpy else {}
+            backend(neighbors, degrees, labels, 0., 1., 2, np.zeros(2),
+                    positions, classes, strength, distance, dominance, owndeg,
+                    1., 2., **kwargs)
+            state = (positions, strength, distance, dominance, owndeg)
+            if reference is None:
+                reference = tuple(x.copy() for x in state)
+            else:
+                for actual, expected in zip(state, reference):
+                    np.testing.assert_allclose(actual, expected, atol=1e-12)
+
 if __name__ == "__main__":
     unittest.main()
