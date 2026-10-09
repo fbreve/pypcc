@@ -23,6 +23,14 @@ def pcc_step_numpy(neib_list, neib_qt,
     NumPy is used for storage and neighbor-weight calculations, but each
     particle must complete its visit before the next one selects a node.
     """
+    if update_mode == "parallel":
+        return _pcc_step_numpy_parallel(
+            neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+            part_curnode, part_label, part_strength, dist_table,
+            dominance, owndeg, deltap, dexp, dom_row, reduc, dom_list,
+            dist_list, prob, slices, dist_weights)
+    if update_mode != "sequential":
+        raise ValueError("update_mode must be 'parallel' or 'sequential'")
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
     if dist_weights is None:
@@ -81,13 +89,132 @@ def pcc_step_numpy(neib_list, neib_qt,
         if dominance[nxt, cls] >= np.max(dominance[nxt, :]):
             part_curnode[p_i] = nxt
 
+def _pcc_step_numpy_parallel(neib_list, neib_qt,
+                   labels, p_grd, delta_v, c, zerovec,
+                   part_curnode, part_label, part_strength, dist_table,
+                   dominance, owndeg, deltap=1.0, dexp=2.0,
+                   dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
+                   dist_weights=None):
+    n_particles = part_curnode.shape[0]
+    n_nodes = neib_list.shape[0]
+    is_deltap_one = (deltap == 1.0)
+    
+    # 1. Validation and Setup
+    valid_mask = (part_curnode >= 0) & (part_curnode < n_nodes)\n    valid_mask &= neib_qt[np.clip(part_curnode, 0, n_nodes - 1)] > 0
+    if not np.any(valid_mask):
+        return
+
+    # 2. Movement Decision (Greedy vs Random)
+    random_vals = np.random.random(n_particles)
+    greedy_mask = valid_mask & (random_vals < p_grd)
+    random_mask = valid_mask & (random_vals >= p_grd)
+    
+    next_nodes = part_curnode.copy()
+    is_greedy = np.zeros(n_particles, dtype=bool)
+
+    # 3. Process Greedy Walks
+    if np.any(greedy_mask):
+        g_indices = np.where(greedy_mask)[0]
+        cur_nodes_g = part_curnode[g_indices]
+        p_labels_g = part_label[g_indices]
+        
+        # Max neighbors in this batch
+        k_vals_g = neib_qt[cur_nodes_g]
+        max_k_g = np.max(k_vals_g)
+        
+        neighbors_g = neib_list[cur_nodes_g, :max_k_g]\n        k_mask_g = np.arange(max_k_g) < k_vals_g[:, None]\n        safe_neighbors_g = np.where(k_mask_g, neighbors_g, 0)
+        
+        # Dominance of particle class at neighbors: dominance[neighbors, p_labels]
+        # neighbors shape: (n_g, max_k_g). p_labels_g shape: (n_g,)
+        # We use fancy indexing. dominance is (n_nodes, c).
+        dom_vals_g = dominance[safe_neighbors_g, p_labels_g[:, None]]
+        
+        # Distance weights: dist_weights[dist_table[neighbors, particle_idx]]
+        # dist_table is (n_nodes, n_particles)
+        # We need dist_table[neighbors[i, j], g_indices[i]]
+        d_indices_g = dist_table[safe_neighbors_g, g_indices[:, None]]
+        dist_vals_g = dist_weights[d_indices_g]
+        
+        prob_vec_g = dom_vals_g * dist_vals_g
+        
+        # Mask out-of-bounds neighbors (k < max_k_g)
+        k_mask_g = np.arange(max_k_g) < k_vals_g[:, None]
+        prob_vec_g[~k_mask_g] = 0.0
+        
+        totals_g = np.sum(prob_vec_g, axis=1)
+        has_prob = totals_g > 0
+        
+        # Case: total > 0 (probabilistic walk)
+        if np.any(has_prob):
+            hp_idx = np.where(has_prob)[0]
+            # Probabilistic selection for those with total > 0
+            # rand_vals * total
+            r_vals_hp = np.random.random(len(hp_idx)) * totals_g[hp_idx]
+            # cumsum to find interval
+            slices_hp = np.cumsum(prob_vec_g[hp_idx], axis=1)
+            # Find first index where slices >= rand_val
+            # (slices < rand_val).sum(axis=1) gives the index
+            choices_hp = np.sum(slices_hp < r_vals_hp[:, None], axis=1)
+            # Clip choices to handle floating point edge cases (though sum should be safe)
+            choices_hp = np.minimum(choices_hp, k_vals_g[hp_idx] - 1)
+            
+            chosen_nodes = neighbors_g[hp_idx, choices_hp]
+            next_nodes[g_indices[hp_idx]] = chosen_nodes
+            is_greedy[g_indices[hp_idx]] = True
+        
+        # Case: total == 0 (greedy failed -> fall back to random for these specific particles)
+        no_prob = ~has_prob
+        if np.any(no_prob):
+            np_idx = np.where(no_prob)[0]
+            rand_choices = (np.random.random(len(np_idx)) * k_vals_g[np_idx]).astype(np.int64)
+            next_nodes[g_indices[np_idx]] = neighbors_g[np_idx, rand_choices]
+
+    # 4. Process Random Walks
+    if np.any(random_mask):
+        r_indices = np.where(random_mask)[0]
+        cur_nodes_r = part_curnode[r_indices]
+        k_vals_r = neib_qt[cur_nodes_r]
+        
+        # Pick random neighbor index
+        rand_choices = (np.random.random(len(r_indices)) * k_vals_r).astype(np.int64)
+        # Efficiently extract selected neighbors
+        # We can't easily 2D index if rows have different k, but here next_nodes 
+        # is just neib_list[cur_node, choice]
+        next_nodes[r_indices] = neib_list[cur_nodes_r, rand_choices]
+
+    # 5. Dominance Update
+    # Only update for particles on unlabeled nodes
+    update_mask = (labels[next_nodes] == -1) & valid_mask
+    if np.any(update_mask):
+        upd_idx = np.where(update_mask)[0]
+        nodes_upd = next_nodes[upd_idx]
+        p_labels_upd = part_label[upd_idx]
+        p_strengths_upd = part_strength[upd_idx]
+        
+        # Aggregate simultaneous influence at each node. The winning class
+        # receives the mass removed from competing classes; own-class
+        # influence does not subtract from itself.
+        steps = p_strengths_upd * (delta_v / (c - 1))
+        influence = np.zeros((n_nodes, c), dtype=np.float64)
+        np.add.at(influence, (nodes_upd, p_labels_upd), steps)
+        total = influence.sum(axis=1, keepdims=True)
+        # Each class can lose at most its existing dominance. Competing
+        # influences act simultaneously, with conservation of total mass.
+        loss = np.minimum(dominance, np.maximum(total - influence, 0.0))
+        gain = loss.sum(axis=1, keepdims=True)
+        fractions = np.divide(influence, total, out=np.zeros_like(influence),
+                              where=total > 0)
+        dominance -= loss
+        dominance += gain * fractions
+
+
 def pcc_propagate_numpy(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
                         part_curnode, part_label, part_strength, dist_table,
                         dominance, owndeg, deltap, dexp,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
-                        max_iter, early_stop, es_chk, stop_max):
+                        max_iter, early_stop, es_chk, stop_max, update_mode="parallel"):
     
     max_mmpot = 0.0
     stop_cnt = 0
@@ -98,7 +225,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                        part_curnode, part_label, part_strength, dist_table,
                        dominance, owndeg, deltap, dexp,
                        dom_row, reduc, dom_list, dist_list, prob, slices,
-                       dist_weights)
+                       dist_weights, update_mode=update_mode)
         
         if early_stop and it % 10 == 0:
             mmpot = np.mean(np.max(dominance, axis=1))
