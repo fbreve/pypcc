@@ -108,12 +108,78 @@ def evaluate(name, loader, seeds=10, iterations=1000):
               f'dominance_std={np.std(data["dominance"], ddof=1):.4f}', flush=True)
 
 
+def diagnose_sequential_digits(seed=0, steps=1000):
+    """Find the first state divergence between NumPy and Numba, one step at a time."""
+    from pcc_numpy import pcc_step_numpy
+    from pcc_numba import pcc_step_numba
+    from numba import njit
+
+    @njit
+    def seed_numba(value):
+        np.random.seed(value)
+
+    ds = load_digits()
+    x = StandardScaler().fit_transform(ds.data)
+    y = ds.target
+    rng = np.random.default_rng(seed)
+    labeled = np.concatenate([
+        rng.choice(np.flatnonzero(y == cls), 3, replace=False)
+        for cls in np.unique(y)
+    ])
+    observed = np.full(len(y), -1, dtype=np.int64)
+    observed[labeled] = y[labeled]
+    models = []
+    for impl in ('numpy', 'numba'):
+        model = ParticleCompetitionAndCooperation(impl=impl, update_mode='sequential')
+        model.build_graph(x, k_nn=10)
+        # Initialize the same state without running propagation.
+        model.fit_predict(observed, max_iter=0, early_stop=False)
+        models.append(model)
+    numpy_model, numba_model = models
+    np.random.seed(seed)
+    seed_numba(seed)
+    for iteration in range(1, steps + 1):
+        for model, step_fn in ((numpy_model, pcc_step_numpy), (numba_model, pcc_step_numba)):
+            kwargs = {'update_mode': 'sequential'} if model is numpy_model else {}
+            step_fn(model.neib_list, model.neib_qt, model.mapped_labels,
+                    model.p_grd, model.delta_v, model.c, model.zerovec,
+                    model.part.curnode, model.part.label, model.part.strength,
+                    model.part.dist_table, model.node.dominance, model.owndeg,
+                    model.deltap, model.dexp, model.buf_dom_row, model.buf_reduc,
+                    model.buf_dom_list, model.buf_dist_list, model.buf_prob,
+                    model.buf_slices, model.dist_weights, **kwargs)
+        fields = (
+            ('positions', numpy_model.part.curnode, numba_model.part.curnode),
+            ('strength', numpy_model.part.strength, numba_model.part.strength),
+            ('distance', numpy_model.part.dist_table, numba_model.part.dist_table),
+            ('dominance', numpy_model.node.dominance, numba_model.node.dominance),
+            ('owndeg', numpy_model.owndeg, numba_model.owndeg),
+        )
+        differences = []
+        for name, left, right in fields:
+            count = int(np.count_nonzero(left != right))
+            if count:
+                max_abs = float(np.max(np.abs(left.astype(np.float64) - right.astype(np.float64))))
+                differences.append(f'{name}:{count}:max_abs={max_abs:.3g}')
+        if differences:
+            print(f'FIRST_DIVERGENCE dataset=Digits seed={seed} iteration={iteration} '
+                  + ' '.join(differences), flush=True)
+            return iteration
+    print(f'NO_DIVERGENCE dataset=Digits seed={seed} iterations={steps}', flush=True)
+    return None
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seeds', type=int, default=10)
     parser.add_argument('--iterations', type=int, default=1000)
+    parser.add_argument('--diagnose-digits', type=int, default=None,
+                        help='Find first NumPy/Numba divergence for this Digits seed')
     args = parser.parse_args()
     if args.seeds < 2 or args.iterations < 1:
         parser.error('--seeds must be >= 2 and --iterations must be >= 1')
+    if args.diagnose_digits is not None:
+        diagnose_sequential_digits(seed=args.diagnose_digits, steps=args.iterations)
+        raise SystemExit(0)
     evaluate('Wine', load_wine, seeds=args.seeds, iterations=args.iterations)
     evaluate('Digits', load_digits, seeds=args.seeds, iterations=args.iterations)
