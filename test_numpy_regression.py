@@ -120,5 +120,19 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
         np.testing.assert_array_equal(dominance[1], [.5, .5])
 
 
+    def test_high_level_numpy_modes_execute(self):
+        from pcc import ParticleCompetitionAndCooperation
+        neighbors = np.array([[2, 3], [2, 3], [0, 1], [0, 1]], dtype=np.int64)
+        degrees = np.full(4, 2, dtype=np.int64)
+        labels = np.array([0, 1, -1, -1], dtype=np.int64)
+        for mode in ("parallel", "sequential"):
+            model = ParticleCompetitionAndCooperation(impl="numpy", update_mode=mode)
+            model.set_graph(neighbors, degrees)
+            result = model.fit_predict(labels, max_iter=3, early_stop=False)
+            self.assertEqual(result.shape, labels.shape)
+            np.testing.assert_array_equal(result[:2], labels[:2])
+            self.assertTrue(np.all((result == 0) | (result == 1)))
+
+
 if __name__ == "__main__":
     unittest.main()
