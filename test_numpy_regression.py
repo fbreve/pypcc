@@ -227,5 +227,32 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
                         np.testing.assert_allclose(actual, expected, atol=1e-12)
 
 
+
+    def test_compiled_and_numpy_sequential_forced_graph(self):
+        # A single neighbor per node removes backend RNG differences.
+        from pcc import ParticleCompetitionAndCooperation
+        try:
+            import pcc_step
+        except ImportError:
+            self.skipTest("Cython extension is not compiled")
+        neighbors = np.array([[2], [2], [0]], dtype=np.int64)
+        degrees = np.ones(3, dtype=np.int64)
+        labels = np.array([0, 1, -1], dtype=np.int64)
+        states = {}
+        for impl in ("cython", "numba", "numpy"):
+            model = ParticleCompetitionAndCooperation(
+                impl=impl, update_mode="sequential")
+            model.set_graph(neighbors, degrees)
+            predictions = model.fit_predict(
+                labels, p_grd=0., delta_v=0.25, deltap=0.5,
+                max_iter=5, early_stop=False)
+            states[impl] = (
+                predictions.copy(), model.part.curnode.copy(),
+                model.part.strength.copy(), model.part.dist_table.copy(),
+                model.node.dominance.copy(), model.owndeg.copy())
+        for impl in ("cython", "numba"):
+            for actual, expected in zip(states[impl], states["numpy"]):
+                np.testing.assert_allclose(actual, expected, atol=1e-12)
+
 if __name__ == "__main__":
     unittest.main()
