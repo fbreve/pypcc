@@ -17,7 +17,7 @@ def evaluate(name, loader, seeds=10, iterations=1000):
     y = ds.target
     variants = (('cython', 'sequential'), ('numba', 'sequential'),
                 ('numpy', 'sequential'), ('numpy', 'parallel'))
-    results = {variant: {'accuracy': [], 'time': []} for variant in variants}
+    results = {variant: {'accuracy': [], 'time': [], 'dominance': []} for variant in variants}
     # Warm up compiled/JIT backends outside the timed experiment.
     warm_x = x
     warm_y = y
@@ -67,13 +67,18 @@ def evaluate(name, loader, seeds=10, iterations=1000):
             assert np.min(model.node.dominance) >= -1e-10
             results[(impl, mode)]['accuracy'].append(accuracy)
             results[(impl, mode)]['time'].append(elapsed)
+            # Mean maximum dominance measures convergence independent of RNG paths.
+            results[(impl, mode)]['dominance'].append(
+                float(np.max(model.node.dominance, axis=1).mean()))
             print(f'DETAIL dataset={name} seed={seed} backend={impl} mode={mode} '
                   f'accuracy={accuracy:.4f} elapsed={elapsed:.4f}s', flush=True)
     for (impl, mode), data in results.items():
         print(f'SUMMARY dataset={name} backend={impl} mode={mode} '
               f'accuracy={np.mean(data["accuracy"]):.4f} '
               f'std={np.std(data["accuracy"], ddof=1):.4f} '
-              f'time={np.mean(data["time"]):.4f}s', flush=True)
+              f'time={np.mean(data["time"]):.4f}s '
+              f'dominance={np.mean(data["dominance"]):.4f} '
+              f'dominance_std={np.std(data["dominance"], ddof=1):.4f}', flush=True)
 
 
 if __name__ == '__main__':
