@@ -83,6 +83,11 @@ def evaluate(name, loader, seeds=10, iterations=1000):
             prediction_mismatches = [int(np.count_nonzero(a != b)) for a, b in
                                      zip(data['prediction'], reference['prediction'])]
             mismatch_seeds = [i for i, n in enumerate(prediction_mismatches) if n]
+            for seed_index in mismatch_seeds:
+                print(f'MISMATCH dataset={name} backend={impl} mode={mode} '
+                      f'seed={seed_index} count={prediction_mismatches[seed_index]} '
+                      f'accuracy_diff={acc_diff[seed_index]:+.6f} '
+                      f'dominance_diff={dom_diff[seed_index]:+.6f}', flush=True)
             print(f'PAIRED dataset={name} backend={impl} mode={mode} '
                   f'reference=numpy/sequential '
                   f'accuracy_diff={np.mean(acc_diff):+.4f} '
