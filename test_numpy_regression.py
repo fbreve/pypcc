@@ -85,5 +85,40 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
         np.testing.assert_allclose(dominance[2], [.5, .5], atol=1e-12)
 
 
+    def test_parallel_single_visit_matches_sequential_dominance(self):
+        # A single visiting particle has no synchronous update conflict.
+        for mode in ("parallel", "sequential"):
+            neighbors = np.array([[2], [1], [0]], dtype=np.int64)
+            degrees = np.ones(3, dtype=np.int64)
+            labels = np.array([0, 1, -1], dtype=np.int64)
+            positions = np.array([0], dtype=np.int64)
+            classes = np.array([0], dtype=np.int64)
+            strength = np.array([0.8])
+            distance = np.array([[0], [2], [2]], dtype=np.uint8)
+            dominance = np.array([[1., 0.], [0., 1.], [.3, .7]])
+            owndeg = np.zeros((3, 2))
+            pcc_step_numpy(neighbors, degrees, labels, 0., 0.5, 2,
+                           np.zeros(2), positions, classes, strength,
+                           distance, dominance, owndeg, update_mode=mode)
+            np.testing.assert_allclose(dominance[2], [.7, .3], atol=1e-12)
+
+    def test_parallel_isolated_particle_is_unchanged(self):
+        neighbors = np.array([[-1], [0]], dtype=np.int64)
+        degrees = np.array([0, 1], dtype=np.int64)
+        labels = np.array([0, -1], dtype=np.int64)
+        positions = np.array([0], dtype=np.int64)
+        classes = np.array([0], dtype=np.int64)
+        strength = np.array([1.])
+        distance = np.array([[0], [1]], dtype=np.uint8)
+        dominance = np.array([[1., 0.], [.5, .5]])
+        owndeg = np.zeros((2, 2))
+        pcc_step_numpy(neighbors, degrees, labels, 0.5, 0.1, 2,
+                       np.zeros(2), positions, classes, strength,
+                       distance, dominance, owndeg, update_mode="parallel")
+        np.testing.assert_array_equal(positions, [0])
+        np.testing.assert_array_equal(strength, [1.])
+        np.testing.assert_array_equal(dominance[1], [.5, .5])
+
+
 if __name__ == "__main__":
     unittest.main()
