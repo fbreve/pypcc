@@ -140,8 +140,11 @@ def diagnose_sequential_digits(seed=0, steps=1000):
     seed_numba(seed)
     for iteration in range(1, steps + 1):
         previous_positions = numpy_model.part.curnode.copy()
+        trace_numpy = np.full((len(previous_positions), 3), -1, dtype=np.int64)
+        trace_numba = np.full((len(previous_positions), 3), -1, dtype=np.int64)
         for model, step_fn in ((numpy_model, pcc_step_numpy), (numba_model, pcc_step_numba)):
-            kwargs = {'update_mode': 'sequential'} if model is numpy_model else {}
+            kwargs = ({'update_mode': 'sequential', 'trace': trace_numpy}
+                      if model is numpy_model else {'trace': trace_numba})
             step_fn(model.neib_list, model.neib_qt, model.mapped_labels,
                     model.p_grd, model.delta_v, model.c, model.zerovec,
                     model.part.curnode, model.part.label, model.part.strength,
@@ -173,6 +176,13 @@ def diagnose_sequential_digits(seed=0, steps=1000):
             position_mismatch = np.flatnonzero(
                 numpy_model.part.curnode != numba_model.part.curnode)
             for particle in position_mismatch[:5]:
+                print(f'DECISION_TRACE particle={particle} '
+                      f'numpy_chosen={trace_numpy[particle, 0]} '
+                      f'numba_chosen={trace_numba[particle, 0]} '
+                      f'numpy_greedy={trace_numpy[particle, 1]} '
+                      f'numba_greedy={trace_numba[particle, 1]} '
+                      f'numpy_accepted={trace_numpy[particle, 2]} '
+                      f'numba_accepted={trace_numba[particle, 2]}', flush=True)
                 previous = int(previous_positions[particle])
                 degree = int(numpy_model.neib_qt[previous])
                 neighbors = numpy_model.neib_list[previous, :degree]
