@@ -238,13 +238,20 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
         neighbors = np.array([[2], [2], [0]], dtype=np.int64)
         degrees = np.ones(3, dtype=np.int64)
         labels = np.array([0, 1, -1], dtype=np.int64)
+        for p_grd in (0., 0.5, 1.):
+            for delta_v in (0.1, 0.25):
+                with self.subTest(p_grd=p_grd, delta_v=delta_v):
+                    self._check_compiled_forced_graph(neighbors, degrees, labels, p_grd, delta_v)
+
+    def _check_compiled_forced_graph(self, neighbors, degrees, labels, p_grd, delta_v):
+        from pcc import ParticleCompetitionAndCooperation
         states = {}
         for impl in ("cython", "numba", "numpy"):
             model = ParticleCompetitionAndCooperation(
                 impl=impl, update_mode="sequential")
             model.set_graph(neighbors, degrees)
             predictions = model.fit_predict(
-                labels, p_grd=0., delta_v=0.25, deltap=0.5,
+                labels, p_grd=p_grd, delta_v=delta_v, deltap=0.5,
                 max_iter=5, early_stop=False)
             states[impl] = (
                 predictions.copy(), model.part.curnode.copy(),
