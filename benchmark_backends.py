@@ -29,6 +29,14 @@ def evaluate(name, loader, seeds=10, iterations=1000):
         warm_model = ParticleCompetitionAndCooperation(impl=impl, update_mode=mode)
         warm_model.build_graph(warm_x, k_nn=10)
         warm_model.fit_predict(warm_observed, max_iter=2, early_stop=False)
+    # Numba maintains a separate RNG state inside njit; seed it explicitly.
+    try:
+        from numba import njit
+        @njit
+        def seed_numba(value):
+            np.random.seed(value)
+    except ImportError:
+        seed_numba = None
     for seed in range(seeds):
         rng = np.random.default_rng(seed)
         labeled = np.concatenate([
@@ -39,6 +47,8 @@ def evaluate(name, loader, seeds=10, iterations=1000):
         observed[labeled] = y[labeled]
         for impl, mode in variants:
             np.random.seed(seed)
+            if impl == 'numba' and seed_numba is not None:
+                seed_numba(seed)
             model = ParticleCompetitionAndCooperation(impl=impl, update_mode=mode)
             model.build_graph(x, k_nn=10)
             selected = model._get_backend_fn()
