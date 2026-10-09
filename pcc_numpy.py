@@ -18,139 +18,68 @@ def pcc_step_numpy(neib_list, neib_qt,
     """
     Versão NumPy/Python do _pcc_step (Fase 5: Layout Fortran e Loops Nativos).
     """
+    """One sequential PCC iteration, matching the Cython/Numba update order.
+
+    NumPy is used for storage and neighbor-weight calculations, but each
+    particle must complete its visit before the next one selects a node.
+    """
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
-    is_deltap_one = (deltap == 1.0)
-    
-    # 1. Validation and Setup
-    valid_mask = (part_curnode >= 0) & (part_curnode < n_nodes)
-    if not np.any(valid_mask):
-        return
+    if dist_weights is None:
+        dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
 
-    # 2. Movement Decision (Greedy vs Random)
-    random_vals = np.random.random(n_particles)
-    greedy_mask = valid_mask & (random_vals < p_grd)
-    random_mask = valid_mask & (random_vals >= p_grd)
-    
-    next_nodes = part_curnode.copy()
-    is_greedy = np.zeros(n_particles, dtype=bool)
+    for p_i in range(n_particles):
+        cur = int(part_curnode[p_i])
+        if cur < 0 or cur >= n_nodes:
+            continue
+        degree = int(neib_qt[cur])
+        if degree <= 0:
+            continue
 
-    # 3. Process Greedy Walks
-    if np.any(greedy_mask):
-        g_indices = np.where(greedy_mask)[0]
-        cur_nodes_g = part_curnode[g_indices]
-        p_labels_g = part_label[g_indices]
-        
-        # Max neighbors in this batch
-        k_vals_g = neib_qt[cur_nodes_g]
-        max_k_g = np.max(k_vals_g)
-        
-        neighbors_g = neib_list[cur_nodes_g, :max_k_g]
-        
-        # Dominance of particle class at neighbors: dominance[neighbors, p_labels]
-        # neighbors shape: (n_g, max_k_g). p_labels_g shape: (n_g,)
-        # We use fancy indexing. dominance is (n_nodes, c).
-        dom_vals_g = dominance[neighbors_g, p_labels_g[:, None]]
-        
-        # Distance weights: dist_weights[dist_table[neighbors, particle_idx]]
-        # dist_table is (n_nodes, n_particles)
-        # We need dist_table[neighbors[i, j], g_indices[i]]
-        d_indices_g = dist_table[neighbors_g, g_indices[:, None]]
-        dist_vals_g = dist_weights[d_indices_g]
-        
-        prob_vec_g = dom_vals_g * dist_vals_g
-        
-        # Mask out-of-bounds neighbors (k < max_k_g)
-        k_mask_g = np.arange(max_k_g) < k_vals_g[:, None]
-        prob_vec_g[~k_mask_g] = 0.0
-        
-        totals_g = np.sum(prob_vec_g, axis=1)
-        has_prob = totals_g > 0
-        
-        # Case: total > 0 (probabilistic walk)
-        if np.any(has_prob):
-            hp_idx = np.where(has_prob)[0]
-            # Probabilistic selection for those with total > 0
-            # rand_vals * total
-            r_vals_hp = np.random.random(len(hp_idx)) * totals_g[hp_idx]
-            # cumsum to find interval
-            slices_hp = np.cumsum(prob_vec_g[hp_idx], axis=1)
-            # Find first index where slices >= rand_val
-            # (slices < rand_val).sum(axis=1) gives the index
-            choices_hp = np.sum(slices_hp < r_vals_hp[:, None], axis=1)
-            # Clip choices to handle floating point edge cases (though sum should be safe)
-            choices_hp = np.minimum(choices_hp, k_vals_g[hp_idx] - 1)
-            
-            chosen_nodes = neighbors_g[hp_idx, choices_hp]
-            next_nodes[g_indices[hp_idx]] = chosen_nodes
-            is_greedy[g_indices[hp_idx]] = True
-        
-        # Case: total == 0 (greedy failed -> fall back to random for these specific particles)
-        no_prob = ~has_prob
-        if np.any(no_prob):
-            np_idx = np.where(no_prob)[0]
-            rand_choices = (np.random.random(len(np_idx)) * k_vals_g[np_idx]).astype(np.int64)
-            next_nodes[g_indices[np_idx]] = neighbors_g[np_idx, rand_choices]
+        neighbors = neib_list[cur, :degree]
+        cls = int(part_label[p_i])
+        if cls < 0 or cls >= c:
+            continue
 
-    # 4. Process Random Walks
-    if np.any(random_mask):
-        r_indices = np.where(random_mask)[0]
-        cur_nodes_r = part_curnode[r_indices]
-        k_vals_r = neib_qt[cur_nodes_r]
-        
-        # Pick random neighbor index
-        rand_choices = (np.random.random(len(r_indices)) * k_vals_r).astype(np.int64)
-        # Efficiently extract selected neighbors
-        # We can't easily 2D index if rows have different k, but here next_nodes 
-        # is just neib_list[cur_node, choice]
-        next_nodes[r_indices] = neib_list[cur_nodes_r, rand_choices]
+        greedy = np.random.random() < p_grd
+        if greedy:
+            weights = dominance[neighbors, cls] * dist_weights[dist_table[neighbors, p_i]]
+            total = float(np.sum(weights))
+            if total > 0.0:
+                threshold = np.random.random() * total
+                idx = int(np.searchsorted(np.cumsum(weights), threshold, side="left"))
+                idx = min(idx, degree - 1)
+            else:
+                idx = int(np.random.randint(degree))
+                greedy = False
+        else:
+            idx = int(np.random.randint(degree))
 
-    # 5. Dominance Update
-    # Apply competing visits sequentially: simultaneous reductions calculated
-    # from stale rows can drive dominance below zero on shared destination nodes.
-    # This preserves the per-visit dominance invariant, even with collisions.
-    update_mask = (labels[next_nodes] == -1) & valid_mask
-    for p_i in np.flatnonzero(update_mask):
-        node_i = next_nodes[p_i]
-        cls = part_label[p_i]
-        step = part_strength[p_i] * (delta_v / (c - 1))
-        reduction = np.minimum(dominance[node_i, :], step)
-        dominance[node_i, :] -= reduction
-        dominance[node_i, cls] += reduction.sum()
+        nxt = int(neighbors[idx])
+        if nxt < 0 or nxt >= n_nodes:
+            continue
 
-    # 6. Strength Update
-    # Update strength based on the (potentially updated) dominance at next_node
-    # part_strength[i] = dom[next_nodes[i], p_label[i]]
-    new_dom_vals = dominance[next_nodes, part_label]
-    if is_deltap_one:
-        part_strength[valid_mask] = new_dom_vals[valid_mask]
-    else:
-        part_strength[valid_mask] += (new_dom_vals[valid_mask] - part_strength[valid_mask]) * deltap
+        if labels[nxt] == -1:
+            step = part_strength[p_i] * (delta_v / (c - 1))
+            reduction = np.minimum(dominance[nxt, :], step)
+            dominance[nxt, :] -= reduction
+            dominance[nxt, cls] += reduction.sum()
 
-    # 7. Distance Table Update
-    # next_d = min(next_d, cur_d + 1)
-    cur_dist = dist_table[part_curnode, np.arange(n_particles)]
-    next_dist = dist_table[next_nodes, np.arange(n_particles)]
-    
-    mask_dist = valid_mask & (cur_dist < 255) & (next_dist > cur_dist + 1)
-    if np.any(mask_dist):
-        dist_table[next_nodes[mask_dist], np.arange(n_particles)[mask_dist]] = cur_dist[mask_dist] + 1
+        if deltap == 1.0:
+            part_strength[p_i] = dominance[nxt, cls]
+        else:
+            part_strength[p_i] += (dominance[nxt, cls] - part_strength[p_i]) * deltap
 
-    # 8. Own Degree Update (for non-greedy moves)
-    # only for random walks OR greedy fallbacks that became random
-    owndeg_mask = valid_mask & (~is_greedy)
-    if np.any(owndeg_mask):
-        od_idx = np.where(owndeg_mask)[0]
-        np.add.at(owndeg, (next_nodes[od_idx], part_label[od_idx]), part_strength[od_idx])
+        cur_dist = int(dist_table[cur, p_i])
+        next_dist = int(dist_table[nxt, p_i])
+        if cur_dist < 255 and next_dist > cur_dist + 1:
+            dist_table[nxt, p_i] = cur_dist + 1
 
-    # 9. Movement (Shock Check)
-    # Move particle only if its class is (now) the maximal one at next_node
-    # We do a tie-break or just compare with max.
-    max_dom_at_next = np.max(dominance[next_nodes, :], axis=1)
-    is_max = (new_dom_vals == max_dom_at_next)
-    
-    # Update positions
-    part_curnode[valid_mask & is_max] = next_nodes[valid_mask & is_max]
+        if not greedy:
+            owndeg[nxt, cls] += part_strength[p_i]
+
+        if dominance[nxt, cls] >= np.max(dominance[nxt, :]):
+            part_curnode[p_i] = nxt
 
 def pcc_propagate_numpy(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
