@@ -18,7 +18,7 @@ def evaluate(name, loader, seeds=10, iterations=1000):
     y = ds.target
     variants = (('cython', 'sequential'), ('numba', 'sequential'),
                 ('numpy', 'sequential'), ('numpy', 'parallel'))
-    results = {variant: {'accuracy': [], 'time': [], 'dominance': []} for variant in variants}
+    results = {variant: {'accuracy': [], 'time': [], 'dominance': [], 'prediction': []} for variant in variants}
     # Warm up compiled/JIT backends outside the timed experiment.
     warm_x = x
     warm_y = y
@@ -66,6 +66,7 @@ def evaluate(name, loader, seeds=10, iterations=1000):
             assert np.array_equal(pred[labeled], y[labeled])
             np.testing.assert_allclose(model.node.dominance.sum(axis=1), 1, atol=1e-8)
             assert np.min(model.node.dominance) >= -1e-10
+            results[(impl, mode)]['prediction'].append(pred.copy())
             results[(impl, mode)]['accuracy'].append(accuracy)
             results[(impl, mode)]['time'].append(elapsed)
             # Mean maximum dominance measures convergence independent of RNG paths.
@@ -79,6 +80,9 @@ def evaluate(name, loader, seeds=10, iterations=1000):
         if (impl, mode) != ('numpy', 'sequential'):
             acc_diff = np.asarray(data['accuracy']) - np.asarray(reference['accuracy'])
             dom_diff = np.asarray(data['dominance']) - np.asarray(reference['dominance'])
+            prediction_mismatches = [int(np.count_nonzero(a != b)) for a, b in
+                                     zip(data['prediction'], reference['prediction'])]
+            mismatch_seeds = [i for i, n in enumerate(prediction_mismatches) if n]
             print(f'PAIRED dataset={name} backend={impl} mode={mode} '
                   f'reference=numpy/sequential '
                   f'accuracy_diff={np.mean(acc_diff):+.4f} '
@@ -88,7 +92,9 @@ def evaluate(name, loader, seeds=10, iterations=1000):
                   f'accuracy_diff_max_abs={np.max(np.abs(acc_diff)):.4f} '
                   f'accuracy_wins={np.count_nonzero(acc_diff > 1e-12)} '
                   f'accuracy_ties={np.count_nonzero(np.abs(acc_diff) <= 1e-12)} '
-                  f'accuracy_losses={np.count_nonzero(acc_diff < -1e-12)}', flush=True)
+                  f'accuracy_losses={np.count_nonzero(acc_diff < -1e-12)} '
+                  f'prediction_mismatch_seeds={mismatch_seeds} '
+                  f'prediction_mismatch_total={sum(prediction_mismatches)}', flush=True)
         print(f'SUMMARY dataset={name} backend={impl} mode={mode} '
               f'accuracy={np.mean(data["accuracy"]):.4f} '
               f'std={np.std(data["accuracy"], ddof=1):.4f} '
