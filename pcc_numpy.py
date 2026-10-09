@@ -14,7 +14,7 @@ def pcc_step_numpy(neib_list, neib_qt,
                    part_curnode, part_label, part_strength, dist_table,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
-                   dist_weights=None):
+                   dist_weights=None, update_mode="parallel"):
     """
     Versão NumPy/Python do _pcc_step (Fase 5: Layout Fortran e Loops Nativos).
     """
@@ -98,9 +98,12 @@ def _pcc_step_numpy_parallel(neib_list, neib_qt,
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
     is_deltap_one = (deltap == 1.0)
+    if dist_weights is None:
+        dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
     
     # 1. Validation and Setup
-    valid_mask = (part_curnode >= 0) & (part_curnode < n_nodes)\n    valid_mask &= neib_qt[np.clip(part_curnode, 0, n_nodes - 1)] > 0
+    valid_mask = (part_curnode >= 0) & (part_curnode < n_nodes)
+    valid_mask &= neib_qt[np.clip(part_curnode, 0, n_nodes - 1)] > 0
     if not np.any(valid_mask):
         return
 
@@ -122,7 +125,9 @@ def _pcc_step_numpy_parallel(neib_list, neib_qt,
         k_vals_g = neib_qt[cur_nodes_g]
         max_k_g = np.max(k_vals_g)
         
-        neighbors_g = neib_list[cur_nodes_g, :max_k_g]\n        k_mask_g = np.arange(max_k_g) < k_vals_g[:, None]\n        safe_neighbors_g = np.where(k_mask_g, neighbors_g, 0)
+        neighbors_g = neib_list[cur_nodes_g, :max_k_g]
+        k_mask_g = np.arange(max_k_g) < k_vals_g[:, None]
+        safe_neighbors_g = np.where(k_mask_g, neighbors_g, 0)
         
         # Dominance of particle class at neighbors: dominance[neighbors, p_labels]
         # neighbors shape: (n_g, max_k_g). p_labels_g shape: (n_g,)
@@ -184,7 +189,8 @@ def _pcc_step_numpy_parallel(neib_list, neib_qt,
 
     # 5. Dominance Update
     # Only update for particles on unlabeled nodes
-    update_mask = (labels[next_nodes] == -1) & valid_mask
+    safe_next_nodes = np.where(valid_mask, next_nodes, 0)
+    update_mask = (labels[safe_next_nodes] == -1) & valid_mask
     if np.any(update_mask):
         upd_idx = np.where(update_mask)[0]
         nodes_upd = next_nodes[upd_idx]
@@ -207,6 +213,39 @@ def _pcc_step_numpy_parallel(neib_list, neib_qt,
         dominance -= loss
         dominance += gain * fractions
 
+    # 6. Strength Update
+    # Update strength based on the (potentially updated) dominance at next_node
+    # part_strength[i] = dom[next_nodes[i], p_label[i]]
+    new_dom_vals = dominance[safe_next_nodes, part_label]
+    if is_deltap_one:
+        part_strength[valid_mask] = new_dom_vals[valid_mask]
+    else:
+        part_strength[valid_mask] += (new_dom_vals[valid_mask] - part_strength[valid_mask]) * deltap
+
+    # 7. Distance Table Update
+    # next_d = min(next_d, cur_d + 1)
+    cur_dist = dist_table[np.where(valid_mask, part_curnode, 0), np.arange(n_particles)]
+    next_dist = dist_table[safe_next_nodes, np.arange(n_particles)]
+    
+    mask_dist = valid_mask & (cur_dist < 255) & (next_dist > cur_dist + 1)
+    if np.any(mask_dist):
+        dist_table[next_nodes[mask_dist], np.arange(n_particles)[mask_dist]] = cur_dist[mask_dist] + 1
+
+    # 8. Own Degree Update (for non-greedy moves)
+    # only for random walks OR greedy fallbacks that became random
+    owndeg_mask = valid_mask & (~is_greedy)
+    if np.any(owndeg_mask):
+        od_idx = np.where(owndeg_mask)[0]
+        np.add.at(owndeg, (next_nodes[od_idx], part_label[od_idx]), part_strength[od_idx])
+
+    # 9. Movement (Shock Check)
+    # Move particle only if its class is (now) the maximal one at next_node
+    # We do a tie-break or just compare with max.
+    max_dom_at_next = np.max(dominance[safe_next_nodes, :], axis=1)
+    is_max = (new_dom_vals == max_dom_at_next)
+    
+    # Update positions
+    part_curnode[valid_mask & is_max] = next_nodes[valid_mask & is_max]
 
 def pcc_propagate_numpy(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
