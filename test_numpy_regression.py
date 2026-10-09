@@ -158,5 +158,32 @@ class NumpyDominanceRegressionTests(unittest.TestCase):
                 for actual, expected in zip(state, reference):
                     np.testing.assert_allclose(actual, expected, atol=1e-12)
 
+
+    def test_numba_numpy_sequential_multiple_forced_steps(self):
+        from pcc_numba import pcc_step_numba
+        snapshots = []
+        for backend in (pcc_step_numpy, pcc_step_numba):
+            neighbors = np.array([[2], [2], [0]], dtype=np.int64)
+            degrees = np.ones(3, dtype=np.int64)
+            labels = np.array([0, 1, -1], dtype=np.int64)
+            positions = np.array([0, 1], dtype=np.int64)
+            classes = np.array([0, 1], dtype=np.int64)
+            strength = np.array([0.7, 0.9], dtype=np.float64)
+            distance = np.array([[0, 2], [2, 0], [2, 2]], dtype=np.uint8)
+            dominance = np.array([[1., 0.], [0., 1.], [.4, .6]])
+            owndeg = np.zeros((3, 2), dtype=np.float64)
+            trajectory = []
+            for _ in range(5):
+                kwargs = {'update_mode': 'sequential'} if backend is pcc_step_numpy else {}
+                backend(neighbors, degrees, labels, 0., 0.25, 2, np.zeros(2),
+                        positions, classes, strength, distance, dominance, owndeg,
+                        0.5, 2., **kwargs)
+                trajectory.append(tuple(a.copy() for a in (
+                    positions, strength, distance, dominance, owndeg)))
+            snapshots.append(trajectory)
+        for numpy_state, numba_state in zip(*snapshots):
+            for expected, actual in zip(numpy_state, numba_state):
+                np.testing.assert_allclose(actual, expected, atol=1e-12)
+
 if __name__ == "__main__":
     unittest.main()
