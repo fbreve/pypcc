@@ -1,0 +1,64 @@
+
+Benchmark configuration
+======================================================================
+focus=accuracy
+early_stop=True (fixed)
+impl=numba
+k_nn=10, labeled_fraction=0.1, n_runs=30
+datasets=6
+
+======================================================================
+Dataset: Wine [sklearn] (n=178, d=13, classes=3)
+======================================================================
+
+=== Wine [sklearn] (n=178, d=13, classes=3, runs=30) ===
+sklearn mean=0.9602 std=0.0101 | covariance_qdtree mean=0.9106 std=0.0136 | delta(mean)=-0.0496 | wins/draws/losses=0/1/29
+
+======================================================================
+Dataset: Digits [sklearn] (n=1797, d=64, classes=10)
+======================================================================
+
+=== Digits [sklearn] (n=1797, d=64, classes=10, runs=30) ===
+sklearn mean=0.9623 std=0.0064 | covariance_qdtree mean=0.6533 std=0.0144 | delta(mean)=-0.3090 | wins/draws/losses=0/0/30
+
+======================================================================
+Dataset: Iris [sklearn] (n=150, d=4, classes=3)
+======================================================================
+
+=== Iris [sklearn] (n=150, d=4, classes=3, runs=30) ===
+sklearn mean=0.9121 std=0.0556 | covariance_qdtree mean=0.9212 std=0.0431 | delta(mean)=+0.0091 | wins/draws/losses=16/3/11
+
+======================================================================
+Dataset: BreastCancer [sklearn] (n=569, d=30, classes=2)
+======================================================================
+
+=== BreastCancer [sklearn] (n=569, d=30, classes=2, runs=30) ===
+sklearn mean=0.9496 std=0.0119 | covariance_qdtree mean=0.9292 std=0.0087 | delta(mean)=-0.0204 | wins/draws/losses=0/0/30
+
+======================================================================
+Dataset: Moons2k [synthetic] (n=2000, d=2, classes=2)
+======================================================================
+
+=== Moons2k [synthetic] (n=2000, d=2, classes=2, runs=30) ===
+sklearn mean=1.0000 std=0.0000 | covariance_qdtree mean=1.0000 std=0.0000 | delta(mean)=+0.0000 | wins/draws/losses=0/30/0
+
+======================================================================
+Dataset: Circles2k [synthetic] (n=2000, d=2, classes=2)
+======================================================================
+
+=== Circles2k [synthetic] (n=2000, d=2, classes=2, runs=30) ===
+sklearn mean=1.0000 std=0.0000 | covariance_qdtree mean=1.0000 std=0.0000 | delta(mean)=+0.0000 | wins/draws/losses=0/30/0
+
+========================================================================================================================
+KNN METHOD ACCURACY SUMMARY (early_stop=True)
+========================================================================================================================
+dataset | source | n | d | cls | sk_mean | qd_mean | delta(qd-sk) | sk_std | qd_std | wins/draws/losses
+------------------------------------------------------------------------------------------------------------------------
+Wine                 | sklearn  |   178 |   13 |   3 | 0.9602 | 0.9106 | -0.0496 | 0.0101 | 0.0136 | 0/1/29
+Digits               | sklearn  |  1797 |   64 |  10 | 0.9623 | 0.6533 | -0.3090 | 0.0064 | 0.0144 | 0/0/30
+Iris                 | sklearn  |   150 |    4 |   3 | 0.9121 | 0.9212 | +0.0091 | 0.0556 | 0.0431 | 16/3/11
+BreastCancer         | sklearn  |   569 |   30 |   2 | 0.9496 | 0.9292 | -0.0204 | 0.0119 | 0.0087 | 0/0/30
+Moons2k              | synthetic |  2000 |    2 |   2 | 1.0000 | 1.0000 | +0.0000 | 0.0000 | 0.0000 | 0/30/0
+Circles2k            | synthetic |  2000 |    2 |   2 | 1.0000 | 1.0000 | +0.0000 | 0.0000 | 0.0000 | 0/30/0
+
+Benchmark completed successfully.
