@@ -8,6 +8,7 @@ Created on Fri Jan 16 15:02:02 2026
 # pcc_numba.py
 import numpy as np
 from numba import njit
+from pcc_validation import validate_step_inputs, validate_buffers
 
 @njit
 def _pcc_step_numba_sequential(neib_list, neib_qt,
@@ -30,8 +31,10 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
 
         neighbors = neib_list[curnode, :k]
 
-        use_greedy = np.random.random() < p_grd
         label = part_label[p_i]
+        if label < 0 or label >= c:
+            continue
+        use_greedy = np.random.random() < p_grd
         
         if use_greedy:
             # greedy
@@ -132,7 +135,7 @@ def _pcc_calc_mmpot_sequential(dominance, n_nodes, c):
     return total_max / n_nodes
 
 @njit
-def pcc_propagate_numba(neib_list, neib_qt,
+def _pcc_propagate_numba_sequential(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
                         part_curnode, part_label, part_strength, dist_table,
                         dominance, owndeg, deltap, dexp,
@@ -168,22 +171,42 @@ def pcc_step_numba(neib_list, neib_qt,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
                    dist_weights=None):
-    # Backward compatibility wrapper for single step
-    if dom_row is None:
-        dom_row = np.empty(c, dtype=np.float64)
-        reduc = np.empty(c, dtype=np.float64)
-        max_k = 32
-        dom_list = np.empty(max_k, dtype=np.float64)
-        dist_list = np.empty(max_k, dtype=np.float64)
-        prob = np.empty(max_k, dtype=np.float64)
-        slices = np.empty(max_k, dtype=np.float64)
-    
+    max_k = validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
+                                 part_curnode, part_label, part_strength,
+                                 dist_table, dominance, owndeg)
+    dom_row = np.empty(c) if dom_row is None else dom_row
+    reduc = np.empty(c) if reduc is None else reduc
+    dom_list = np.empty(max_k) if dom_list is None else dom_list
+    dist_list = np.empty(max_k) if dist_list is None else dist_list
+    prob = np.empty(max_k) if prob is None else prob
+    slices = np.empty(max_k) if slices is None else slices
     if dist_weights is None:
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
-        
+    validate_buffers(c, max_k, dom_row, reduc, dom_list, dist_list,
+                     prob, slices, dist_weights)
+
     return _pcc_step_numba_sequential(neib_list, neib_qt,
                                        labels, p_grd, delta_v, c, zerovec,
                                        part_curnode, part_label, part_strength, dist_table,
                                        dominance, owndeg, deltap, dexp,
                                        dom_row, reduc, dom_list, dist_list, prob, slices,
-                                       dist_weights)
+                                       dist_weights)
+
+
+def pcc_propagate_numba(neib_list, neib_qt,
+                        labels, p_grd, delta_v, c, zerovec,
+                        part_curnode, part_label, part_strength, dist_table,
+                        dominance, owndeg, deltap, dexp,
+                        dom_row, reduc, dom_list, dist_list, prob, slices,
+                        dist_weights,
+                        max_iter, early_stop, es_chk, stop_max):
+    max_degree = validate_step_inputs(
+        neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
+        part_strength, dist_table, dominance, owndeg)
+    validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
+                     prob, slices, dist_weights)
+    return _pcc_propagate_numba_sequential(
+        neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+        part_curnode, part_label, part_strength, dist_table, dominance, owndeg,
+        deltap, dexp, dom_row, reduc, dom_list, dist_list, prob, slices,
+        dist_weights, max_iter, early_stop, es_chk, stop_max)

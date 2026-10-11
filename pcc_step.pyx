@@ -2,6 +2,7 @@
 import numpy as np
 cimport numpy as np
 cimport cython
+from pcc_validation import validate_step_inputs, validate_buffers, validate_vector
 from libc.stdlib cimport malloc, free
 
 # Fast XORShift RNG (Sequential version)
@@ -66,6 +67,12 @@ cpdef pcc_propagate(
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
     
+    max_degree = validate_step_inputs(
+        neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
+        part_strength, dist_table, dominance, owndeg)
+    validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
+                     prob, slices, dist_weights)
+
     with nogil:
         for it in range(max_iter):
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
@@ -216,9 +223,20 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
+    max_degree = validate_step_inputs(
+        neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
+        part_strength, dist_table, dominance, owndeg)
+    if prob is None:
+        prob = np.empty(max_degree, dtype=np.float64)
+    if slices is None:
+        slices = np.empty(max_degree, dtype=np.float64)
+    validate_vector("prob", prob, max_degree)
+    validate_vector("slices", slices, max_degree)
     if dist_weights is None:
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
     
+    validate_vector("dist_weights", dist_weights, 256)
+
     with nogil:
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,

@@ -257,7 +257,11 @@ class ParticleCompetitionAndCooperation:
         
         # Calculate stop_max for early stop logic. Clamp to at least 1 to prevent 
         # premature stopping on large graphs where node/particle ratio might be small.
-        stop_max = max(1, round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1)))
+        if not np.any(self.neib_qt):
+            # No particle can move; retain the usual plateau stopping checks.
+            stop_max = 1
+        else:
+            stop_max = max(1, round((node.amount / (part.amount * k_nn)) * round(es_chk * 0.1)))
 
         # DIRECT call to the backend propagation function
         propagate_fn = self._get_backend_fn()
