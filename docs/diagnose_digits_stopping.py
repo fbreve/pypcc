@@ -37,7 +37,7 @@ def predictions(args):
     return labels
 
 
-def trace(initial, case, cap, spacing):
+def trace(initial, case, cap, spacing, stop_at_original=True):
     # Validate once; keep the same buffers, particle state and thread-local RNG.
     args = copy.deepcopy(initial)
     max_degree = fixed.pcc_numba.validate_step_inputs(*args[:3], *args[5:13])
@@ -53,6 +53,7 @@ def trace(initial, case, cap, spacing):
     since_resets = since_checks = 0
     checks, snapshots = [], []
     current, last_snapshot = 0, 0
+    first_original_stop = None
     start = time.perf_counter()
     while current < cap:
         target = min(cap, 1 if current == 0 else current + 10)
@@ -80,7 +81,9 @@ def trace(initial, case, cap, spacing):
                                cumulative_resets=resets))
             previous_metric = metric
         stopped = is_check and stalled > args[25]
-        if current == 1 or current-last_snapshot >= spacing or stopped or current == cap:
+        if stopped and first_original_stop is None:
+            first_original_stop = current
+        if current == 1 or current-last_snapshot >= spacing or (stopped and stop_at_original) or current == cap:
             predicted = predictions(args)
             changed = int(np.count_nonzero(predicted != previous_labels))
             snapshots.append(dict(seed=case['seed'], iteration=current,
@@ -95,12 +98,13 @@ def trace(initial, case, cap, spacing):
                                   accuracy_unlabeled=float(np.mean(predicted[unknown] == case['truth'][unknown]))))
             previous_labels, last_snapshot = predicted, current
             since_resets = since_checks = 0
-        if stopped:
+        if stopped and stop_at_original:
             break
     elapsed = time.perf_counter()-start
     return args, float(next_random()), checks, snapshots, dict(
         seed=case['seed'], effective_iterations=current, checks=len(checks),
-        stop_reason='early_stop' if stopped else 'max_iter', stop_max=args[25],
+        stop_reason='early_stop' if stopped and stop_at_original else 'max_iter', stop_max=args[25],
+        first_original_stop=first_original_stop,
         stalled_checks=stalled, longest_stall_checks=longest_stall,
         reset_count=resets, diagnostic_s=elapsed,
         final_accuracy_unlabeled=snapshots[-1]['accuracy_unlabeled'])

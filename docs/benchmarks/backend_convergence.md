@@ -162,3 +162,7 @@ Observing an actual early stop on Digits would require an additional authorized 
 ## Digits stopping diagnostic
 
 The optional continuous Numba diagnostic confirms that the score continues setting records while sampled classifications are nearly stable: at most three changed labels per late checkpoint, but 88-241 late record resets per seed. No production kernels changed. States and the next RNG value match monolithic calls for all five seeds. See the [diagnostic report, trajectories and CSVs](digits_stopping_diagnostic/report.md) for magnitudes, stall counters, reset frequencies, overhead and sampling limitations.
+
+## Exploratory alternative stopping candidates
+
+A separate [candidate report](stopping_candidates/report.md) evaluates classification, scalar-dominance variation and hybrid rules retrospectively on existing Digits traces, and on newly collected continuous full-budget Wine references. Original-OR candidates are the most promising exploratory options: they save about 39-41% of Digits iterations with a mean accuracy cost of 0.32-0.34 pp while reproducing the original stopped Wine outcomes in these five seeds. No candidate is implemented in production; endpoint sampling, per-seed losses, unmet evidence requirements and selection bias are documented.
