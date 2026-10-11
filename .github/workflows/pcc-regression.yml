@@ -1,7 +1,7 @@
 name: PCC regression
 on:
   push:
-    branches: [fix/numpy-propagation-correctness, fix/numpy-sequential-review]
+    branches: [fix/numpy-propagation-correctness, fix/numpy-sequential-review, fix/sequential-backend-safety]
   pull_request:
   workflow_dispatch:
 
@@ -24,7 +24,9 @@ jobs:
           python -c "import numpy; from setuptools import setup, Extension;
           from Cython.Build import cythonize;
           setup(ext_modules=cythonize([Extension('pcc_step', ['pcc_step.pyx'],
-          include_dirs=[numpy.get_include()])], language_level='3'))"
+          include_dirs=[numpy.get_include()])], language_level='3', force=True))"
           build_ext --inplace
+      - name: Require all three backends
+        run: python -c "import numpy, pcc_numba, pcc_step"
       - name: Run deterministic regression tests
-        run: python -m unittest -v test_numpy_regression test_numpy_synchronous
+        run: python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety
