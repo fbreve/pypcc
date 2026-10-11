@@ -91,10 +91,18 @@ class Nodes:
 
 class ParticleCompetitionAndCooperation:
 
-    def __init__(self, impl="auto", n_jobs=None):
+    def __init__(self, impl="auto", n_jobs=None, update_mode="sequential"):
         """
         impl: 'auto', 'cython', 'numba' ou 'numpy'
+        update_mode: 'sequential' (default) or experimental 'synchronous'.
+        Synchronous updates require impl='numpy' explicitly.
         """
+        if update_mode not in ("sequential", "synchronous"):
+            raise ValueError("update_mode must be 'sequential' or 'synchronous'")
+        if update_mode == "synchronous" and (
+                not isinstance(impl, str) or impl.lower() != "numpy"):
+            raise ValueError("update_mode='synchronous' requires impl='numpy'")
+        self.update_mode = update_mode
         self.impl = impl
         self.n_jobs = n_jobs
         self.data = None
@@ -123,6 +131,10 @@ class ParticleCompetitionAndCooperation:
         Determines the appropriate propagation function based on the requested implementation and availability.
         """
         impl = self.impl.lower() if isinstance(self.impl, str) else "auto"
+        if self.update_mode not in ("sequential", "synchronous"):
+            raise ValueError("update_mode must be 'sequential' or 'synchronous'")
+        if self.update_mode == "synchronous" and impl != "numpy":
+            raise ValueError("update_mode='synchronous' requires impl='numpy'")
         if impl not in ("cython", "numba", "numpy", "auto"):
             warnings.warn(f"Backend '{self.impl}' is invalid; using 'auto' (cython→numba→numpy).")
             impl = "auto"
@@ -249,6 +261,9 @@ class ParticleCompetitionAndCooperation:
 
         # DIRECT call to the backend propagation function
         propagate_fn = self._get_backend_fn()
+        if self.update_mode == "synchronous":
+            from functools import partial
+            propagate_fn = partial(propagate_fn, update_mode="synchronous")
         
         propagate_fn(
             self.neib_list, self.neib_qt,

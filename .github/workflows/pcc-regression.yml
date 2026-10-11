@@ -27,4 +27,4 @@ jobs:
           include_dirs=[numpy.get_include()])], language_level='3'))"
           build_ext --inplace
       - name: Run deterministic regression tests
-        run: python -m unittest -v test_numpy_regression
+        run: python -m unittest -v test_numpy_regression test_numpy_synchronous

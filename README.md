@@ -29,6 +29,25 @@ https://github.com/fbreve/Particle-Competition-and-Cooperation
 For MATLAB, there is a MEX version available, which is comparable in speed to
 the Cython implementation on the same machine.
 
+## Experimental synchronous NumPy updates
+
+Sequential PCC remains the default for every backend. Existing calls retain
+their behavior. To opt into the experimental vectorized synchronous variant:
+
+```python
+ParticleCompetitionAndCooperation(impl="numpy", update_mode="synchronous")
+```
+
+`update_mode="sequential"` selects the existing algorithm explicitly.
+Synchronous mode requires `impl="numpy"`; `auto`, Numba and Cython are rejected
+with `ValueError`, without backend fallback. All destinations are selected
+from the initial iteration state, dominance transfers are aggregated
+simultaneously, then every particle evaluates strength and movement against
+the same final dominance. This variant may produce different classifications
+and is not always faster. It does not use multiple threads.
+
+See [the mathematical rule, tests and Wine/Digits benchmarks](docs/numpy_synchronous.md).
+
 ## Benchmarks:
 
 Machine: Intel Core i9 14900K with 128GB of RAM \
