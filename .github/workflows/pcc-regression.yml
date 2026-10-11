@@ -1,0 +1,30 @@
+name: PCC regression
+on:
+  push:
+    branches: [fix/numpy-propagation-correctness, fix/numpy-sequential-review]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  numpy-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: python -m pip install numpy scipy scikit-learn numba cython setuptools
+      # Build directly: the platform-specific setup.py fix belongs in a separate PR.
+      - name: Build Cython backend
+        run: >-
+          python -c "import numpy; from setuptools import setup, Extension;
+          from Cython.Build import cythonize;
+          setup(ext_modules=cythonize([Extension('pcc_step', ['pcc_step.pyx'],
+          include_dirs=[numpy.get_include()])], language_level='3'))"
+          build_ext --inplace
+      - name: Run deterministic regression tests
+        run: python -m unittest -v test_numpy_regression
