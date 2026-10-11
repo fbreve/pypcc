@@ -77,6 +77,35 @@ class SequentialSafetyTests(unittest.TestCase):
         call_step('numba', a, dom_row=np.empty(2), prob=np.empty(33))
         self.assertEqual(a[7][0], 33)
 
+    def test_invalid_neighbors_are_ignored_without_accessing_node_state(self):
+        invalid_nodes = (-1, -3, 3, np.iinfo(np.int64).min,
+                         np.iinfo(np.int64).max)
+        for backend in self.backends():
+            for greedy in (0., 1.):
+                for target in invalid_nodes:
+                    with self.subTest(backend=backend, greedy=greedy, target=target):
+                        a = state()
+                        a[0][0, 0] = target
+                        a[3] = greedy
+                        before = copy.deepcopy(a)
+                        call_step(backend, a)
+                        for index in (7, 9, 10, 11, 12):
+                            np.testing.assert_array_equal(a[index], before[index])
+
+    def test_greedy_walk_masks_invalid_neighbors_at_degree_33(self):
+        for backend in self.backends():
+            with self.subTest(backend=backend):
+                a = state()
+                a[0] = np.full((3, 33), -1, dtype=np.int64)
+                a[0][0, 1::2] = np.iinfo(np.int64).max
+                a[0][0, -1] = 2
+                a[1][0] = 33
+                expected = state()
+                call_step('numpy', expected)
+                call_step(backend, a)
+                for index in (7, 9, 10, 11, 12):
+                    np.testing.assert_allclose(a[index], expected[index], atol=1e-14)
+
     def test_cython_allocates_each_missing_buffer_independently(self):
         if pcc_step is None:
             self.skipTest('Cython extension unavailable')
