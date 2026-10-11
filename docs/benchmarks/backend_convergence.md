@@ -89,3 +89,72 @@ That output directory preserves both prior and committed results. The script che
 - [Warmups](backend_convergence_warmups.csv)
 - [Protocol and environment](backend_convergence.json)
 - [Previous benchmark](backend_comparison.md)
+
+## Second configuration: 30000-iteration cap
+
+The follow-up retains `es_chk=2000`, all other parameters, both datasets, all four configurations and seeds 0-4. It runs with the same native Windows `pypcc-dev` environment and backend source as the 10000-iteration benchmark. New files are isolated under `convergence_30000/`; the first run's CSV, JSON, summary and warmups are unchanged. Two warmups and cyclic execution order are retained. There are 40 additional measured runs.
+
+**Wine: all 20 runs stop early. Digits: all 20 runs hit 30000 iterations; no early stop was observed.** The earliest mathematically possible stop (11991) does not guarantee an actual stop. At the final Digits checkpoint each stalled counter remains below the required 1199 checks; the existing strict-improvement rule continues to reset it. This result does not establish convergence and no criterion was adjusted to force it. The plateau regression demonstrates that all backends can stop at iteration 11991 under the Digits threshold when the score really remains constant.
+
+Mean +/- sample SD, five seeds. Accuracy is on unlabeled nodes. Speedup is relative to NumPy sequential within this new configuration.
+
+| Dataset | Configuration | Propagation (s) | Actual iterations | Checks | Accuracy (%) | Speedup | Early / capped |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Wine | numpy_sequential | 1.172835 +/- 0.276136 | 12437.0 +/- 2839.1 | 1244.6 +/- 283.9 | 95.621 +/- 0.529 | 1.00x | 5 / 0 |
+| Wine | numba_sequential | 0.004522 +/- 0.001359 | 8239.0 +/- 2419.1 | 824.8 +/- 241.9 | 95.030 +/- 1.227 | 259.36x | 5 / 0 |
+| Wine | cython_sequential | 0.004710 +/- 0.002182 | 11435.0 +/- 5541.2 | 1144.4 +/- 554.1 | 95.148 +/- 1.138 | 249.03x | 5 / 0 |
+| Wine | numpy_synchronous_experimental | 0.974112 +/- 0.295393 | 10683.0 +/- 3158.1 | 1069.2 +/- 315.8 | 95.858 +/- 1.183 | 1.20x | 5 / 0 |
+| Digits | numpy_sequential | 9.491899 +/- 0.052575 | 30000.0 +/- 0.0 | 3000.0 +/- 0.0 | 88.795 +/- 2.909 | 1.00x | 0 / 5 |
+| Digits | numba_sequential | 0.064292 +/- 0.004207 | 30000.0 +/- 0.0 | 3000.0 +/- 0.0 | 88.761 +/- 2.032 | 147.64x | 0 / 5 |
+| Digits | cython_sequential | 0.075584 +/- 0.002426 | 30000.0 +/- 0.0 | 3000.0 +/- 0.0 | 89.327 +/- 1.737 | 125.58x | 0 / 5 |
+| Digits | numpy_synchronous_experimental | 3.104606 +/- 0.035721 | 30000.0 +/- 0.0 | 3000.0 +/- 0.0 | 89.111 +/- 2.403 | 3.06x | 0 / 5 |
+
+### Cost per iteration and changes from 10000
+
+Microseconds per actual iteration are computed per run, then averaged. Speedup per iteration is the ratio of those means. Time ratio compares new mean propagation time to the old mean; accuracy change is paired by seed, in percentage points. These are separate benchmark sessions, so timing changes also include run-to-run noise.
+
+| Dataset | Configuration | us/iteration, 10000 | us/iteration, 30000 | Per-iteration speedup, 30000 | Time ratio 30000/10000 | Paired accuracy change (pp) |
+|---|---|---:|---:|---:|---:|---:|
+| Wine | numpy_sequential | 97.265 +/- 3.107 | 94.184 +/- 0.998 | 1.00x | 1.254 | +0.118 +/- 0.265 |
+| Wine | numba_sequential | 0.556 +/- 0.013 | 0.548 +/- 0.006 | 171.76x | 1.044 | -0.118 +/- 0.265 |
+| Wine | cython_sequential | 0.439 +/- 0.064 | 0.414 +/- 0.014 | 227.61x | 1.167 | +0.000 +/- 0.000 |
+| Wine | numpy_synchronous_experimental | 93.252 +/- 0.919 | 90.982 +/- 1.078 | 1.04x | 1.129 | +0.237 +/- 0.324 |
+| Digits | numpy_sequential | 314.791 +/- 0.967 | 316.397 +/- 1.752 | 1.00x | 3.015 | +0.679 +/- 0.280 |
+| Digits | numba_sequential | 2.046 +/- 0.073 | 2.143 +/- 0.140 | 147.64x | 3.142 | +0.770 +/- 0.163 |
+| Digits | cython_sequential | 2.588 +/- 0.113 | 2.519 +/- 0.081 | 125.58x | 2.920 | +0.600 +/- 0.298 |
+| Digits | numpy_synchronous_experimental | 103.530 +/- 1.511 | 103.487 +/- 1.191 | 3.06x | 2.999 | +0.804 +/- 0.441 |
+
+Wine speedups based on total time remain confounded by different stopping iterations; the per-iteration comparison isolates work volume more clearly. Digits performs 30000 iterations for every backend and roughly triples propagation time versus the 10000 cap. More iterations do not imply uniform per-seed accuracy improvements or equivalent trajectories. NumPy synchronous remains an experimental reference.
+
+### Individual stopping outcomes at 30000
+
+Wine cells: iterations / checks / reason. Digits has 30000 / 3000 / max_iter in all 20 runs; exact final stalled counters, timing and accuracy are in the CSV.
+
+| Seed | NumPy sequential | Numba | Cython | NumPy synchronous (experimental) |
+|---|---|---|---|---|
+| 0 | 7981 / 799 / early_stop | 12221 / 1223 / early_stop | 10371 / 1038 / early_stop | 10011 / 1002 / early_stop |
+| 1 | 12831 / 1284 / early_stop | 8161 / 817 / early_stop | 9041 / 905 / early_stop | 14851 / 1486 / early_stop |
+| 2 | 15891 / 1590 / early_stop | 7981 / 799 / early_stop | 9661 / 967 / early_stop | 12271 / 1228 / early_stop |
+| 3 | 12981 / 1299 / early_stop | 7061 / 707 / early_stop | 7011 / 702 / early_stop | 9961 / 997 / early_stop |
+| 4 | 12501 / 1251 / early_stop | 5771 / 578 / early_stop | 21091 / 2110 / early_stop | 6321 / 633 / early_stop |
+
+### Compatibility verification and reproduction
+
+All 44 tests passed again on Windows with native Cython. The deterministic plateau regression now exercises the Digits threshold with both caps: 10000 iterations / 1000 checks / cap, and 11991 iterations / 1200 checks / early stop for the 30000 budget. It compares omitted `return_info`, explicit `False`, and `True`: default returns remain `None`, and final positions, strengths, uint8 distances, dominance and own-degree are exactly equal. Subsequent NumPy and Numba RNG values are exactly equal. A nonconstant-dominance case also compares explicit False/True.
+
+Cython's private RNG state is local to the call and not exposed; it cannot be directly read by tests. Its final trajectories are equal across return modes, and source inspection confirms the optional metrics are constructed only after the unchanged loop, without RNG calls. These checks provide regression evidence for the tested cases, not a proof of every possible input.
+
+All 40 new runs pass state and stopping-accounting assertions. Every run that had already stopped early under the 10000 cap reproduces its iteration count, checks, final stalled counter, accuracy and prediction hash under the 30000 cap. Input/RNG fingerprints and parameters match across the two configurations. The algorithm and criteria remain unchanged.
+
+```powershell
+& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python docs/benchmark_backend_convergence.py --iterations 30000 --output-dir docs/benchmarks/convergence_30000_reproduction
+& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics
+```
+
+- [30000 individual runs](convergence_30000/backend_convergence.csv)
+- [30000 summary](convergence_30000/backend_convergence_summary.csv)
+- [Paired comparison with 10000](convergence_30000/comparison_to_10000.csv)
+- [30000 warmups](convergence_30000/backend_convergence_warmups.csv)
+- [30000 protocol and environment](convergence_30000/backend_convergence.json)
+
+Observing an actual early stop on Digits would require an additional authorized experiment, such as increasing the budget further. This follow-up does not change the requested limits or criteria and does not claim that any unexecuted budget will suffice.

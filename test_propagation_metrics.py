@@ -32,7 +32,9 @@ class PropagationMetricsTests(unittest.TestCase):
                  (0, True, 1, 0, 0, 'max_iter'),
                  (1, True, 1, 1, 1, 'max_iter'),
                  (21, True, 1, 21, 3, 'early_stop'),
-                 (100, True, 2, 31, 4, 'early_stop')]
+                 (100, True, 2, 31, 4, 'early_stop'),
+                 (10000, True, 1198, 10000, 1000, 'max_iter'),
+                 (30000, True, 1198, 11991, 1200, 'early_stop')]
         for backend, fn in self.backends().items():
             for cap, early, threshold, expected, checks, reason in cases:
                 with self.subTest(backend=backend, cap=cap, early=early, threshold=threshold):
@@ -42,12 +44,12 @@ class PropagationMetricsTests(unittest.TestCase):
                     initial[11][0] = [1., 0.]
                     initial[3] = 0.
                     states, rng_outputs = [], []
-                    for info in (False, True):
+                    for info in (None, False, True):
                         args = copy.deepcopy(initial)
                         np.random.seed(42)
                         seed_only(42)
                         returned = fn(*args, *buffers(args), cap, early, 2000, threshold,
-                                      **({'return_info': True} if info else {}))
+                                      **({} if info is None else {'return_info': info}))
                         states.append(args)
                         rng_outputs.append((np.random.random(), next_random()))
                         self.assertEqual(args[12][0, 0], expected)
@@ -61,8 +63,10 @@ class PropagationMetricsTests(unittest.TestCase):
                         else:
                             self.assertIsNone(returned)
                     for index in (7, 9, 10, 11, 12):
-                        np.testing.assert_array_equal(states[0][index], states[1][index])
-                    self.assertEqual(rng_outputs[0], rng_outputs[1])
+                        for observed in states[1:]:
+                            np.testing.assert_array_equal(states[0][index], observed[index])
+                    for observed in rng_outputs[1:]:
+                        self.assertEqual(rng_outputs[0], observed)
 
     def test_metrics_preserve_nonconstant_dominance_and_rng(self):
         for backend, fn in self.backends().items():
