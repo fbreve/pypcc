@@ -1,0 +1,930 @@
+{
+  "source_commit": "e9309bf8c302e6c915c27905c61a187a2791dd95",
+  "source_protocol": {
+    "stage": "fixed before new evaluation; do not retune from results",
+    "datasets": [
+      "Wine",
+      "Digits",
+      "Iris",
+      "BreastCancer"
+    ],
+    "seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "repetitions_per_seed": 3,
+    "backend": "Numba sequential",
+    "max_iter": 30000,
+    "early_stop": true,
+    "es_chk": 2000,
+    "k_nn": 10,
+    "labels_per_class": 3,
+    "p_grd": 0.5,
+    "delta_v": 0.1,
+    "deltap": 1.0,
+    "dexp": 2.0,
+    "threshold": 0.0005,
+    "window_iterations": 500,
+    "patience_windows": 3,
+    "first_allowed_alternative_iteration": 5001,
+    "window_phase": "1..501, 501..1001, inclusive original checks and shared endpoints",
+    "preparation": "StandardScaler full transductive matrix; one shared graph/dataset; three random labels/class per seed",
+    "timing": "warm both functions, alternate execution order per dataset/seed/repeat; include observer/validation overhead; exclude JIT, seeding, state copy and verification",
+    "accuracy_reference": "original criterion with the same 30000 cap; original may stop before cap",
+    "statistics": "one mean across three repetitions per seed; sample SD across ten paired seeds"
+  },
+  "diagnostic_protocol": {
+    "trajectories_per_seed": 1,
+    "max_iter": 30000,
+    "propagation_early_stop": false,
+    "original_stop_shadow": true,
+    "alternative_criterion_used": false,
+    "parameters": {
+      "datasets": [
+        "Wine",
+        "Digits",
+        "Iris",
+        "BreastCancer"
+      ],
+      "seeds": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "k_nn": 10,
+      "labels_per_class": 3,
+      "p_grd": 0.5,
+      "delta_v": 0.1,
+      "deltap": 1.0,
+      "dexp": 2.0,
+      "es_chk": 2000
+    }
+  },
+  "seed_status": "previously examined in PR #6, not independent validation",
+  "descriptive_low_gap": 0.05,
+  "late_window_start": 20001,
+  "rich_sampling": "500 steps; 10 steps within +/-500 of PR6 stop and from 25001 onward",
+  "script_sha256_at_measurement": "17b6f248c8d68f5efae69ef81f3d977053a3b89a948ff5a0e8fe73d3dea6df74",
+  "environment": {
+    "python": "3.12.15",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel(R) Core(TM) i7-14700K",
+    "conda_prefix": "C:\\Users\\fbrev\\miniforge3\\envs\\pypcc-dev",
+    "versions": {
+      "numpy": "2.4.6",
+      "numba": "0.68.0",
+      "Cython": "3.2.4",
+      "scipy": "1.18.1",
+      "sklearn": "1.9.1",
+      "matplotlib": "3.11.2"
+    },
+    "cython_path": "C:\\Users\\fbrev\\Documents\\Acad\u00eamico\\Simula\u00e7\u00f5es\\Python\\pypcc\\pcc_step.cp312-win_amd64.pyd",
+    "cython_binary_sha256": "5d3df5c5b88a761184aaed4d98bb8e3ecc3db3dfdeabffa57c43dfa4e9bf165b",
+    "rng_observation": "Numba private _helperlib.rnd_get_state; read-only, current thread"
+  },
+  "datasets": {
+    "Wine": {
+      "nodes": 178,
+      "classes": 3,
+      "graph_components": 1,
+      "degree_min": 10,
+      "degree_mean": 13.831460674157304,
+      "degree_max": 31,
+      "data_sha256": "998b62c6a8483248096949f389f8a62eb8977b48d1389611a27843ded03edda3",
+      "graph_sha256": "3eb9486c59458693cec1ae88cf43ef64384ce1aff9e915b6e779ba725eaf93b6",
+      "splits": [
+        {
+          "seed": 10,
+          "known_indices": [
+            15,
+            55,
+            44,
+            116,
+            95,
+            69,
+            136,
+            137,
+            149
+          ],
+          "labels_sha256": "bc58978bd762b0b73d55df8ed6cae4a92e75f29bfc8a6fb6ba41ca85533aae7b"
+        },
+        {
+          "seed": 11,
+          "known_indices": [
+            7,
+            47,
+            57,
+            61,
+            100,
+            108,
+            156,
+            173,
+            148
+          ],
+          "labels_sha256": "950137aa95e1af60adafa11bf180642a44684383c389e6a77bb5d57b539daada"
+        },
+        {
+          "seed": 12,
+          "known_indices": [
+            14,
+            34,
+            57,
+            71,
+            72,
+            128,
+            152,
+            140,
+            175
+          ],
+          "labels_sha256": "623de226741d8dbdbfa930107c3de9fb54a5e08b4eccf07502ea7afc7dd4bf56"
+        },
+        {
+          "seed": 13,
+          "known_indices": [
+            50,
+            51,
+            48,
+            124,
+            77,
+            114,
+            166,
+            158,
+            174
+          ],
+          "labels_sha256": "f4ff8a57b903873c89d45e137ca55f6971d4f23138680b07a05ca2cf6fcc92a7"
+        },
+        {
+          "seed": 14,
+          "known_indices": [
+            38,
+            8,
+            48,
+            107,
+            120,
+            83,
+            155,
+            138,
+            133
+          ],
+          "labels_sha256": "e4878203427406a9d69c9f8cddb8b427ddd8c6001e59dd932916083665a6baca"
+        },
+        {
+          "seed": 15,
+          "known_indices": [
+            40,
+            53,
+            41,
+            82,
+            62,
+            73,
+            136,
+            174,
+            177
+          ],
+          "labels_sha256": "facf37d0b90092bb30cc4fa5f4918ba3679fe09f009f173d87d966c6ce40cdfd"
+        },
+        {
+          "seed": 16,
+          "known_indices": [
+            30,
+            48,
+            32,
+            83,
+            96,
+            65,
+            131,
+            151,
+            144
+          ],
+          "labels_sha256": "e15494941f61cdcda9d64fae8cb71f6cce15d283b2f896f6f38bc84579ae4028"
+        },
+        {
+          "seed": 17,
+          "known_indices": [
+            49,
+            6,
+            42,
+            112,
+            85,
+            97,
+            150,
+            173,
+            148
+          ],
+          "labels_sha256": "9b37a382d4f14e813c58a4bf47f86403e09f070da6110cb5affddce9f2f700fb"
+        },
+        {
+          "seed": 18,
+          "known_indices": [
+            50,
+            23,
+            12,
+            78,
+            84,
+            64,
+            161,
+            157,
+            156
+          ],
+          "labels_sha256": "2052ea0f43102b4d94444ef9ece879c118c4eadc3c42175c51ba64db5f0e7fb3"
+        },
+        {
+          "seed": 19,
+          "known_indices": [
+            24,
+            33,
+            21,
+            63,
+            77,
+            120,
+            163,
+            131,
+            177
+          ],
+          "labels_sha256": "12422acfd866c24bfd8e712a0f824cc1e82e9ff0e8b7fe6eba4233f1405402ac"
+        }
+      ]
+    },
+    "Digits": {
+      "nodes": 1797,
+      "classes": 10,
+      "graph_components": 1,
+      "degree_min": 10,
+      "degree_mean": 14.043405676126879,
+      "degree_max": 35,
+      "data_sha256": "58fb45789e70d9d32ca93857a429ab909c3c13f3b45cb825adb08ef3f598fb5b",
+      "graph_sha256": "60e61614c8f8f6c97c17c5bf64f76b65d57451b5b4980d4da29b044f97d4a68d",
+      "splits": [
+        {
+          "seed": 10,
+          "known_indices": [
+            441,
+            1703,
+            1365,
+            1485,
+            926,
+            267,
+            241,
+            258,
+            721,
+            1498,
+            744,
+            13,
+            450,
+            134,
+            1502,
+            1021,
+            1672,
+            1358,
+            1510,
+            1673,
+            234,
+            1330,
+            240,
+            560,
+            1401,
+            404,
+            890,
+            1740,
+            203,
+            547
+          ],
+          "labels_sha256": "911eace2d2c46ed5f717591a2bd8aba576ee2722e88a4bd0f6bbc927d3ae2925"
+        },
+        {
+          "seed": 11,
+          "known_indices": [
+            209,
+            1425,
+            208,
+            56,
+            1076,
+            1256,
+            959,
+            1655,
+            700,
+            219,
+            1349,
+            1712,
+            270,
+            1549,
+            670,
+            1784,
+            1182,
+            503,
+            1393,
+            620,
+            452,
+            912,
+            1684,
+            1467,
+            1781,
+            249,
+            1763,
+            1484,
+            993,
+            895
+          ],
+          "labels_sha256": "e0b249c941092b3cf87168eff7500114adf463ea05d83477ab79a2403b145413"
+        },
+        {
+          "seed": 12,
+          "known_indices": [
+            434,
+            1078,
+            1739,
+            326,
+            341,
+            349,
+            833,
+            398,
+            1718,
+            1606,
+            301,
+            193,
+            876,
+            1408,
+            4,
+            457,
+            176,
+            1292,
+            542,
+            1503,
+            834,
+            472,
+            1653,
+            393,
+            1175,
+            1197,
+            1796,
+            1740,
+            1580,
+            1658
+          ],
+          "labels_sha256": "219190541a95bbb4ba6941533aab161405d4dce86c72c0cd94414f2778b067d6"
+        },
+        {
+          "seed": 13,
+          "known_indices": [
+            1545,
+            1579,
+            1463,
+            1678,
+            471,
+            1436,
+            1403,
+            1081,
+            1689,
+            1630,
+            1498,
+            3,
+            1526,
+            520,
+            886,
+            145,
+            791,
+            1182,
+            1224,
+            1601,
+            734,
+            1459,
+            211,
+            1627,
+            426,
+            554,
+            509,
+            1740,
+            971,
+            683
+          ],
+          "labels_sha256": "b64b930527996e00a073477f4159928f46bbfa09fe8f0ceffebb5b7fe55f6ebd"
+        },
+        {
+          "seed": 14,
+          "known_indices": [
+            1177,
+            256,
+            1470,
+            1247,
+            1546,
+            615,
+            959,
+            310,
+            116,
+            1255,
+            1350,
+            838,
+            1355,
+            1651,
+            1539,
+            1302,
+            1147,
+            1319,
+            314,
+            921,
+            1482,
+            1533,
+            1164,
+            1748,
+            978,
+            814,
+            482,
+            993,
+            771,
+            375
+          ],
+          "labels_sha256": "5d8b0be5da432b0530179b20bfe9a19aca293a7f22016f4c8f34610b950e2a95"
+        },
+        {
+          "seed": 15,
+          "known_indices": [
+            1229,
+            1642,
+            1258,
+            606,
+            85,
+            349,
+            244,
+            1721,
+            1751,
+            835,
+            1240,
+            605,
+            1408,
+            390,
+            194,
+            937,
+            976,
+            1692,
+            598,
+            1647,
+            1608,
+            429,
+            954,
+            403,
+            592,
+            1666,
+            404,
+            845,
+            1740,
+            1058
+          ],
+          "labels_sha256": "3545d4a49e3375da62f404046a948cc1271059c3f42044811c0369ae34f1974f"
+        },
+        {
+          "seed": 16,
+          "known_indices": [
+            941,
+            1464,
+            1025,
+            615,
+            952,
+            172,
+            50,
+            826,
+            518,
+            83,
+            1602,
+            1506,
+            100,
+            356,
+            1456,
+            1231,
+            391,
+            271,
+            598,
+            792,
+            1755,
+            1595,
+            299,
+            707,
+            1796,
+            1707,
+            8,
+            738,
+            1006,
+            751
+          ],
+          "labels_sha256": "3a5c4a5ba155ad5739a466d83ef46e38ff83625d2c5b1e38963322a4987346fa"
+        },
+        {
+          "seed": 17,
+          "known_indices": [
+            1493,
+            179,
+            1317,
+            1367,
+            657,
+            991,
+            788,
+            1654,
+            668,
+            175,
+            1332,
+            1087,
+            670,
+            1043,
+            483,
+            155,
+            1259,
+            1787,
+            741,
+            1173,
+            66,
+            870,
+            1079,
+            17,
+            1028,
+            829,
+            284,
+            1020,
+            265,
+            813
+          ],
+          "labels_sha256": "8025c79782d72fce37b3fe0b570042de693ea0cb3dbc11d8e3a5fac8dd1e9cb2"
+        },
+        {
+          "seed": 18,
+          "known_indices": [
+            1579,
+            694,
+            357,
+            485,
+            657,
+            151,
+            1232,
+            1014,
+            986,
+            839,
+            1004,
+            1385,
+            1439,
+            584,
+            1221,
+            1614,
+            1231,
+            1578,
+            58,
+            864,
+            1109,
+            1121,
+            1368,
+            1201,
+            997,
+            1197,
+            242,
+            19,
+            1543,
+            1412
+          ],
+          "labels_sha256": "a7ed992a4ebe85e24617ada3fd0c4f8c16584746ad5d1f712d5f8ac10434663e"
+        },
+        {
+          "seed": 19,
+          "known_indices": [
+            724,
+            1049,
+            617,
+            93,
+            479,
+            1564,
+            1273,
+            54,
+            1783,
+            962,
+            575,
+            1506,
+            366,
+            1244,
+            1661,
+            720,
+            636,
+            1098,
+            1191,
+            1503,
+            1109,
+            793,
+            1164,
+            1079,
+            1315,
+            114,
+            424,
+            1356,
+            815,
+            295
+          ],
+          "labels_sha256": "6b3947fc859faa441817598b1a925899b7770004d81228a81e0e18e05591312e"
+        }
+      ]
+    },
+    "Iris": {
+      "nodes": 150,
+      "classes": 3,
+      "graph_components": 1,
+      "degree_min": 10,
+      "degree_mean": 13.066666666666666,
+      "degree_max": 22,
+      "data_sha256": "19e8767fa5439fc52f79104482d4983028fdaf41ea95556460421942d6e60cfe",
+      "graph_sha256": "a070a24e357caa7cbd853d3b0cca8626b1a85997af1c21629efcf2f66d70153a",
+      "splits": [
+        {
+          "seed": 10,
+          "known_indices": [
+            13,
+            46,
+            37,
+            89,
+            75,
+            57,
+            106,
+            107,
+            120
+          ],
+          "labels_sha256": "5bdf70e8c82edd9b7a5883321b3fa4d215e64791ddc4a388340a0d6659862a55"
+        },
+        {
+          "seed": 11,
+          "known_indices": [
+            6,
+            39,
+            48,
+            51,
+            78,
+            84,
+            127,
+            145,
+            119
+          ],
+          "labels_sha256": "898c8c930fd41e09634cd47a23364ea374bc594cfd02e95ec0834de1a021b67e"
+        },
+        {
+          "seed": 12,
+          "known_indices": [
+            12,
+            29,
+            48,
+            58,
+            59,
+            98,
+            123,
+            111,
+            147
+          ],
+          "labels_sha256": "711c6dd1b79d32b2c34dd867c4ae0fc950dfa5447495495b27b83fde0bd5c6cf"
+        },
+        {
+          "seed": 13,
+          "known_indices": [
+            42,
+            43,
+            40,
+            96,
+            63,
+            88,
+            138,
+            130,
+            146
+          ],
+          "labels_sha256": "2d12931d825cce0adf855e221e816f508d8771c76f6c100faf5a9c6731c8b93e"
+        },
+        {
+          "seed": 14,
+          "known_indices": [
+            32,
+            7,
+            40,
+            83,
+            93,
+            67,
+            126,
+            108,
+            103
+          ],
+          "labels_sha256": "fbc971efe2a2b83d4202d63edbc220d757da9536e461c982a709d7d41d721e22"
+        },
+        {
+          "seed": 15,
+          "known_indices": [
+            33,
+            44,
+            35,
+            66,
+            52,
+            59,
+            107,
+            146,
+            149
+          ],
+          "labels_sha256": "5a83bd3cb822438478ecd148c1017e0a5e8660f119ea6a10c717a89f1a0d2e35"
+        },
+        {
+          "seed": 16,
+          "known_indices": [
+            25,
+            41,
+            27,
+            67,
+            75,
+            54,
+            101,
+            122,
+            114
+          ],
+          "labels_sha256": "681ae7db6a00b46bf87db4ac8d1f3f925d239063f9ae2373fd7266b1f4f13a39"
+        },
+        {
+          "seed": 17,
+          "known_indices": [
+            41,
+            5,
+            35,
+            87,
+            68,
+            76,
+            121,
+            145,
+            118
+          ],
+          "labels_sha256": "8a7cfc9a04dd9e2f9fbb163bfc525960b057da91f7d90ebcdaccd098e226062c"
+        },
+        {
+          "seed": 18,
+          "known_indices": [
+            42,
+            19,
+            10,
+            63,
+            67,
+            54,
+            133,
+            128,
+            127
+          ],
+          "labels_sha256": "d6dec3045ef84b3adba585565c34f36d79a4f1345423deac0f4f426aa983ad28"
+        },
+        {
+          "seed": 19,
+          "known_indices": [
+            20,
+            28,
+            17,
+            53,
+            63,
+            92,
+            135,
+            101,
+            149
+          ],
+          "labels_sha256": "2bc5699f8eaa2c4b33c4cddaa103a19f054f45f8f1eaed112044dfebabd43fa3"
+        }
+      ]
+    },
+    "BreastCancer": {
+      "nodes": 569,
+      "classes": 2,
+      "graph_components": 1,
+      "degree_min": 10,
+      "degree_mean": 15.033391915641475,
+      "degree_max": 36,
+      "data_sha256": "146aa189af431f7ac9329c3c27c3d6cdafb8b55ad31d8c0e77fe0f307fc75b98",
+      "graph_sha256": "690619af9a683a70683ae06292f911c7afa761cb5d72b9365304bf2c4844d1f2",
+      "splits": [
+        {
+          "seed": 10,
+          "known_indices": [
+            78,
+            517,
+            368,
+            484,
+            340,
+            128
+          ],
+          "labels_sha256": "ee2930252f42204712912b9b612abfbc79beb5834b72f6e12655bdbb3075ae31"
+        },
+        {
+          "seed": 11,
+          "known_indices": [
+            31,
+            379,
+            30,
+            55,
+            382,
+            431
+          ],
+          "labels_sha256": "f98ab6932589811126f0d5ad7ebdd774fa2f009bbcc2d4f6226c26cbc60a36ce"
+        },
+        {
+          "seed": 12,
+          "known_indices": [
+            73,
+            255,
+            562,
+            147,
+            150,
+            154
+          ],
+          "labels_sha256": "e514e07acd3507acbf4dab005a04817bdc3751b894b771a4b6fc51ac550b05fd"
+        },
+        {
+          "seed": 13,
+          "known_indices": [
+            444,
+            468,
+            400,
+            541,
+            191,
+            476
+          ],
+          "labels_sha256": "a87546deb650b6eff32b52d15b91d02ae43fdc5beeb6a98638f3391c4bd9c43c"
+        },
+        {
+          "seed": 14,
+          "known_indices": [
+            265,
+            34,
+            414,
+            426,
+            504,
+            247
+          ],
+          "labels_sha256": "35072fa6aba5825f2f2fe8c4d78ef2bb025155b56edeffac453a3f7f05e11a5d"
+        },
+        {
+          "seed": 15,
+          "known_indices": [
+            300,
+            501,
+            321,
+            246,
+            66,
+            155
+          ],
+          "labels_sha256": "1a7cb473fdbeff04eaa10eba308757612247bd1d7242317099549416b3ff4ba1"
+        },
+        {
+          "seed": 16,
+          "known_indices": [
+            215,
+            408,
+            233,
+            248,
+            346,
+            97
+          ],
+          "labels_sha256": "f4770f3504852f6f7c235764c9a0350313cc0cbc5fba66a4f03f53b28a42669f"
+        },
+        {
+          "seed": 17,
+          "known_indices": [
+            432,
+            25,
+            337,
+            457,
+            270,
+            358
+          ],
+          "labels_sha256": "f0761e6ce9f16013d9b0c2b04a0c86860c842fccb9ecf9d60629ae0dbabfa79c"
+        },
+        {
+          "seed": 18,
+          "known_indices": [
+            461,
+            161,
+            56,
+            208,
+            269,
+            90
+          ],
+          "labels_sha256": "da449f7bdac339b35014b4a4d833cb47f4745aa0f7a4c0189095e5e3f487a4d4"
+        },
+        {
+          "seed": 19,
+          "known_indices": [
+            168,
+            244,
+            129,
+            74,
+            204,
+            510
+          ],
+          "labels_sha256": "3cae29d689fc604436389753f41be2557aec4046433c41cb2ed65c9d6867b4c0"
+        }
+      ]
+    }
+  }
+}
