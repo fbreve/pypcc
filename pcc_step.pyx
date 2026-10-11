@@ -2,6 +2,7 @@
 import numpy as np
 cimport numpy as np
 cimport cython
+from pcc_metrics import propagation_info
 from pcc_validation import validate_step_inputs, validate_buffers, validate_vector
 from libc.stdlib cimport malloc, free
 
@@ -60,9 +61,10 @@ cpdef pcc_propagate(
     int              max_iter,
     int              early_stop,
     int              es_chk,
-    int              stop_max
+    int              stop_max,
+    bint             return_info = False
 ):
-    cdef Py_ssize_t it, i, n_nodes = neib_list.shape[0]
+    cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
@@ -89,6 +91,9 @@ cpdef pcc_propagate(
                     stop_cnt += 1
                     if stop_cnt > stop_max:
                         break
+
+    if return_info:
+        return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
