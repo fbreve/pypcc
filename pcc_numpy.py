@@ -7,6 +7,7 @@ Created on Fri Jan 16 15:01:28 2026
 
 # pcc_numpy.py
 import numpy as np
+from pcc_metrics import propagation_info
 
 
 def pcc_step_numpy(neib_list, neib_qt,
@@ -184,10 +185,12 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dominance, owndeg, deltap, dexp,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
-                        max_iter, early_stop, es_chk, stop_max, update_mode="sequential"):
+                        max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
+                        return_info=False):
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
+    it = -1
     max_mmpot = 0.0
     stop_cnt = 0
     
@@ -208,3 +211,6 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                 stop_cnt += 1
                 if stop_cnt > stop_max:
                     break
+
+    if return_info:
+        return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)

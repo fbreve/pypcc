@@ -1,0 +1,67 @@
+{
+  "source_commit": "7ecf895e9d9cd346235139d7b00c82baebf435cf",
+  "numpy": "2.4.6",
+  "numba": "0.68.0",
+  "python": "3.12.15",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "minimum_iteration": 5001,
+  "window_iterations": 500,
+  "patience_windows": 3,
+  "candidates": [
+    [
+      "labels_exact",
+      0.0,
+      null
+    ],
+    [
+      "labels_0.1pct",
+      0.001,
+      null
+    ],
+    [
+      "labels_0.5pct",
+      0.005,
+      null
+    ],
+    [
+      "metric_1e-3",
+      null,
+      0.001
+    ],
+    [
+      "metric_5e-4",
+      null,
+      0.0005
+    ],
+    [
+      "hybrid_0.1pct_1e-3",
+      0.001,
+      0.001
+    ],
+    [
+      "hybrid_exact_1e-3",
+      0.0,
+      0.001
+    ],
+    [
+      "original_or_metric_5e-4",
+      null,
+      0.0005
+    ],
+    [
+      "original_or_hybrid_0.1pct_1e-3",
+      0.001,
+      0.001
+    ]
+  ],
+  "wine": "new continuous 30000 reference, early_stop=False; original stop observed separately",
+  "digits": "previous registered continuous trajectory; no new Digits execution",
+  "digits_inputs_sha256": {
+    "checks": "51294db4e7a1276caf4546027bae2641e413b566e7b48a85c1d03e70428adb5a",
+    "snapshots": "d8ba57f4d90c95c8ee86bdecbb0daf591d7db131b71708d9883eb6b93a80ce06"
+  },
+  "wine_inputs_sha256": {
+    "wine_checks": "712446db039d04fabcefb2373095df07789a06150b8721c27c278ef97e748fb6",
+    "wine_snapshots": "b71b4bb101df485e5df36b4c771141516ba87e5d612cd8415a5ae8135b8a1fa3"
+  }
+}
