@@ -1,25 +1,9 @@
 name: PCC regression
 on:
   push:
-    branches: [fix/numpy-propagation-correctness]
+    branches: [fix/numpy-propagation-correctness, fix/numpy-sequential-review]
   pull_request:
   workflow_dispatch:
-    inputs:
-      extended_seeds:
-        description: 'Number of seeds for the optional extended backend comparison (0 disables it)'
-        required: false
-        default: '30'
-        type: string
-      diagnose_seeds:
-        description: 'Comma-separated Digits seeds to diagnose (empty disables)'
-        required: false
-        default: ''
-        type: string
-      diagnose_iterations:
-        description: 'Maximum iterations per diagnostic seed'
-        required: false
-        default: '1000'
-        type: string
 
 jobs:
   numpy-regression:
@@ -32,53 +16,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies and compiled backends
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install numpy scipy scikit-learn numba cython
-          python -m pip install --no-build-isolation -e .
-      - name: Compile changed modules
-        run: python -m py_compile pcc_numpy.py pcc.py test_numpy_regression.py
-      - name: Run regression tests
+      - name: Install test dependencies
+        run: python -m pip install numpy scipy scikit-learn numba cython setuptools
+      # Build directly: the platform-specific setup.py fix belongs in a separate PR.
+      - name: Build Cython backend
+        run: >-
+          python -c "import numpy; from setuptools import setup, Extension;
+          from Cython.Build import cythonize;
+          setup(ext_modules=cythonize([Extension('pcc_step', ['pcc_step.pyx'],
+          include_dirs=[numpy.get_include()])], language_level='3'))"
+          build_ext --inplace
+      - name: Run deterministic regression tests
         run: python -m unittest -v test_numpy_regression
-      - name: Run NumPy microbenchmarks
-        run: python benchmark_numpy_modes.py
-      - name: Compare Wine classification modes
-        run: python benchmark_wine_modes.py
-      - name: Compare Digits classification modes
-        run: python benchmark_digits_modes.py
-      - name: Compare compiled and NumPy backends
-        run: python benchmark_backends.py
-
-      - name: Extended paired backend comparison
-        if: github.event_name == 'workflow_dispatch' && inputs.extended_seeds != '0' && matrix.python-version == '3.12'
-        run: python benchmark_backends.py --seeds "${{ inputs.extended_seeds }}" --iterations 1000
-
-      - name: Diagnose Digits seeds (manual)
-        if: github.event_name == 'workflow_dispatch' && inputs.diagnose_seeds != '' && matrix.python-version == '3.12'
-        env:
-          DIAGNOSE_SEEDS: ${{ inputs.diagnose_seeds }}
-          DIAGNOSE_ITERATIONS: ${{ inputs.diagnose_iterations }}
-        run: |
-          set -euo pipefail
-          if [[ ! "$DIAGNOSE_SEEDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
-            echo "diagnose_seeds must be comma-separated nonnegative integers" >&2
-            exit 1
-          fi
-          if [[ ! "$DIAGNOSE_ITERATIONS" =~ ^[1-9][0-9]*$ ]]; then
-            echo "diagnose_iterations must be a positive integer" >&2
-            exit 1
-          fi
-          mkdir -p diagnostic-results
-          IFS=',' read -ra SEEDS <<< "$DIAGNOSE_SEEDS"
-          for seed in "${SEEDS[@]}"; do
-            python benchmark_backends.py --diagnose-digits "$seed" --iterations "$DIAGNOSE_ITERATIONS" | tee "diagnostic-results/digits-seed-${seed}.log"
-          done
-
-      - name: Upload Digits diagnostic logs
-        if: always() && github.event_name == 'workflow_dispatch' && inputs.diagnose_seeds != '' && matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
-        with:
-          name: digits-divergence-diagnostics
-          path: diagnostic-results/
-          if-no-files-found: warn

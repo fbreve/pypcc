@@ -29,26 +29,6 @@ https://github.com/fbreve/Particle-Competition-and-Cooperation
 For MATLAB, there is a MEX version available, which is comparable in speed to
 the Cython implementation on the same machine.
 
-## NumPy update modes (experimental)
-
-The NumPy backend supports `update_mode="parallel"` (synchronous, vectorized
-updates) and `update_mode="sequential"` (particles processed one by one).
-The word *parallel* describes simultaneous update semantics, **not**
-multithreaded execution.
-
-```python
-ParticleCompetitionAndCooperation(impl="numpy", update_mode="parallel")
-ParticleCompetitionAndCooperation(impl="numpy", update_mode="sequential")
-```
-
-Cython and Numba currently implement sequential updates only. With
-`impl="auto"`, a compiled backend may be selected instead of NumPy, so
-choose `impl="numpy"` explicitly when comparing update modes. Synchronous
-updates are experimental: their classification accuracy and convergence
-characteristics have not yet been established as equivalent to sequential
-updates. The standalone `benchmark_numpy_modes.py` script compares
-per-iteration NumPy performance; it does not measure classification accuracy.
-
 ## Benchmarks:
 
 Machine: Intel Core i9 14900K with 128GB of RAM \

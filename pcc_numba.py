@@ -15,7 +15,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
                                dom_row, reduc, dom_list, dist_list, prob, slices,
-                               dist_weights, trace, trace_values):
+                               dist_weights):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
 
@@ -75,10 +75,6 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             next_node = neighbors[idx]
             greedy = False
 
-        if trace.shape[0] > p_i:
-            trace[p_i, 0] = next_node
-            trace[p_i, 1] = int(greedy)
-
         # update dominance / força / dist_table / posição
         if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
             if labels[next_node] == -1:
@@ -118,13 +114,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                 if dominance[next_node, i] > max_dom:
                     max_dom = dominance[next_node, i]
 
-            if trace_values.shape[0] > p_i:
-                trace_values[p_i, 0] = dominance[next_node, label]
-                trace_values[p_i, 1] = max_dom
-            accepted = dominance[next_node, label] == max_dom
-            if trace.shape[0] > p_i:
-                trace[p_i, 2] = int(accepted)
-            if accepted:
+            if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
 
 @njit
@@ -160,8 +150,7 @@ def pcc_propagate_numba(neib_list, neib_qt,
                                    part_curnode, part_label, part_strength, dist_table,
                                    dominance, owndeg, deltap, dexp,
                                    dom_row, reduc, dom_list, dist_list, prob, slices,
-                                   dist_weights, np.empty((0, 3), dtype=np.int64),
-                                   np.empty((0, 2), dtype=np.float64))
+                                   dist_weights)
         
         if early_stop and it % 10 == 0:
             mmpot = _pcc_calc_mmpot_sequential(dominance, n_nodes, c)
@@ -178,7 +167,7 @@ def pcc_step_numba(neib_list, neib_qt,
                    part_curnode, part_label, part_strength, dist_table,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
-                   dist_weights=None, trace=None, trace_values=None):
+                   dist_weights=None):
     # Backward compatibility wrapper for single step
     if dom_row is None:
         dom_row = np.empty(c, dtype=np.float64)
@@ -192,13 +181,9 @@ def pcc_step_numba(neib_list, neib_qt,
     if dist_weights is None:
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
         
-    if trace is None:
-        trace = np.empty((0, 3), dtype=np.int64)
-    if trace_values is None:
-        trace_values = np.empty((0, 2), dtype=np.float64)
     return _pcc_step_numba_sequential(neib_list, neib_qt,
                                        labels, p_grd, delta_v, c, zerovec,
                                        part_curnode, part_label, part_strength, dist_table,
                                        dominance, owndeg, deltap, dexp,
                                        dom_row, reduc, dom_list, dist_list, prob, slices,
-                                       dist_weights, trace, trace_values)
+                                       dist_weights)

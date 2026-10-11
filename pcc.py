@@ -54,7 +54,7 @@ import numpy as np
 import warnings
 
 from dataclasses import dataclass
-from pcc_numpy import pcc_step_numpy, pcc_propagate_numpy
+from pcc_numpy import pcc_step_numpy
 from pcc_graph import build_knn_graph
 
 try:
@@ -91,13 +91,10 @@ class Nodes:
 
 class ParticleCompetitionAndCooperation:
 
-    def __init__(self, impl="auto", n_jobs=None, update_mode="parallel"):
+    def __init__(self, impl="auto", n_jobs=None):
         """
         impl: 'auto', 'cython', 'numba' ou 'numpy'
         """
-        if update_mode not in ("parallel", "sequential"):
-            raise ValueError("update_mode must be parallel or sequential")
-        self.update_mode = update_mode
         self.impl = impl
         self.n_jobs = n_jobs
         self.data = None
@@ -252,17 +249,7 @@ class ParticleCompetitionAndCooperation:
 
         # DIRECT call to the backend propagation function
         propagate_fn = self._get_backend_fn()
-        if propagate_fn is pcc_propagate_numpy:
-            from functools import partial
-            propagate_fn = partial(propagate_fn, update_mode=self.update_mode)
-        elif self.update_mode == 'parallel':
-            warnings.warn(
-                "update_mode='parallel' is only implemented for NumPy; "
-                "the selected compiled backend uses sequential updates.",
-                UserWarning,
-                stacklevel=2,
-            )
-
+        
         propagate_fn(
             self.neib_list, self.neib_qt,
             self.mapped_labels, self.p_grd, self.delta_v, self.c, self.zerovec,
