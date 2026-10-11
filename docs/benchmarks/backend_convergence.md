@@ -158,3 +158,7 @@ All 40 new runs pass state and stopping-accounting assertions. Every run that ha
 - [30000 protocol and environment](convergence_30000/backend_convergence.json)
 
 Observing an actual early stop on Digits would require an additional authorized experiment, such as increasing the budget further. This follow-up does not change the requested limits or criteria and does not claim that any unexecuted budget will suffice.
+
+## Digits stopping diagnostic
+
+The optional continuous Numba diagnostic confirms that the score continues setting records while sampled classifications are nearly stable: at most three changed labels per late checkpoint, but 88-241 late record resets per seed. No production kernels changed. States and the next RNG value match monolithic calls for all five seeds. See the [diagnostic report, trajectories and CSVs](digits_stopping_diagnostic/report.md) for magnitudes, stall counters, reset frequencies, overhead and sampling limitations.

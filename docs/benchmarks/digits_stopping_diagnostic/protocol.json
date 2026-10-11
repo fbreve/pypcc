@@ -1,0 +1,36 @@
+{
+  "source_commit": "57ffe2cc08d1a45d1a17225c77c9830a587f7f87",
+  "protocol": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "repetitions": 5,
+    "max_iter": 30000,
+    "k_nn": 10,
+    "labels_per_class": 3,
+    "p_grd": 0.5,
+    "delta_v": 0.1,
+    "deltap": 1.0,
+    "dexp": 2.0,
+    "early_stop": true,
+    "es_chk": 2000,
+    "standardization": "StandardScaler on full transductive feature matrix",
+    "split": "three known nodes per class; all remaining nodes evaluated",
+    "order": "cyclic rotation of four configurations by dataset index + repetition",
+    "std": "sample standard deviation, ddof=1",
+    "cython_rng": "backend resets xorshift32 to 123456789 on each propagation call",
+    "synchronous": "experimental variant, not sequentially equivalent"
+  },
+  "snapshot_spacing": 500,
+  "numpy": "2.4.6",
+  "numba": "0.68.0",
+  "matplotlib": "3.11.2",
+  "python": "3.12.15",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "executable": "C:\\Users\\fbrev\\miniforge3\\envs\\pypcc-dev\\python.exe",
+  "method": "continuous compiled blocks; original metric/counter outside unchanged kernels"
+}
