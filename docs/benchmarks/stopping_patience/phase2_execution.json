@@ -1,0 +1,9 @@
+﻿{
+    "exit_code":  1,
+    "finished_at_utc":  "2026-10-12T00:22:52.1025678Z",
+    "started_at_utc":  "2026-10-12T00:20:11.2428682Z",
+    "resumed_command_wall_s":  160.85639079999999,
+    "command":  "conda run -n pypcc-dev python docs/study_stopping_patience.py --full",
+    "initial_attempt":  "14 completed cases, then Windows checkpoint replacement PermissionError; resume preserves completed cases and last saved trajectory state",
+    "approval_url":  "https://github.com/fbreve/pypcc/pull/8#issuecomment-6115498944"
+}

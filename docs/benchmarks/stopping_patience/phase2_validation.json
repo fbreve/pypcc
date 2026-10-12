@@ -1,0 +1,28 @@
+{
+  "local_tests": {
+    "environment": "Windows pypcc-dev",
+    "python": "3.12.15",
+    "command": "python -m unittest test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics test_stopping_range_prototype test_convergence_measurements test_stopping_patience test_checkpoint_retry test_patience_results",
+    "tests_run": 65,
+    "result": "passed",
+    "backends": ["numpy", "numba", "native Windows Cython"]
+  },
+  "native_cython": {
+    "file": "pcc_step.cp312-win_amd64.pyd",
+    "sha256": "784960a76d9b50cabdb5625195a0ee3125d8542b1fd37229039c592644d10496",
+    "compiler": "MSVC 14.44.35207",
+    "note": "Native build from phase 1 reused: production sources unchanged in phase 2."
+  },
+  "preservation": {
+    "production_changes_in_phase_2": false,
+    "phase_1_protocol_inventory_pilots_changed": false,
+    "master_base": "88ed6fc415a640075765ff0f6fda1ef325120fac",
+    "pr": 8,
+    "draft": true
+  },
+  "ci": {
+    "workflow": "PCC regression",
+    "python_versions": ["3.10", "3.12"],
+    "note": "Final commit run URL and result recorded in PR after push."
+  }
+}
