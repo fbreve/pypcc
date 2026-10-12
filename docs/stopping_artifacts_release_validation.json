@@ -1,0 +1,76 @@
+{
+  "release_url": "https://github.com/fbreve/pypcc/releases/tag/stopping-trajectories-v1",
+  "release_target_commit": "87fca382f81965e200a65ff8720f4d77a18d4991",
+  "archives": [
+    {
+      "file": "trajectories-01.zip",
+      "bytes": 25553812,
+      "sha256": "3589b0058715b56bb7b0640a7bd24df90e6a5a2fc0ec9c515a981f68b9cebdb2"
+    },
+    {
+      "file": "trajectories-02.zip",
+      "bytes": 29735198,
+      "sha256": "9e776c91204e588da2e5b2cca95caad4c6b3a6cfc4ba0f294811af3cd1dbde6a"
+    },
+    {
+      "file": "trajectories-03.zip",
+      "bytes": 34480668,
+      "sha256": "2c2eb55d28f41b798a9b18c341afbaf10c07a40e5f0bb5629ee3f671b652d047"
+    },
+    {
+      "file": "trajectories-04.zip",
+      "bytes": 31721485,
+      "sha256": "5ed250530d4dd2523021f0c068584e3bec7bb5a0700065d377d705d157c9d922"
+    }
+  ],
+  "archive_members_verified": 800,
+  "download_directory_initially_empty": true,
+  "all_seven_assets_verified": true,
+  "manifest_sha256": "95a2028effe6a48089bf45489c3208d8eae27e01eaf2edab32e5208c1db0378c",
+  "patience_identical": [
+    "archive_manifest.csv",
+    "dataset_summary.csv",
+    "final_invariants.csv",
+    "full_distributions.png",
+    "full_heatmaps.png",
+    "full_report.md",
+    "full_verification.csv",
+    "individual.csv",
+    "intermediate.csv",
+    "intermediate_accuracy.png",
+    "overall_equal_dataset_summary.csv",
+    "overall_trajectory_summary.csv",
+    "paired_tradeoffs.png",
+    "phase2_process_samples.csv",
+    "record_diagnostics.csv",
+    "report.md",
+    "stratum_equal_dataset_summary.csv",
+    "trajectory_times.csv"
+  ],
+  "adaptive_identical": [
+    "dataset_summary.csv",
+    "individual.csv",
+    "overall_summary.csv",
+    "primary_comparison.png",
+    "primary_secondary_pairs.csv",
+    "report.md"
+  ],
+  "patience_checks_audited": 10000000,
+  "adaptive_checks_audited": 10000000,
+  "adaptive_results": 6800,
+  "adaptive_baseline_matches": 200,
+  "adaptive_source_commit": "ec9205fc06f98381ecb33150873c059041f82049",
+  "propagation_executed": false,
+  "local_checkpoints_used": false,
+  "scientific_results_changed": false,
+  "environment": {
+    "os": "Windows",
+    "conda": "pypcc-dev",
+    "python": "3.12.15",
+    "numpy": "2.4.6",
+    "numba": "0.68.0",
+    "cython": "3.2.4",
+    "matplotlib": "3.11.2",
+    "cython_native": true
+  }
+}

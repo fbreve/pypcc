@@ -44,6 +44,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+docs/benchmarks/stopping_patience/trajectories-*.zip
 nosetests.xml
 coverage.xml
 *.cover
