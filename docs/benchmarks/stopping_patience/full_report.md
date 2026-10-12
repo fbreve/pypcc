@@ -98,7 +98,7 @@ Summed recorded trajectory wall time including dominance observation, prediction
 
 Two commands were interrupted by transient Windows WinError 5 during atomic checkpoint replacement, after 14 and 85 completed cases. The unmodified resumable workflow retained completed cases and exact saved states. An optional I/O-only launcher then added bounded retries (40 attempts, 50ms delay) around checkpoint writes. The final invocation reused 85 cases and finished in **407.14 s**, including setup, verification and plot generation; 4 retry episodes were resolved. The preceding resumed command took 160.86 s before interruption. Initial-attempt total command wall time was not instrumented, so these command times are not a complete end-to-end total. Downtime/lost work after the last checkpoint and the last saved checkpoint I/O timing can be omitted by recovery; no scientific trajectory is reconstructed from independent restarted prefixes.
 
-Largest sampled process high-water mark: 266.1 MiB ([phase2_process_samples.csv](phase2_process_samples.csv)); sampling does not guarantee capture of the final post-plot process peak. Check logs occupy 407.4 MiB uncompressed and **114.2 MiB** as deterministic lossless CSV gzip archives. [archive_manifest.csv](archive_manifest.csv) records raw/compressed sizes and SHA-256 checksums. Raw CSVs and trusted local recovery pickles remain available locally and are ignored by git; compressed CSVs, sample CSVs and complete JSON are archived. Phase-1 feasibility artifacts were not regenerated.
+Largest sampled process high-water mark: 266.1 MiB ([phase2_process_samples.csv](phase2_process_samples.csv)); sampling does not guarantee capture of the final post-plot process peak. Check logs occupy 407.4 MiB uncompressed and **114.2 MiB** as deterministic lossless CSV gzip archives. [archive_manifest.csv](archive_manifest.csv) records raw/compressed sizes and SHA-256 checksums. Raw CSVs and trusted local recovery pickles remain available locally and are ignored by git; compressed CSVs, sample CSVs, complete JSON and verification JSON are preserved inside four ZIPs. Phase-1 feasibility artifacts were not regenerated.
 
 ## Correctness and reproducibility
 
@@ -108,14 +108,13 @@ All 200 final checkpoints passed finite/bounded dominance and strength checks, d
 
 Environment, observer source versions and approved-protocol hashes are in [full_metadata.json](full_metadata.json). Sources/versions and data/graph/all labeling fingerprints remain in inventory.json. Recovery uses the version-locked private Numba MT API; wrapper retries never draw numbers or mutate state. Deterministic fault injection verifies retry state/RNG/CSV equivalence and bounded failures. The original propagation kernels and public API remain unchanged.
 
-Reproduce/resume on Windows pypcc-dev:
+Regenerate statistics and figures from the public ZIPs without checkpoints or propagation:
 
 ```powershell
-conda run -n pypcc-dev python docs/run_stopping_patience_windows.py --full
-conda run -n pypcc-dev python docs/report_stopping_patience.py
+conda run -n pypcc-dev python docs/reproduce_stopping_patience.py
 ```
 
-The launcher invokes the existing study_stopping_patience.py --full workflow with only checkpoint I/O retry handling; matching completed cases are skipped. Summaries/figures can be regenerated from completed cases. The postprocessor verifies gzip round trips and checks all raw data before archiving. No long experiment is required by CI. Local/CI regression results are recorded in the PR validation update.
+Four deterministic ZIPs preserve the 800 original Git blobs and paths. artifacts_manifest.json records each member and ZIP SHA-256; archive_manifest.csv preserves the original gzip/raw log hashes. Public reproduction independently replays recorded checks and reconstructs statistics, figures and this report; it neither loads recovery.pkl nor imports production kernels. The state/RNG comparisons and final invariants above are historical audit evidence, not newly performed state comparisons. Optional --deep-audit uses trusted local checkpoints separately. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for commands, packaging and limits. No long experiment is required by CI.
 
 ## Observations, hypotheses and limitations
 

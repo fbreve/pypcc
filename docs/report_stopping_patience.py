@@ -11,12 +11,27 @@ import statistics
 from pathlib import Path
 
 import numpy as np
-import benchmark_backends as fixed
-import study_stopping_patience as study
+from types import SimpleNamespace
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from experiments.patience_results import audit_checks, validate_rows
-from experiments.stopping_patience import STATE_INDICES
 
-ROOT = study.ROOT
+ROOT = Path('docs/benchmarks/stopping_patience')
+
+
+def write_csv(path, rows):
+    with path.open('w', encoding='utf-8', newline='') as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def protocol():
+    return json.loads((ROOT/'protocol.json').read_text(encoding='utf-8'))
+
+
+fixed = SimpleNamespace(write_csv=write_csv)
+study = SimpleNamespace(protocol=protocol)
 
 
 def read_csv(path):
@@ -47,6 +62,7 @@ def archive_checks(path):
 
 
 def final_state(directory,result):
+    from experiments.stopping_patience import STATE_INDICES
     with (directory/'recovery.pkl').open('rb') as stream:state=pickle.load(stream)
     a=state['args'];dom=a[11];n,c=dom.shape
     if state['iteration']!=500000 or state['runtime']!=result['runtime']:
@@ -70,7 +86,9 @@ def final_state(directory,result):
                 own_degree_finite=True, final_snapshot_bytes_equal=True,final_rng_hash_equal=True)
 
 
-def collect():
+def collect_deep():
+    import study_stopping_patience as study
+    study.ROOT = ROOT
     p=study.protocol();inventory=json.loads((ROOT/'inventory.json').read_text())['datasets']
     if study.protocol_hash()!=json.loads((ROOT/'inventory.json').read_text())['protocol_sha256']:
         raise AssertionError('Frozen protocol changed')
@@ -205,15 +223,15 @@ def write_report(metadata,aggregate,cases,references,diagnostics,rows,inventory)
       '## Actual cost and execution incidents','',
       f"Summed recorded trajectory wall time including dominance observation, prediction checkpoints, CSV and recovery writes: **{metadata['measured_observed_trajectory_s']:.2f} s ({metadata['measured_observed_trajectory_s']/60:.2f} min)**. Checkpoint-write time accounts for {metadata['checkpoint_io_s']:.2f} s. These are measured full trajectories, not iteration-based speedup estimates. Per-case timings are in [trajectory_times.csv](trajectory_times.csv); SD reflects seeds/execution conditions, not replicated timing of each seed.",'',
       f"Two commands were interrupted by transient Windows WinError 5 during atomic checkpoint replacement, after 14 and 85 completed cases. The unmodified resumable workflow retained completed cases and exact saved states. An optional I/O-only launcher then added bounded retries (40 attempts, 50ms delay) around checkpoint writes. The final invocation reused 85 cases and finished in **{retry['wall_s']:.2f} s**, including setup, verification and plot generation; {len(retry['retries'])} retry episodes were resolved. The preceding resumed command took {previous['resumed_command_wall_s']:.2f} s before interruption. Initial-attempt total command wall time was not instrumented, so these command times are not a complete end-to-end total. Downtime/lost work after the last checkpoint and the last saved checkpoint I/O timing can be omitted by recovery; no scientific trajectory is reconstructed from independent restarted prefixes.",'',
-      f"Largest sampled process high-water mark: {peak/2**20:.1f} MiB ([phase2_process_samples.csv](phase2_process_samples.csv)); sampling does not guarantee capture of the final post-plot process peak. Check logs occupy {metadata['raw_check_csv_bytes']/2**20:.1f} MiB uncompressed and **{metadata['gzip_check_csv_bytes']/2**20:.1f} MiB** as deterministic lossless CSV gzip archives. [archive_manifest.csv](archive_manifest.csv) records raw/compressed sizes and SHA-256 checksums. Raw CSVs and trusted local recovery pickles remain available locally and are ignored by git; compressed CSVs, sample CSVs and complete JSON are archived. Phase-1 feasibility artifacts were not regenerated.",'',
+      f"Largest sampled process high-water mark: {peak/2**20:.1f} MiB ([phase2_process_samples.csv](phase2_process_samples.csv)); sampling does not guarantee capture of the final post-plot process peak. Check logs occupy {metadata['raw_check_csv_bytes']/2**20:.1f} MiB uncompressed and **{metadata['gzip_check_csv_bytes']/2**20:.1f} MiB** as deterministic lossless CSV gzip archives. [archive_manifest.csv](archive_manifest.csv) records raw/compressed sizes and SHA-256 checksums. Raw CSVs and trusted local recovery pickles remain available locally and are ignored by git; compressed CSVs, sample CSVs, complete JSON and verification JSON are preserved inside four ZIPs. Phase-1 feasibility artifacts were not regenerated.",'',
       '## Correctness and reproducibility','',
       f"All **{metadata['executed_iterations']:,} executed iterations** and **{metadata['original_checks']:,} checks** are accounted for. Independent streaming replay of every recorded check verified strict records, resets, check phase, all seven first events and censoring. Accuracy/count identities and iteration savings were checked in all 1400 result rows. There are **{metadata['monolithic_checkpoint_comparisons']} successful unchanged-monolithic state/RNG comparisons**, including 30k and 500k for every case and **{metadata['original_first_stop_comparisons']} original first-stop comparisons**. See [full_verification.csv](full_verification.csv). Exact state comparisons use no floating tolerance; this is within the same sequential Numba implementation, not an equality demand across backends.",'',
       f"All 200 final checkpoints passed finite/bounded dominance and strength checks, dominance conservation, preservation of labeled nodes, valid positions, uint8 distances/home distances, finite own-degree and saved final-state/RNG identity checks. Maximum dominance-row sum error was {metadata['maximum_dominance_sum_error']:.3g} ([final_invariants.csv](final_invariants.csv)); a 1e-9 invariant-validation tolerance does not alter stopping or propagation.",'',
       'Environment, observer source versions and approved-protocol hashes are in [full_metadata.json](full_metadata.json). Sources/versions and data/graph/all labeling fingerprints remain in inventory.json. Recovery uses the version-locked private Numba MT API; wrapper retries never draw numbers or mutate state. Deterministic fault injection verifies retry state/RNG/CSV equivalence and bounded failures. The original propagation kernels and public API remain unchanged.','',
-      'Reproduce/resume on Windows pypcc-dev:','',
-      '```powershell','conda run -n pypcc-dev python docs/run_stopping_patience_windows.py --full',
-      'conda run -n pypcc-dev python docs/report_stopping_patience.py','```','',
-      'The launcher invokes the existing study_stopping_patience.py --full workflow with only checkpoint I/O retry handling; matching completed cases are skipped. Summaries/figures can be regenerated from completed cases. The postprocessor verifies gzip round trips and checks all raw data before archiving. No long experiment is required by CI. Local/CI regression results are recorded in the PR validation update.','',
+      'Regenerate statistics and figures from the public ZIPs without checkpoints or propagation:','',
+      '```powershell','conda run -n pypcc-dev python docs/reproduce_stopping_patience.py',
+      '```','',
+      'Four deterministic ZIPs preserve the 800 original Git blobs and paths. artifacts_manifest.json records each member and ZIP SHA-256; archive_manifest.csv preserves the original gzip/raw log hashes. Public reproduction independently replays recorded checks and reconstructs statistics, figures and this report; it neither loads recovery.pkl nor imports production kernels. The state/RNG comparisons and final invariants above are historical audit evidence, not newly performed state comparisons. Optional --deep-audit uses trusted local checkpoints separately. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for commands, packaging and limits. No long experiment is required by CI.','',
       '## Observations, hypotheses and limitations','',
       '**Observations:** stopping/censor rates, paired accuracy losses/gains, subsequent sampled reversions and dominance endpoint differences are reported separately. Patience changes first-event timing monotonically on the shared trajectory; accuracy is not guaranteed to improve monotonically with more iterations. Forced Spambase 4.0 censoring is a budget/formula consequence.','',
       '**Hypotheses to discuss:** datasets with frequent late records may repeatedly restart patience even when sampled classifications change little; large thresholds can delay eligibility even after the last record. Neither dominance records nor larger patience by themselves establish meaningful accuracy progress. Descriptive group associations cannot establish graph/label causes.','',
@@ -270,4 +288,5 @@ def figures(rows,references,inventory):
 
 
 if __name__=='__main__':
-    print(json.dumps(collect()[0],indent=2))
+    from reproduce_stopping_patience import main
+    main()

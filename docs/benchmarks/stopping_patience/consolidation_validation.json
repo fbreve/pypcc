@@ -1,0 +1,109 @@
+{
+  "trajectories": 200,
+  "rows": 1400,
+  "checks": 10000000,
+  "propagation_executed": false,
+  "local_checkpoints_used": false,
+  "state_rng_audit": "historical evidence only",
+  "artifacts_manifest_sha256": "95a2028effe6a48089bf45489c3208d8eae27e01eaf2edab32e5208c1db0378c",
+  "archived_members": 800,
+  "all_members_git_byte_equal": true,
+  "two_package_builds_identical": true,
+  "comparisons": [
+    {
+      "file": "archive_manifest.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "dataset_summary.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "final_invariants.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "full_distributions.png",
+      "byte_equal": true
+    },
+    {
+      "file": "full_heatmaps.png",
+      "byte_equal": true
+    },
+    {
+      "file": "full_metadata.json",
+      "byte_equal": true
+    },
+    {
+      "file": "full_report.md",
+      "byte_equal": true
+    },
+    {
+      "file": "full_verification.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "individual.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "intermediate.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "intermediate_accuracy.png",
+      "byte_equal": true
+    },
+    {
+      "file": "inventory.json",
+      "byte_equal": true
+    },
+    {
+      "file": "overall_equal_dataset_summary.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "overall_trajectory_summary.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "paired_tradeoffs.png",
+      "byte_equal": true
+    },
+    {
+      "file": "phase2_execution.json",
+      "byte_equal": true
+    },
+    {
+      "file": "phase2_process_samples.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "phase2_retry_execution.json",
+      "byte_equal": true
+    },
+    {
+      "file": "protocol.json",
+      "byte_equal": true
+    },
+    {
+      "file": "record_diagnostics.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "report.md",
+      "byte_equal": true
+    },
+    {
+      "file": "stratum_equal_dataset_summary.csv",
+      "byte_equal": true
+    },
+    {
+      "file": "trajectory_times.csv",
+      "byte_equal": true
+    }
+  ],
+  "local_tests_passed": 69,
+  "comparisons_note": "Byte comparisons performed before intentional reproducibility prose updates; copied historical evidence is distinguished from reconstructed results.",
+  "local_individual_files_preserved": true
+}
