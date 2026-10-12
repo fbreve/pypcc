@@ -1,0 +1,34 @@
+{
+  "started_utc": "2026-10-12T00:24:26.369961+00:00",
+  "finished_utc": "2026-10-12T00:31:13.511686+00:00",
+  "wall_s": 407.14146389998496,
+  "success": true,
+  "retries": [
+    {
+      "path": "docs\\benchmarks\\stopping_patience\\trajectories\\Spambase\\12\\recovery.pkl",
+      "attempt": 1,
+      "winerror": 5,
+      "utc": "2026-10-12T00:28:13.021587+00:00"
+    },
+    {
+      "path": "docs\\benchmarks\\stopping_patience\\trajectories\\BloodTransfusion\\19\\recovery.pkl",
+      "attempt": 1,
+      "winerror": 5,
+      "utc": "2026-10-12T00:29:23.605838+00:00"
+    },
+    {
+      "path": "docs\\benchmarks\\stopping_patience\\trajectories\\Yeast\\14\\recovery.pkl",
+      "attempt": 1,
+      "winerror": 5,
+      "utc": "2026-10-12T00:29:46.728812+00:00"
+    },
+    {
+      "path": "docs\\benchmarks\\stopping_patience\\trajectories\\Segment\\17\\recovery.pkl",
+      "attempt": 1,
+      "winerror": 5,
+      "utc": "2026-10-12T00:30:51.282014+00:00"
+    }
+  ],
+  "wrapper_sha256": "6d4883f3a413160c1d3631ff5f43005ac1863d4c093ded711dc792a69eafa4fe",
+  "retry_helper_sha256": "5e5ff70f8961fcecdf0f6eec6e083577e56f207c52474c4c10b5437299911f49"
+}
