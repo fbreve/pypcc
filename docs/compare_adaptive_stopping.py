@@ -1,5 +1,7 @@
 """Frozen retrospective comparison using only authenticated public PR #8 files."""
 import csv
+import argparse
+import os
 import gzip
 import hashlib
 import io
@@ -176,4 +178,17 @@ def report(overall,metadata,rows):
     (ROOT/'report.md').write_text('\n'.join(lines),encoding='utf-8')
 
 
-if __name__=='__main__':run()
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--artifact-dir',type=Path,help='Local ZIP directory; overrides PYPCC_STOPPING_ARTIFACTS')
+    parser.add_argument('--download',action='store_true',help='Explicitly fetch missing Release ZIPs with pinned hash verification')
+    args=parser.parse_args()
+    if args.artifact_dir is not None:
+        os.environ['PYPCC_STOPPING_ARTIFACTS']=str(args.artifact_dir)
+    if args.download:
+        from experiments.stopping_artifact_store import ensure
+        directory=Path(os.environ.get('PYPCC_STOPPING_ARTIFACTS','.cache/stopping_artifacts'))
+        manifest=json.loads((SOURCE/'artifacts_manifest.json').read_text())
+        for entry in manifest['archives']:
+            ensure(entry,directory,download=True)
+    run()
