@@ -1,0 +1,3 @@
+# Local recovery state; archive structured CSV/JSON results, not pickle snapshots.
+trajectories/**/recovery.pkl
+trajectories/**/*.tmp

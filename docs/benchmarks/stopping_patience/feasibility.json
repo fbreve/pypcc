@@ -1,0 +1,35 @@
+{
+  "environment": {
+    "python": "3.12.15",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "cpu": "Intel(R) Core(TM) i7-14700K",
+    "logical_cpus": 28,
+    "numpy": "2.4.6",
+    "numba": "0.68.0",
+    "cython": "3.2.4",
+    "scipy": "1.18.1",
+    "sklearn": "1.9.1",
+    "setuptools": "84.0.0",
+    "native_cython_file": "C:\\Users\\fbrev\\Documents\\Acad\u00eamico\\Simula\u00e7\u00f5es\\Python\\pypcc\\pcc_step.cp312-win_amd64.pyd",
+    "native_cython_sha256": "784960a76d9b50cabdb5625195a0ee3125d8542b1fd37229039c592644d10496",
+    "conda_prefix": "C:\\Users\\fbrev\\miniforge3\\envs\\pypcc-dev",
+    "source_sha256": {
+      "C:\\Users\\fbrev\\Documents\\Acad\u00eamico\\Simula\u00e7\u00f5es\\Python\\pypcc\\docs\\study_stopping_patience.py": "9dff84f8f8cc7ee51a01dd9771dcb9f9ca0ff7d8be6ba585e234305486626169",
+      "experiments\\stopping_patience.py": "20ce055dff6709682542740aa330221dc7eb02d9a0e8a590db56901ed0b6e507",
+      "experiments\\patience_data.py": "8695e7fbb5a04a65ad94fe07ca1eb57bdbfc2021eaabd2c7b7039e475f23a8c1"
+    },
+    "git_commit": "ce9860b18eb6b3a6c48e399a6b59b749a0c2c490"
+  },
+  "pilot_cap": 20000,
+  "full_trajectories_started": 0,
+  "projected_serial_s": 420.75459998159204,
+  "projected_checks_bytes": 466422750.0,
+  "projected_samples_bytes": 6071250.0,
+  "measured_peak_process_memory_bytes": 272322560,
+  "measured_peak_checkpoint_bytes": 9273897,
+  "retained_200_checkpoint_bytes": 288293880,
+  "graph_total_s": 0.7826827999670058,
+  "download_load_total_s": 26.532707899808884,
+  "extrapolation": "Linear 20000-to-500000 scaling including CSV and recovery writes; only seed10, two repetitions. Future events may increase observer state and disk; allow headroom. Verification replay excluded from timing; budget separately.",
+  "recovery": "Atomic latest local checkpoint, exact particle/buffer/observer/Numba MT state, CSV offsets truncate trailing partial work. Completed case identity checked before reuse. Process interruption tested; power-loss durability and cross-version recovery not guaranteed."
+}

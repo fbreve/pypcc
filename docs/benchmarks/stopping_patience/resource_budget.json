@@ -1,0 +1,16 @@
+{
+  "observed_projected_s": 420.75459998159204,
+  "unobserved_projected_s": 124.54025007900782,
+  "selected_replay_projected_s": 132.0126650837483,
+  "additional_original_event_replay_upper_s": 249.08050015801564,
+  "projected_observed_plus_replay_upper_s": 801.847765223356,
+  "cold_download_total_s": 48.35075850004796,
+  "conservative_checkpoint_array_bytes": 541157300,
+  "projected_csv_bytes": 472494000.0,
+  "initial_projected_disk_bytes": 1013651300.0,
+  "largest_active_arrays_bytes": 25986064,
+  "recommended_memory_bytes": 1073741824,
+  "recommended_disk_bytes": 2147483648,
+  "recommended_wall_clock_minutes": 20,
+  "caveat": "Conservative array accounting assumes all seven events and three saved verification states, adds 100KB/case for observer/RNG/pickle metadata. CSV row length and seed-dependent throughput may vary; headroom is an operating allowance, not a confidence interval."
+}

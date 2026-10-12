@@ -1,0 +1,27 @@
+{
+  "dataset": "PenDigits",
+  "seed": 10,
+  "cap": 20000,
+  "interrupted_at": 10000,
+  "separate_process_restart": true,
+  "state_and_rng_equal": true,
+  "event_rows_equal": true,
+  "csv_equal": {
+    "checks.csv": true,
+    "samples.csv": true
+  },
+  "verification": [
+    {
+      "iteration": 5001,
+      "state_equal": true,
+      "rng_equal": true,
+      "original_stop_matches": null
+    },
+    {
+      "iteration": 20000,
+      "state_equal": true,
+      "rng_equal": true,
+      "original_stop_matches": null
+    }
+  ]
+}
