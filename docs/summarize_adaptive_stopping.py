@@ -54,7 +54,8 @@ def main():
         'conda run -n pypcc-dev python docs/summarize_adaptive_stopping.py','```','',
         'The first command replays archives; it does not run propagation. The second reads result CSVs only. Both preserve the frozen protocol and source archives.','']
     report=(ROOT/'report.md').read_text(encoding='utf-8').split('\n## Paired primary-versus-secondary schedules')[0]
-    (ROOT/'report.md').write_text(report+'\n'+'\n'.join(blocks),encoding='utf-8')
+    notes=(ROOT/'review_notes.md').read_text(encoding='utf-8')
+    (ROOT/'report.md').write_text(report+'\n'+'\n'.join(blocks)+'\n'+notes,encoding='utf-8')
 
 
 if __name__=='__main__':main()
