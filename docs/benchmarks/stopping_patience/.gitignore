@@ -1,3 +1,5 @@
 # Local recovery state; archive structured CSV/JSON results, not pickle snapshots.
 trajectories/**/recovery.pkl
 trajectories/**/*.tmp
+# Lossless deterministic .csv.gz archives are committed after the full run.
+trajectories/**/checks.csv
