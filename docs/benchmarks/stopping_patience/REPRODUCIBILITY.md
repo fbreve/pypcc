@@ -1,5 +1,9 @@
 # Published artifacts and reproduction
 
+The proposed external-storage migration and offline-directory instructions are
+documented in [the maintenance plan](../../externalize_stopping_artifacts.md).
+Until publication and verification are approved, the ZIPs also remain in Git.
+
 The four `trajectories-01.zip` through `trajectories-04.zip` archives retain all
 800 original committed files from the 200 full trajectories. Alphabetically
 sorted datasets are grouped into four groups of five, independently of outcomes.
@@ -66,4 +70,5 @@ original Git commit (full history required). It validates all members against
 that commit and never deletes files. The four ZIPs and manifest replace individual
 files in the current Git tree; local individual files remain ignored. Earlier
 commits retain the original blobs: this consolidation reduces the final PR file
-count, not historical repository size. No external storage is used.
+count, not historical repository size. External storage is proposed separately;
+the historical packaging procedure does not publish or remove artifacts.
