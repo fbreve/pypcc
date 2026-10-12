@@ -1,4 +1,4 @@
-"""Verify local archives offline, or explicitly download the proposed Release assets."""
+"""Verify local archives offline, or explicitly download the published Release assets."""
 import argparse
 import json
 import hashlib

@@ -1,8 +1,9 @@
 # Published artifacts and reproduction
 
-The proposed external-storage migration and offline-directory instructions are
-documented in [the maintenance plan](../../externalize_stopping_artifacts.md).
-Until publication and verification are approved, the ZIPs also remain in Git.
+The ZIPs are hosted in the [dedicated Release](https://github.com/fbreve/pypcc/releases/tag/stopping-trajectories-v1).
+Download and offline-directory instructions are documented in
+[the storage guide](../../externalize_stopping_artifacts.md). The manifests remain
+versioned; the ZIPs are no longer in the current Git tree.
 
 The four `trajectories-01.zip` through `trajectories-04.zip` archives retain all
 800 original committed files from the 200 full trajectories. Alphabetically
@@ -24,10 +25,14 @@ continues to authenticate both gzip bytes and uncompressed check-log bytes.
 From the repository root, with NumPy and Matplotlib installed:
 
 ```powershell
+conda run -n pypcc-dev python docs/fetch_stopping_artifacts.py --download
 conda run -n pypcc-dev python docs/reproduce_stopping_patience.py `
   --source docs/benchmarks/stopping_patience `
   --output .cache/stopping_patience_reproduced
 ```
+
+The first command is required only when the ZIPs are absent locally; it verifies
+downloaded SHA-256 hashes and sizes. Omit it for fully offline reproduction.
 
 `python docs/report_stopping_patience.py` is an equivalent entry point.
 Output must be separate from the published input. No propagation is performed;
@@ -70,5 +75,6 @@ original Git commit (full history required). It validates all members against
 that commit and never deletes files. The four ZIPs and manifest replace individual
 files in the current Git tree; local individual files remain ignored. Earlier
 commits retain the original blobs: this consolidation reduces the final PR file
-count, not historical repository size. External storage is proposed separately;
-the historical packaging procedure does not publish or remove artifacts.
+count, not historical repository size. The ZIPs were subsequently externalized
+after Release download, hash verification and both public study reproductions.
+The historical packaging procedure does not publish or remove artifacts.
