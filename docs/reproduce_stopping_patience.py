@@ -91,7 +91,8 @@ def generate(source, output):
         report.write_csv(output/(name+'.csv'),values)
     # Immutable provenance and historical deep-audit evidence: copy, never claim a fresh state/RNG audit.
     for name in ('protocol.json','inventory.json','full_metadata.json','final_invariants.csv','archive_manifest.csv',
-                 'phase2_execution.json','phase2_retry_execution.json','phase2_process_samples.csv','report.md'):
+                 'phase2_execution.json','phase2_retry_execution.json','phase2_process_samples.csv','report.md',
+                 'REPRODUCIBILITY.md'):
         shutil.copyfile(source/name,output/name)
     report.ROOT=output
     report.figures(rows,references,inventory['datasets'])
