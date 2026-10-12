@@ -34,6 +34,6 @@ setup(
     py_modules=["pcc", "pcc_graph", "pcc_numpy", "pcc_numba", "pcc_validation", "pcc_metrics"],
     install_requires=["numpy>=2,<3", "scipy", "scikit-learn"],
     extras_require={"numba": ["numba"]},
-    ext_modules=cythonize(extensions, language_level="3"),
+    ext_modules=cythonize(extensions, language_level="3", force=True),
     cmdclass={"build_ext": PortableBuildExt},
 )
