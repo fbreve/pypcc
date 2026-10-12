@@ -154,3 +154,19 @@ archives suffice for exploratory replay; checkpoints cannot repair unobserved
 historical signals. Review the window semantics, sampled C schedule and D's
 missing-accuracy treatment before approving implementation. No preference among
 candidate families or permanent stopping change is proposed.
+
+
+## Approved retrospective revision
+
+The maintainer approved primary B/C decisions only at multiples of 1000, with
+all published intermediate transition counts summed once per window in temporal
+order. This is a **hybrid observation policy**: periodic decisions with extra
+information from legacy event observers. It does not reconstruct endpoint
+Hamming counts or exclusively periodic monitoring. Windows are not discarded
+for intermediate events. Secondary B/C decisions use all published observation
+times. The same window-start convention and all primary/sensitivity parameters
+are preserved. D is named **record-stagnation criterion**: cumulative record
+gains do not measure general dominance stability. This revision supersedes the
+proposed schedule/name and the pending-approval language above. The protocol
+commit and SHA-256 are registered before archive comparison; previous cohorts
+remain exploratory and no winning parameters are selected.
