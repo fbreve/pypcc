@@ -1,24 +1,107 @@
 {
-  "schema": 1,
-  "status": "proposal awaiting maintainer approval; no comparative implementation or new propagation authorized",
+  "schema": 2,
+  "status": "approved retrospective protocol; hybrid observation clarification approved by maintainer; frozen before comparative outcomes",
   "source_master": "479952fc988d48c754202cd4d12eac898157d513",
   "source_protocol": "docs/benchmarks/stopping_patience/protocol.json",
   "source_inventory": "docs/benchmarks/stopping_patience/inventory.json",
   "artifacts_manifest_sha256": "95a2028effe6a48089bf45489c3208d8eae27e01eaf2edab32e5208c1db0378c",
-  "development": {"datasets": "all 20 frozen PR #8 datasets", "seeds": [10,11,12,13,14,15,16,17,18,19], "cap": 500000, "status": "previously examined exploratory cohort; not independent validation"},
-  "primary": {
-    "A": {"condition": "original counter > original T at original checks", "modified": false},
-    "B": {"window": 3000, "sampled_transition_budget": 0, "minimum_iteration": 5000},
-    "C": {"window": 3000, "sampled_transition_budget": 0, "minimum_iteration": 5000, "condition": "B AND latest original counter > T at saved classification times; no eligibility latch"},
-    "D": {"window": 3000, "cumulative_record_gain_budget": 0.0005, "minimum_iteration": 5000}
+  "development": {
+    "datasets": "all 20 frozen PR #8 datasets",
+    "seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "cap": 500000,
+    "status": "previously examined exploratory cohort; not independent validation"
   },
-  "sensitivity": {"windows": [1000,3000,5000], "sampled_transition_budgets": [0,0.001], "cumulative_record_gain_budgets": [0.00001,0.0001,0.0005], "minimum_iteration": 5000, "selection": "report all cells, no best-cell or per-dataset tuning"},
-  "schedules": {"A_D": "1+10j", "B_C": "all archived classification observations including legacy first-event augmentation", "C_counter": "latest original check at or before observation; age <=9", "window_start_B_C": "latest actual saved observation at or before stop-window; require it to exist; no invented initial vector", "window_D": "stop-window < check <= stop; require full history"},
+  "primary": {
+    "A": {
+      "condition": "original counter > original T at original checks",
+      "modified": false
+    },
+    "B": {
+      "window": 3000,
+      "sampled_transition_budget": 0,
+      "minimum_iteration": 5000
+    },
+    "C": {
+      "window": 3000,
+      "sampled_transition_budget": 0,
+      "minimum_iteration": 5000,
+      "condition": "B AND latest original counter > T at saved classification times; no eligibility latch"
+    },
+    "D": {
+      "window": 3000,
+      "cumulative_record_gain_budget": 0.0005,
+      "minimum_iteration": 5000,
+      "name": "record-stagnation criterion"
+    }
+  },
+  "sensitivity": {
+    "windows": [
+      1000,
+      3000,
+      5000
+    ],
+    "sampled_transition_budgets": [
+      0,
+      0.001
+    ],
+    "cumulative_record_gain_budgets": [
+      1e-05,
+      0.0001,
+      0.0005
+    ],
+    "minimum_iteration": 5000,
+    "selection": "report all cells, no best-cell or per-dataset tuning"
+  },
+  "schedules": {
+    "A_D": "1+10j",
+    "B_C": "primary: decisions only at positive multiples of 1000; sum every published transition in the window, including legacy-event observations; hybrid, not exclusively periodic monitoring",
+    "C_counter": "latest original check at or before observation; age <=9",
+    "window_start_B_C": "latest actual saved observation at or before decision-window; require it to exist; count each subsequent observed transition once in temporal order, including intermediates; report actual span",
+    "window_D": "stop-window < check <= stop; require full history",
+    "B_C_secondary": "secondary: decisions at all published classification observations, same transition sum and parameters"
+  },
   "classification_denominator": "initially unlabeled nodes; transitions count multiplicity, not distinct nodes",
   "accuracy": "exact timestamp match only; otherwise missing; no interpolation or claimed bracket bounds",
   "timing": "archive supports iteration savings, not real prefix timings, overhead or speedups",
   "censoring": "retain all cases; right censor at cap; no invented stop time",
-  "future_validation_proposal": {"requires_separate_approval": true, "reserved_seeds": [100,101,102,103,104,105,106,107,108,109], "verify_prior_seed_use_before_freeze": true, "same_dataset_replication_is_not_new_dataset_validation": true, "parameter_retuning": false, "exact_event_accuracy_observation": true},
-  "freeze_gate": "approve mathematical definitions and protocol; record proposal commit/hash before comparative development; independent-validation definitions frozen before new outcomes",
-  "prohibited": ["new propagation during feasibility", "production kernel/API/default changes", "outcome-based parameter selection", "master edits", "merge"]
+  "future_validation_proposal": {
+    "requires_separate_approval": true,
+    "reserved_seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "verify_prior_seed_use_before_freeze": true,
+    "same_dataset_replication_is_not_new_dataset_validation": true,
+    "parameter_retuning": false,
+    "exact_event_accuracy_observation": true
+  },
+  "freeze_gate": "protocol commit and normalized SHA-256 registered before any archive candidate evaluation",
+  "prohibited": [
+    "new propagation during feasibility",
+    "production kernel/API/default changes",
+    "outcome-based parameter selection",
+    "master edits",
+    "merge"
+  ],
+  "D_interpretation": "cumulative historical-best gains measure record stagnation, not general dominance stability",
+  "approved_scope": "retrospective comparison only; no new trajectories, tuning, API, kernel or default changes"
 }
