@@ -1,6 +1,8 @@
 """Lossless public artifact reader; no PCC, RNG or checkpoint dependencies."""
 import hashlib
 import json
+import os
+from pathlib import Path
 from pathlib import PurePosixPath
 from zipfile import ZipFile
 
@@ -18,9 +20,13 @@ def safe_path(name):
 
 
 class PublishedArtifacts:
-    def __init__(self, root):
+    def __init__(self, root, artifact_dir=None):
         self.root = root
         self.manifest = json.loads((root/'artifacts_manifest.json').read_text())
+        configured = artifact_dir or os.environ.get('PYPCC_STOPPING_ARTIFACTS')
+        cache = Path(configured) if configured else Path('.cache/stopping_artifacts')
+        # Transitional fallback keeps old checkouts/tests usable until external validation.
+        location = cache if configured or all((cache/a['file']).exists() for a in self.manifest['archives']) else root
         self.entries = {}
         self.zips = {}
         try:
@@ -29,10 +35,10 @@ class PublishedArtifacts:
                 if (PurePosixPath(name).name != name or '\\' in name or ':' in name
                         or not name.endswith('.zip')):
                     raise ValueError('Unsafe archive path')
-                data = (root/name).read_bytes()
+                data = (location/name).read_bytes()
                 if len(data) != archive['bytes'] or sha(data) != archive['sha256']:
                     raise ValueError('Archive checksum mismatch')
-                z = self.zips[name] = ZipFile(root/name)
+                z = self.zips[name] = ZipFile(location/name)
                 expected = {r['path'] for r in self.manifest['members'] if r['archive'] == name}
                 names = z.namelist()
                 if len(names) != len(set(names)) or set(names) != expected:

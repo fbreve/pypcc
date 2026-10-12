@@ -2,6 +2,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -9,6 +10,19 @@ from experiments.patience_archive import PublishedArtifacts, safe_path, sha
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_external_directory_and_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); name,data=self.fixture(root)
+            external=root/'external'; external.mkdir()
+            (root/'sample.zip').rename(external/'sample.zip')
+            with PublishedArtifacts(root,external) as published:
+                self.assertEqual(published.read(name),data)
+            with patch.dict('os.environ',{'PYPCC_STOPPING_ARTIFACTS':str(external)}):
+                with PublishedArtifacts(root) as published:
+                    self.assertEqual(published.read(name),data)
+            (external/'sample.zip').write_bytes(b'corrupt')
+            with self.assertRaises(ValueError):PublishedArtifacts(root,external)
+
     def fixture(self, root, extra=False):
         name='trajectories/Example/10/complete.json'
         data=b'{"iterations":500000}\n'
