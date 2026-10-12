@@ -7,9 +7,10 @@ on:
 
 jobs:
   numpy-regression:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ['3.10', '3.12']
     steps:
       - uses: actions/checkout@v4
@@ -17,15 +18,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
-        run: python -m pip install numpy scipy scikit-learn numba cython setuptools
-      # Build directly: the platform-specific setup.py fix belongs in a separate PR.
-      - name: Build Cython backend
+        run: python -m pip install build numba
+      - name: Build source distribution with isolated dependencies
+        run: python -m build --sdist --outdir dist
+      - name: Build and install wheel from source distribution
         run: >-
-          python -c "import numpy; from setuptools import setup, Extension;
-          from Cython.Build import cythonize;
-          setup(ext_modules=cythonize([Extension('pcc_step', ['pcc_step.pyx'],
-          include_dirs=[numpy.get_include()])], language_level='3', force=True))"
-          build_ext --inplace
+          python -c "import glob, subprocess, sys;
+          subprocess.check_call([sys.executable, '-m', 'pip', 'wheel', '--no-deps', glob.glob('dist/*.tar.gz')[0], '--wheel-dir', 'dist']);
+          subprocess.check_call([sys.executable, '-m', 'pip', 'install', glob.glob('dist/*.whl')[0]])"
+      - name: Verify installed modules outside checkout
+        working-directory: ${{ runner.temp }}
+        run: python "${{ github.workspace }}/tools/check_installation.py" --require-all
       - name: Require all three backends
         run: python -c "import numpy, pcc_numba, pcc_step"
       - name: Run deterministic regression tests

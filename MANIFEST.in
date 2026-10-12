@@ -1,0 +1,4 @@
+include pcc_step.pyx
+include README.md
+prune docs/benchmarks
+prune .cache

@@ -21,7 +21,7 @@ ParticleCompetitionAndCooperation(impl="numba")
 ParticleCompetitionAndCooperation(impl="numpy")
 ```
 according to the implementation you would like to use. 
-**auto** chooses the fastest implementation available.
+**auto** selects the first available backend in the fixed order Cython, Numba, NumPy; it does not benchmark them.
 
 You may also check the original MATLAB version:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
@@ -97,42 +97,105 @@ With early_stop=False and max_iter=500000 (500,000 fixed iterations), 10 repetit
 | Python Numba        |   5.009  |
 | Python NumPy (only) |  63.906  |
 
-## Getting Started
-#### Installation
-You need Python 3.7 or later to use **pypcc**. You can find it at [python.org](https://www.python.org/).
+## Installation and compatibility
 
-The only required package for **pypcc** is **numpy**. \
-You also need **numba** and/or **cython** to use Numba and Cython versions, respectively. \
-The included example also uses **scikit-learn** to load the example dataset (Wine Dataset), 
-to normalize the data, to calculate the accuracy, and to build the confusion matrix.
+Regression CI tests Python **3.10 and 3.12** on Windows/MSVC and Linux/GCC.
+Windows development also uses Python 3.12 (`pypcc-dev`). Other Python versions,
+macOS and other compiler configurations are not validated by this matrix.
+Package metadata requires Python >=3.10; this minimum is not a claim that every
+newer version has been tested.
 
-You can clone this repo to your local machine using:
+Runtime requirements are **NumPy 2.x, SciPy and scikit-learn**. Graph utilities
+import SciPy and scikit-learn even when a graph is supplied manually.
+**Numba is optional**, for the Numba backend. Cython and setuptools are build
+dependencies, not requirements for running an already compiled extension.
+Matplotlib is optional for plots and research reports; it is not needed by the
+minimal example. The repository's distribution name remains `pcc_step`; import
+the library with `from pcc import ParticleCompetitionAndCooperation`.
 
-```bash
+Clone the repository and use an isolated environment:
+
+```sh
 git clone https://github.com/fbreve/pypcc.git
-```
-
-To compile cython locally use:
-
-```bash
 cd pypcc
-pip install -e .  # installs pypcc and builds the Cython extension
+python -m venv .venv
 ```
 
-## Usage
-The usage of this class is pretty similar to semi-supervised algorithms at scikit-learn. 
-An "example" code is available in this repository.
+Activate with `.venv\Scripts\Activate.ps1` in Windows PowerShell, or
+`source .venv/bin/activate` on Linux. Install the library and optional Numba backend:
+
+```sh
+python -m pip install --upgrade pip
+python -m pip install -e ".[numba]"
+```
+
+The standard installation builds the Cython extension. Windows needs MSVC Build
+Tools with the C++ workload and Windows SDK; Linux needs a C compiler and matching
+Python development headers (for example, GCC and python3-dev on Debian/Ubuntu).
+Setuptools locates installed MSVC tools automatically. Compiler selection uses
+`/O2` for MSVC and `-O3` for GCC/Clang, without fast-math flags.
+
+`pyproject.toml` declares setuptools, wheel, Cython and NumPy headers for isolated
+builds; preinstalling Cython into the runtime environment is unnecessary. Pip
+resolves Numba's compatible NumPy requirement when using the optional extra.
+Do not independently upgrade NumPy beyond the installed Numba's supported range.
+
+To work from the checkout without a compiler, install just runtime dependencies
+and import from the repository root:
+
+```sh
+python -m pip install "numpy>=2,<3" scipy scikit-learn
+# Optional:
+python -m pip install numba
+```
+
+This checkout-only route does not install a wheel or build Cython. Explicit
+NumPy selection always uses NumPy. Sequential backend selection retains existing
+fallbacks: Cython -> Numba -> NumPy; Numba -> Cython -> NumPy. Synchronous mode
+requires explicit NumPy and has no fallback.
+
+## Minimal usage
+
+Labels use `-1` for unlabeled nodes. At least two classes must have labeled seeds.
+Build the graph before calling the transductive `fit_predict` method:
+
+```python
+import numpy as np
+from pcc import ParticleCompetitionAndCooperation
+
+np.random.seed(0)
+X = np.array([[0.0], [0.1], [0.2], [1.0], [1.1], [1.2]])
+labels = np.array([0, -1, -1, 1, -1, -1])
+model = ParticleCompetitionAndCooperation(impl="numpy")
+model.build_graph(X, k_nn=2)
+predictions = model.fit_predict(labels, max_iter=100, early_stop=False)
+print(predictions)
+```
+
+This small example limits iterations explicitly; library defaults are unchanged.
+`build_graph` receives `k_nn`; propagation parameters belong to `fit_predict`,
+while `impl`, `n_jobs` and `update_mode` belong to the constructor.
+See [example.py](example.py) for a Wine example with normalization and accuracy.
+
+## Development checks
+
+After installation, run `python -m unittest discover -v` from the repository root.
+CI builds and installs the project through pip with build isolation, checks all
+three backends outside the source tree, and runs regression tests on both tested
+Python versions and operating systems. Optional long experiments under `docs/`
+are not part of installation or CI. Archived stopping data are downloaded
+separately; see [reproduction instructions](docs/benchmarks/stopping_patience/REPRODUCIBILITY.md).
 
 ## Parameters
-As arguments, **pypcc** receives the values explained below:
+The existing constructor, graph and propagation methods receive these parameters:
 
 ---
 - **k_nn:** value that represents the number of k-nearest neighbours used to build the graph (Euclidean distance).
 - **p_grd:** value from 0 to 1 that defines the probability of particles to take the greedy movement. Default: 0.5.
 - **delta_v:** value from 0 to 1 to control the rate of change of the domination levels. Default: 0.1.
 - **max_iter:** number of iterations until the label propagation stops (if the stop criteria is not met before that).
-- **es_chk:** control how many iterations the algorithm performs after reaching some level of stability (stopping criterion). Default: 2000. The formula is *(total_number_of_nodes / number_of_labeled_nodes) * es_chk*. Lower **es_chk** to finish earlier, but it may affect accuracy.
-- **impl:** chooses the implementation ("auto", "numpy", "numba", or "cython"). Default is "auto", which selects the fastest implementation available. "cython" falls back to "numba", and "numba" falls back to "numpy" when a specific implementation is not available.
+- **es_chk:** control how many iterations the algorithm performs after reaching some level of stability (stopping criterion). Default: 2000. The implementation checks every 10 iterations and uses `max(1, round((nodes / (particles * k_nn)) * round(es_chk * 0.1)))` checks of patience (isolated graphs use 1). Lower **es_chk** to finish earlier, but it may affect accuracy.
+- **impl:** chooses the implementation ("auto", "numpy", "numba", or "cython"). Default is "auto", which uses the fixed Cython -> Numba -> NumPy order. Explicit sequential "numba" uses Numba -> Cython -> NumPy when unavailable.
 ---
 
 ## Citation
