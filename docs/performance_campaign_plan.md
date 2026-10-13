@@ -243,3 +243,24 @@ requires the conservative expensive-work opt-in. Wine covers a small numerical
 dataset, Digits a higher-dimensional 10-class dataset, and GermanCredit a mixed
 categorical source. They do not estimate PenDigits or all other datasets reliably.
 The full 20-dataset propagation campaign and README updates remain unexecuted.
+
+
+## Approved targeted permutation follow-up
+
+Wine, Digits, Satimage and PageBlocks; seeds 10 and 11; all three backends;
+10,000 fixed iterations; three labels/class and unchanged PCC parameters.
+Three fresh consecutive sessions each use six repetitions covering all six
+backend permutations exactly once per fixture. Explicit `--order-policy
+permutations`, recorded `--order-seed` and `--session-id` distinguish this from
+the original campaign's unchanged default rotation. There are 144 measured
+fits/session (432 total), 48 warm-ups/session, and four graph preparations/session.
+
+The maintainer explicitly replaced the distinct-period requirement with
+consecutive automatic sessions without artificial delays. Actual start/end,
+inter-session gaps and process/environment provenance must be reported; the
+results cannot demonstrate stability across different machine-use periods or
+create independent observations simply by labeling them sessions. Preserve
+all records and the original 3,600-fit campaign. Compare native paired ratios
+by fixture, session, permutation, direction, and NumPy position, especially
+Satimage and PageBlocks. No early-stopping campaign or README table change is
+included in this authorization.

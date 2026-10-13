@@ -421,3 +421,35 @@ still requires `--execute`, a verified historical cache and a new output directo
 See [the campaign plan](performance_campaign_plan.md) for stage-specific costs,
 target-machine setup, audit and future execution commands. No pilot performance
 measurements accompany these refinements.
+
+
+## Optional fully counterbalanced follow-up schedule
+
+`--order-policy permutations` is an explicit experimental option. It requires
+all three backends and exactly six repetitions. Each fixture executes all six
+backend permutations once, in a deterministic shuffle produced by an isolated
+Python RNG with `--order-seed` (default 0) and case index. Every backend occupies
+each position twice and each native backend precedes the other three times.
+The production/backend RNGs, labels, graph, parameters and fit timing boundaries
+are unchanged. The default `--order-policy rotate` retains the original cyclic
+schedule exactly; prior campaign artifacts are never rewritten.
+
+```console
+python -m benchmarks.run --datasets wine digits satimage pageblocks --label-seeds 10 11 --iterations 10000 --repeats 6 --backends numpy numba cython --mode fixed --order-policy permutations --order-seed 1 --session-id followup-1 --dry-run
+```
+
+Dry-run and the manifest include the complete schedule keyed by fixture.
+Measurements additionally record the full backend order, session ID and UTC
+call start/completion timestamps. These timestamps bracket the measurement
+helper, including its untimed verification; they do not replace or alter fit
+subtimers. Completion records include session start/end UTC timestamps. A
+separate native launcher can record total process wall duration.
+
+The approved follow-up consists of three fresh, consecutive local Windows
+processes, with session-specific order seeds and separate output directories:
+eight fixtures, 144 measurements and 48 warm-ups per session, 432 measurements
+and 144 warm-ups total. No artificial delays establish session independence.
+The user superseded the original distinct-machine-use-period requirement;
+consecutive sessions assess short-term repeatability and order sensitivity,
+not stability across different periods of machine use. No early-stopping fits
+or README performance edits accompany this option.

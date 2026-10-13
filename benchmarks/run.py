@@ -1,7 +1,10 @@
 """Run with python -m benchmarks.run; defaults to a read-only workload plan."""
 import argparse
 from dataclasses import asdict, replace
+from datetime import datetime, timezone
+from itertools import permutations
 import json
+import random
 from pathlib import Path
 import sys
 import time
@@ -13,7 +16,16 @@ from .runner import (PARAMETERS, environment_manifest, expected_backend, measure
                      seed_backend, summarize, write_json)
 
 
-def execution_order(backends, case_index, repeat):
+def execution_order(backends, case_index, repeat, policy="rotate", order_seed=0):
+    if policy == "permutations":
+        if sorted(backends) != ["cython", "numba", "numpy"] or not 0 <= repeat < 6:
+            raise ValueError("permutations requires all three backends and six repetitions")
+        orders = list(permutations(backends))
+        # An isolated Python RNG leaves every production/backend RNG untouched.
+        random.Random((order_seed << 32) + case_index).shuffle(orders)
+        return list(orders[repeat])
+    if policy != "rotate":
+        raise ValueError("unknown execution-order policy")
     offset = (case_index + repeat) % len(backends)
     return backends[offset:] + backends[:offset]
 
@@ -101,6 +113,12 @@ def execute(args, cases, workload):
         build_info = json.loads(args.build_info.read_text(encoding="utf-8"))
     manifest = environment_manifest(dict(workload=workload, cases=[asdict(case) for case in cases],
                                          mode=args.mode, parameters=PARAMETERS,
+                                         session_id=args.session_id, order_policy=args.order_policy,
+                                         order_seed=args.order_seed,
+                                         execution_schedule={case.case_id: [execution_order(
+                                             args.backends, index, repeat, args.order_policy, args.order_seed)
+                                             for repeat in range(args.repeats)]
+                                             for index, case in enumerate(cases)},
                                          historical_cache=str(args.historical_cache) if args.historical_cache else None,
                                          propagation_seed=args.propagation_seed,
                                          mnist_cache=str(args.mnist_cache) if args.mnist_cache else None),
@@ -140,7 +158,9 @@ def execute(args, cases, workload):
                         warm_stream.flush()
                 reference_states = {}
                 for repeat in range(args.repeats):
-                    for order_index, name in enumerate(execution_order(args.backends, case_index, repeat)):
+                    order = execution_order(args.backends, case_index, repeat, args.order_policy, args.order_seed)
+                    for order_index, name in enumerate(order):
+                        call_started_utc = datetime.now(timezone.utc).isoformat()
                         row = measure(arrays, case, name, args.iterations,
                                       args.mode == "early_stopping", args.propagation_seed)
                         identity = (row["state_hashes"], row["effective_iterations"], row["stop_reason"])
@@ -148,6 +168,9 @@ def execute(args, cases, workload):
                             raise RuntimeError(f"nonrepeatable state/metrics for {case.case_id}/{name}")
                         reference_states[name] = identity
                         row.update(case_id=case.case_id, repeat=repeat, order_index=order_index,
+                                   execution_order=order, session_id=args.session_id,
+                                   call_started_utc=call_started_utc,
+                                   call_completed_utc=datetime.now(timezone.utc).isoformat(),
                                    fixture_sha256=metadata["fixture_sha256"], labeled_nodes=metadata["labeled_nodes"])
                         stream.write(json.dumps(row, allow_nan=False)+"\n")
                         stream.flush()
@@ -164,7 +187,10 @@ def execute(args, cases, workload):
                  "Fit initialization/propagation are reported separately in summary.json."))
         write_json(args.output / "summary.json", summarize(rows))
         write_json(args.output / "completion.json", dict(status="complete" if rows else "no_measurements",
-                                                        measured_executions=len(rows), fixtures=fixtures, skipped=skipped))
+                                                        measured_executions=len(rows), fixtures=fixtures, skipped=skipped,
+                                                        session_id=args.session_id,
+                                                        session_started_utc=manifest["timestamp_utc"],
+                                                        session_completed_utc=datetime.now(timezone.utc).isoformat()))
     except Exception as exc:
         write_json(args.output / "failure.json", dict(status="failed", exception=type(exc).__name__,
                                                      message=str(exc), measured_executions=len(rows), skipped=skipped))
@@ -183,6 +209,9 @@ def main(argv=None):
     parser.add_argument("--synthetic-config", type=Path)
     parser.add_argument("--backends", nargs="+", choices=["numpy", "numba", "cython"], default=["numpy", "numba", "cython"])
     parser.add_argument("--pilot-stage", choices=["100", "1000"], help="fixed pilot: wine/digits/germancredit, label seeds 10 and 11; defaults to dry-run")
+    parser.add_argument("--order-policy", choices=["rotate", "permutations"], default="rotate")
+    parser.add_argument("--order-seed", type=int, default=0, help="isolated schedule RNG seed; does not seed PCC")
+    parser.add_argument("--session-id", help="optional descriptive session identifier; does not establish independence")
     parser.add_argument("--mode", choices=["fixed", "early_stopping"], default="fixed")
     parser.add_argument("--iterations", type=int, default=None)
     parser.add_argument("--repeats", type=int, default=6)
@@ -235,10 +264,20 @@ def main(argv=None):
             raise ValueError("propagation seed must be an unsigned 32-bit integer")
         if len(set(args.backends)) != len(args.backends):
             raise ValueError("backend selections must be unique")
+        if not 0 <= args.order_seed < 2**32:
+            raise ValueError("order seed must be an unsigned 32-bit integer")
+        if args.order_policy == "permutations" and (args.repeats != 6 or
+                sorted(args.backends) != ["cython", "numba", "numpy"]):
+            raise ValueError("permutations requires all three backends and six repetitions")
         cases = select_cases(args)
         workload = plan(cases, args.backends, args.repeats, args.iterations)
         workload["mode"] = args.mode
         workload["pilot_stage"] = args.pilot_stage
+        workload["order_policy"] = args.order_policy
+        workload["order_seed"] = args.order_seed
+        workload["execution_schedule"] = {case.case_id: [execution_order(
+            args.backends, index, repeat, args.order_policy, args.order_seed)
+            for repeat in range(args.repeats)] for index, case in enumerate(cases)}
         print(json.dumps(workload, indent=2), flush=True)
         if args.execute:
             execute(args, cases, workload)
