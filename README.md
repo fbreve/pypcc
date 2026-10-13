@@ -50,6 +50,11 @@ See [the mathematical rule, tests and Wine/Digits benchmarks](docs/numpy_synchro
 
 ## Benchmarks:
 
+These are **historical measurements**, not measurements of the latest code.
+The MATLAB and Python timings used different preparation and timing protocols.
+See [reproducible Python benchmarking](docs/performance_benchmarking.md) for the
+new protocol, workload planning, and the historical comparability limitations.
+
 Machine: Intel Core i9 14900K with 128GB of RAM \
 Software: MATLAB R2025b, Python 3.12.12, Numpy 2.4.4, Numba 0.64.0, and Cython 3.2.4 \
 
