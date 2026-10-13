@@ -148,7 +148,7 @@ All 40 new runs pass state and stopping-accounting assertions. Every run that ha
 
 ```powershell
 & 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python docs/benchmark_backend_convergence.py --iterations 30000 --output-dir docs/benchmarks/convergence_30000_reproduction
-& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics
+& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v tests.test_numpy_regression tests.test_numpy_synchronous tests.test_sequential_safety tests.test_propagation_metrics
 ```
 
 - [30000 individual runs](convergence_30000/backend_convergence.csv)
@@ -166,3 +166,5 @@ The optional continuous Numba diagnostic confirms that the score continues setti
 ## Exploratory alternative stopping candidates
 
 A separate [candidate report](stopping_candidates/report.md) evaluates classification, scalar-dominance variation and hybrid rules retrospectively on existing Digits traces, and on newly collected continuous full-budget Wine references. Original-OR candidates are the most promising exploratory options: they save about 39-41% of Digits iterations with a mean accuracy cost of 0.32-0.34 pp while reproducing the original stopped Wine outcomes in these five seeds. No candidate is implemented in production; endpoint sampling, per-seed losses, unmet evidence requirements and selection bias are documented.
+
+Test module paths in the command above reflect the current `tests/` layout. The recorded validation results are historical provenance, not a new run.

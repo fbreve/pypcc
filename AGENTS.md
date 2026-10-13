@@ -24,12 +24,13 @@ This repository implements Particle Competition and Cooperation (PCC) for semi-s
 - `pcc_numpy.py`: sequential reference and optional experimental synchronous variant.
 - `pcc_numba.py`: sequential Numba kernels; `pcc_step.pyx`: sequential Cython kernels.
 - `pcc_validation.py` and `pcc_metrics.py`: shared input validation and optional metrics.
+- `tests/`: automated regression and packaging tests.
 - `experiments/` and `docs/`: optional research and published reproduction, separate from runtime modules.
 
 ## Installation and testing
 - Tested CI matrix: Windows/MSVC and Linux/GCC, Python 3.10 and 3.12.
 - `python -m pip install -e ".[numba]"` builds Cython using isolated build dependencies.
-- `python -m unittest discover -v` runs local regression tests; require all three backends before claiming cross-backend validation.
+- `python -m unittest discover -s tests -v` runs local regression tests; require all three backends before claiming cross-backend validation.
 - `python -m pip wheel --no-deps . --wheel-dir .cache/wheels` verifies isolated wheel compilation.
 - Run `tools/check_installation.py --require-all` from outside the source tree against the installed wheel to detect missing runtime modules and fallback.
 - Inspect CI for the exact final commit before declaring completion. Do not infer support for untested Python versions or platforms.

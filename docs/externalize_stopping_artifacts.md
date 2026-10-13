@@ -26,7 +26,7 @@ Do not replace assets in place after publication.
 | `docs/reproduce_stopping_patience.py`, `docs/report_stopping_patience.py` | Public reproduction inherits the shared reader; no pickle or propagation required. |
 | `docs/inspect_adaptive_stopping_archives.py` | Published adaptive schema inspection inherits the same reader. |
 | `docs/compare_adaptive_stopping.py` on the adaptive experimental branch | Its existing shared-reader call also supports external storage without changing its frozen protocol. This comparison is not yet in the base master. |
-| `test_patience_archive.py` | Synthetic fixtures continue to work; external-directory regression added. |
+| `tests/test_patience_archive.py` | Synthetic fixtures continue to work; external-directory regression added. |
 | `docs/package_stopping_patience.py` | Historical packager remains unchanged; not needed for migration. Do not run it over published files. |
 | `artifacts_manifest.json`, `archive_manifest.csv`, frozen protocols | Preserve byte-for-byte, including paths, hashes and provenance. |
 | Historical reports, consolidation validation and adaptive inspection metadata | Preserve scientific evidence; file names identify archive contents, not a required storage directory. |

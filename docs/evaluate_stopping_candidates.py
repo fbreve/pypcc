@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import benchmark_backends as fixed
 from benchmark_backend_convergence import prepare_cases
 from diagnose_digits_stopping import initial_arguments, predictions, trace
-from test_sequential_safety import next_random
+from tests.test_sequential_safety import next_random
 
 
 def read_csv(path):

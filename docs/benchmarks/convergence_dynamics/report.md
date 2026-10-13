@@ -132,7 +132,7 @@ An independent CSV reconstruction confirmed all 120000 original checks and 40 fi
 
 ```powershell
 & 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python docs/diagnose_convergence_dynamics.py --output-dir docs/benchmarks/convergence_dynamics_reproduction
-& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics test_stopping_range_prototype test_convergence_measurements
+& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v tests.test_numpy_regression tests.test_numpy_synchronous tests.test_sequential_safety tests.test_propagation_metrics tests.test_stopping_range_prototype tests.test_convergence_measurements
 ```
 
 Run from the repository root, without Python `-O` (which disables correctness assertions), using a separate output directory to preserve committed results. Windows and native Cython are checked although all research trajectories use Numba. Diagnostic runtimes include scans and streaming output; they are **not** benchmark speed measurements. Plotting occurs after propagation.
@@ -148,3 +148,5 @@ Artifacts: [script](../../diagnose_convergence_dynamics.py), [check-level histor
 **Limitations:** seeds were previously examined, graphs are not independently varied, observations are ten-step rather than per-iteration, confidence is descriptive rather than calibrated, and full matrices are not persisted at every checkpoint. Scalar progress need not be useful classification progress; an isolated tiny reset is not proof of a numerical defect. Nothing beyond 30000 was executed, and conditional plateau arithmetic does not predict an actual future stop.
 
 The results are presented for maintainer review. No new stopping criterion or threshold is proposed from this diagnostic study, no production/public API/defaults change, and no prior experimental result is modified.
+
+Test module paths in the command above reflect the current `tests/` layout. The recorded validation results are historical provenance, not a new run.

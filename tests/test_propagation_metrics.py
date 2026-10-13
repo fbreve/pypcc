@@ -8,7 +8,7 @@ from numba import njit
 
 import pcc_numba
 from pcc_numpy import pcc_propagate_numpy
-from test_sequential_safety import state, buffers, next_random, pcc_step
+from tests.test_sequential_safety import state, buffers, next_random, pcc_step
 
 
 @njit

@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 import benchmark_backends as fixed
 from diagnose_digits_stopping import initial_arguments, predictions
 from experiments.stopping_range import propagate_range, THRESHOLD, WINDOW, PATIENCE, FIRST_ALLOWED
-from test_sequential_safety import next_random
+from tests.test_sequential_safety import next_random
 
 PROTOCOL_PATH = Path('docs/benchmarks/stopping_validation/protocol.json')
 

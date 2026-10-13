@@ -6,8 +6,8 @@ from experiments.convergence_measurements import maxima_gaps, norms, distributio
 class DiagnosticTests(unittest.TestCase):
     def test_reading_rng_and_calculations_do_not_draw_or_modify_rng(self):
         from numba import _helperlib
-        from test_propagation_metrics import seed_only
-        from test_sequential_safety import next_random
+        from tests.test_propagation_metrics import seed_only
+        from tests.test_sequential_safety import next_random
         seed_only(123)
         pointer=_helperlib.rnd_get_np_state_ptr()
         before=_helperlib.rnd_get_state(pointer)

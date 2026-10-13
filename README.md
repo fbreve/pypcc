@@ -185,7 +185,8 @@ See [example.py](example.py) for a Wine example with normalization and accuracy.
 
 ## Development checks
 
-After installation, run `python -m unittest discover -v` from the repository root.
+After installation, run `python -m unittest discover -s tests -v` from the repository root.
+See [test inventory and module commands](docs/testing.md).
 CI builds and installs the project through pip with build isolation, checks all
 three backends outside the source tree, and runs regression tests on both tested
 Python versions and operating systems. Optional long experiments under `docs/`
