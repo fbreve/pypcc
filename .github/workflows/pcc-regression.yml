@@ -32,4 +32,15 @@ jobs:
       - name: Require all three backends
         run: python -c "import numpy, pcc_numba, pcc_step"
       - name: Run deterministic regression tests
-        run: python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics test_stopping_range_prototype test_convergence_measurements test_stopping_patience test_checkpoint_retry test_patience_results test_patience_archive test_adaptive_stopping test_stopping_artifact_store test_stopping_reproduction
+        env:
+          PCC_DIST_DIR: dist
+        run: python -m unittest discover -v
+      - name: Install editable distribution with isolated dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Verify editable version and archive metadata
+        env:
+          PCC_DIST_DIR: dist
+        run: python -m unittest -v test_packaging_version
+      - name: Verify editable modules outside checkout
+        working-directory: ${{ runner.temp }}
+        run: python "${{ github.workspace }}/tools/check_installation.py" --require-all
