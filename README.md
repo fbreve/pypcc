@@ -206,10 +206,25 @@ The existing constructor, graph and propagation methods receive these parameters
 ---
 
 ## Citation
-If you use this algorithm, please cite the original publication:
+If you use PyPCC in your research, please cite the original PCC paper:
 
 `Breve, Fabricio Aparecido; Zhao, Liang; Quiles, Marcos Gonçalves; Pedrycz, Witold; Liu, Jiming, "Particle Competition and Cooperation in Networks for Semi-Supervised Learning," Knowledge and Data Engineering, IEEE Transactions on , vol.24, no.9, pp.1686,1698, Sept. 2012`
 
-https://doi.org/10.1109/TKDE.2011.119
-
 Accepted Manuscript: https://www.fabriciobreve.com/artigos/ieee-tkde-2009.pdf
+
+```bibtex
+@article{Breve2012PCC,
+  author = {Breve, Fabricio Aparecido and Zhao, Liang and Quiles, Marcos Gon{\c{c}}alves and Pedrycz, Witold and Liu, Jiming},
+  title = {Particle Competition and Cooperation in Networks for Semi-Supervised Learning},
+  journal = {IEEE Transactions on Knowledge and Data Engineering},
+  volume = {24},
+  number = {9},
+  pages = {1686--1698},
+  year = {2012},
+  month = sep,
+  doi = {10.1109/TKDE.2011.119},
+  url = {https://doi.org/10.1109/TKDE.2011.119}
+}
+```
+
+[DOI: 10.1109/TKDE.2011.119](https://doi.org/10.1109/TKDE.2011.119)
