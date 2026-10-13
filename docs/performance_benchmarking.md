@@ -1,5 +1,12 @@
 # Reproducible Python performance benchmarking
 
+The completed [20-dataset fixed campaign](performance_fixed_results.md) and
+[separate permutation sensitivity analysis](performance_order_sensitivity.md)
+are documented with a [verified local archival/reproduction plan](performance_archiving.md).
+Execution examples below describe optional tooling; they are not authorization
+for additional runs. Fixed-iteration measurements are separate from early stopping.
+
+
 The optional `benchmarks/` harness compares sequential NumPy, Numba and Cython.
 It does not change production modules, public APIs, stopping rules, defaults,
 package versions or frozen scientific experiments. No new performance claims

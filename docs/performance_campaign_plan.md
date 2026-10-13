@@ -1,10 +1,16 @@
-# Proposed Python performance campaign (PR #16, phase 1)
+# Python performance campaign (PR #16)
 
-Status: dataset selection and experimental design approved; preparation refinements
-and two pilot stages prepared for review. Performance measurements remain unexecuted.
-Full campaigns and README result updates still require separate approval.
-No campaign measurements are supplied by this PR. Historical Python and
-MATLAB/MEX results, scientific manifests, protocols and release assets remain intact.
+Status: fixed-iteration campaign complete: 3,600 original fits plus a separate
+432-fit permutation sensitivity analysis. No additional executions are needed
+to finalize this report. Early stopping and MNIST remain unexecuted and are not
+part of the completed results. The planning estimates below are historical
+design information, not newly measured outcomes or authorization to run.
+
+The [completed reproducibility report](performance_fixed_results.md),
+[sensitivity report](performance_order_sensitivity.md), and
+[archive guide](performance_archiving.md) supersede earlier pending-review
+status statements. All historical MATLAB/MEX results and frozen scientific
+manifests remain intact. PR #16 remains a draft; publishing and merging require review.
 
 ## Frozen 20-dataset inventory
 
@@ -99,8 +105,9 @@ storage per case, not peak RAM. Frozen OpenML raw files total 4,961,182 bytes,
 excluding metadata and parsing overhead. MNIST preparation uses a much larger
 full 70,000-row source and is independently opt-in.
 
-Wall-clock estimates are unavailable until approved pilots run on the target
-machine. After a pilot, use per-fixture/backend median `propagation_s_per_iteration`
+The primary campaign now has a measured 36 min 48 s native-process duration;
+see the [results report](performance_fixed_results.md). The following was the
+pilot estimation method, retained as planning context: use per-fixture/backend median `propagation_s_per_iteration`
 to estimate budget times six repetitions; add median initialization/postprocessing,
 actual warm-up costs and preparation timings. Compare Q1/Q3 throughput estimates
 as a range, not a confidence interval. Extrapolation across budgets is tentative:
@@ -242,10 +249,13 @@ iterations and 1,782,000 particle updates. Neither preset downloads data nor
 requires the conservative expensive-work opt-in. Wine covers a small numerical
 dataset, Digits a higher-dimensional 10-class dataset, and GermanCredit a mixed
 categorical source. They do not estimate PenDigits or all other datasets reliably.
-The full 20-dataset propagation campaign and README updates remain unexecuted.
+The full fixed-iteration campaign is now complete and documented in the
+[results report](performance_fixed_results.md); the README contains its separate
+Python table. The estimates above are retained as historical planning context.
+Early-stopping execution and Release publication remain unapproved.
 
 
-## Approved targeted permutation follow-up
+## Completed targeted permutation follow-up
 
 Wine, Digits, Satimage and PageBlocks; seeds 10 and 11; all three backends;
 10,000 fixed iterations; three labels/class and unchanged PCC parameters.
@@ -262,5 +272,7 @@ results cannot demonstrate stability across different machine-use periods or
 create independent observations simply by labeling them sessions. Preserve
 all records and the original 3,600-fit campaign. Compare native paired ratios
 by fixture, session, permutation, direction, and NumPy position, especially
-Satimage and PageBlocks. No early-stopping campaign or README table change is
-included in this authorization.
+Satimage and PageBlocks. The completed measurements are reported separately
+in the [sensitivity analysis](performance_order_sensitivity.md). README changes
+were subsequently authorized for final documentation; early stopping remains
+unexecuted.

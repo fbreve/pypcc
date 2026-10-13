@@ -1,0 +1,28 @@
+{
+  "asset": "pypcc-fixed-results-windows-20261013.zip",
+  "verification": {
+    "status": "verified",
+    "files": 551,
+    "bytes": 93800528,
+    "sha256": "78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf"
+  },
+  "primary": {
+    "measured_fits": 3600,
+    "warmups": 1200,
+    "fixtures": 200
+  },
+  "sensitivity": {
+    "measured_fits": 432,
+    "warmups": 144,
+    "saved_fixtures": 24,
+    "unique_input_fixtures": 8,
+    "sessions": "three consecutive processes; not pooled"
+  },
+  "source_commits": [
+    "c9f512c2da576a4095e9bf0192133ee34896f494",
+    "a1a2460d80d40c5adcdc59e8622048157a5d8c60"
+  ],
+  "published": false,
+  "source_line_ending_checks": 32,
+  "portable_reanalysis": "extracted archive tool and raw data reproduce all primary/session tables exactly"
+}
