@@ -9,8 +9,8 @@ import numpy as np
 import pcc_numba
 from experiments.stopping_patience import (Observer, adjusted_threshold, original_threshold,
     run, rng_state, restore_rng, accuracy, STATE_INDICES)
-from test_sequential_safety import state, buffers, next_random
-from test_propagation_metrics import seed_only
+from tests.test_sequential_safety import state, buffers, next_random
+from tests.test_propagation_metrics import seed_only
 from experiments.patience_summary import summaries, FIELDS
 
 

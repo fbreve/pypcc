@@ -82,7 +82,7 @@ classes. Donor calculations use a classes-by-classes competitor matrix.
 ## Verification
 
 ```console
-python -m unittest -v test_numpy_regression test_numpy_synchronous
+python -m unittest -v tests.test_numpy_regression tests.test_numpy_synchronous
 ```
 
 The existing nine sequential tests are preserved. New deterministic tests

@@ -7,8 +7,8 @@ from unittest.mock import patch
 import numpy as np
 from experiments.checkpoint_retry import retry_writer
 import experiments.stopping_patience as experiment
-from test_stopping_patience import fixture
-from test_propagation_metrics import seed_only
+from tests.test_stopping_patience import fixture
+from tests.test_propagation_metrics import seed_only
 
 
 def locked():

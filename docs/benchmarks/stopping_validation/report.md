@@ -84,7 +84,7 @@ The fixed protocol is [protocol.json](protocol.json); environment versions and n
 
 ```powershell
 & 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python docs/validate_stopping_range.py --output-dir docs/benchmarks/stopping_validation_reproduction
-& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v test_numpy_regression test_numpy_synchronous test_sequential_safety test_propagation_metrics test_stopping_range_prototype
+& 'C:\Users\fbrev\miniforge3\Scripts\conda.exe' run -n pypcc-dev --no-capture-output python -m unittest -v tests.test_numpy_regression tests.test_numpy_synchronous tests.test_sequential_safety tests.test_propagation_metrics tests.test_stopping_range_prototype
 ```
 
 Use a separate output directory to preserve committed results; do not use Python `-O`, which disables experiment assertions. The script checks that the prototype constants match the frozen protocol and rejects non-Windows execution or absence of native Cython.
@@ -96,3 +96,5 @@ Use a separate output directory to preserve committed results; do not use Python
 - [Aggregate statistics](summary.csv)
 
 Previous benchmark results remain unchanged. The work is isolated on `experiment/stopping-range-validation`; retain the PR in draft, with no merge or direct master changes.
+
+Test module paths in the command above reflect the current `tests/` layout. The recorded validation results are historical provenance, not a new run.

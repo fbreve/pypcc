@@ -4,8 +4,8 @@ import unittest
 import numpy as np
 import pcc_numba
 from experiments.stopping_range import propagate_range, RangeObserver
-from test_sequential_safety import state, buffers, next_random
-from test_propagation_metrics import seed_only
+from tests.test_sequential_safety import state, buffers, next_random
+from tests.test_propagation_metrics import seed_only
 
 
 class RangePrototypeTests(unittest.TestCase):
