@@ -4,6 +4,11 @@ All 432 measured fits and 144 warm-ups accounted for across three fresh consecut
 
 Sessions are consecutive by explicit revised authorization, not distinct periods of machine use. This probes short-term session/order repeatability, not temporal stability or independent-session population inference.
 
+The separate session measurements and diagnostics are preserved in the
+[published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13),
+alongside the unpooled primary campaign. See the [archive guide](performance_archiving.md)
+for verified asset checksums and provenance.
+
 ## Session timing and environment
 
 | Session | Actual start UTC | Actual end UTC | Wall seconds | Dataset order |
@@ -115,8 +120,9 @@ A broader stability claim would require separately authorized genuine periods.
 
 The README now contains a separate Python fixed-propagation median/IQR table
 linked to the primary report and this sensitivity analysis. Historical
-MATLAB/MEX/Python tables and timing scopes remain intact. Release publication,
-merging and marking the draft ready still require maintainer approval.
+MATLAB/MEX/Python tables and timing scopes remain intact. The archive Release
+was subsequently published with approval; merging and marking the draft ready
+still require maintainer approval.
 No early-stopping run or 500,000 comparison occurred.
 
 ## Actual local times (America/Sao_Paulo, 2026-10-13)

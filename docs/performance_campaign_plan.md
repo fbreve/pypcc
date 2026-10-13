@@ -10,7 +10,9 @@ The [completed reproducibility report](performance_fixed_results.md),
 [sensitivity report](performance_order_sensitivity.md), and
 [archive guide](performance_archiving.md) supersede earlier pending-review
 status statements. All historical MATLAB/MEX results and frozen scientific
-manifests remain intact. PR #16 remains a draft; publishing and merging require review.
+manifests remain intact. The [benchmark archive Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13)
+has been published with approval. PR #16 remains a draft; merging and marking
+it ready require review.
 
 ## Frozen 20-dataset inventory
 
@@ -252,7 +254,8 @@ categorical source. They do not estimate PenDigits or all other datasets reliabl
 The full fixed-iteration campaign is now complete and documented in the
 [results report](performance_fixed_results.md); the README contains its separate
 Python table. The estimates above are retained as historical planning context.
-Early-stopping execution and Release publication remain unapproved.
+Early-stopping execution remains unapproved; the archive Release was subsequently
+published with approval, without new benchmark executions.
 
 
 ## Completed targeted permutation follow-up

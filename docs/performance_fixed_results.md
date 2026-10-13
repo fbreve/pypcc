@@ -6,6 +6,10 @@ does not replace or contribute records to these summaries. Every timing outlier
 is retained. No early-stopping experiment was run. This report describes the
 observed machine and workloads; it does not select a universal native backend winner.
 
+Raw measurements, manifests, checksums, source snapshots and diagnostics are
+available in the [published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
+The [archive guide](performance_archiving.md) records public-download verification.
+
 ## Protocol and dataset provenance
 
 Measured source: `c9f512c2da576a4095e9bf0192133ee34896f494` (clean working tree).

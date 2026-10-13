@@ -2,7 +2,9 @@
 
 The completed [20-dataset fixed campaign](performance_fixed_results.md) and
 [separate permutation sensitivity analysis](performance_order_sensitivity.md)
-are documented with a [verified local archival/reproduction plan](performance_archiving.md).
+are documented with a [verified archive/reproduction guide](performance_archiving.md).
+Raw artifacts are available in the
+[published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
 Execution examples below describe optional tooling; they are not authorization
 for additional runs. Fixed-iteration measurements are separate from early stopping.
 

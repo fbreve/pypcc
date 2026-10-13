@@ -90,6 +90,8 @@ from the historical MATLAB/MEX benchmarks below.
 See the [complete protocol, paired speedups and limitations](docs/performance_fixed_results.md),
 [separate 432-fit order sensitivity analysis](docs/performance_order_sensitivity.md),
 and [raw archive/reproduction guide](docs/performance_archiving.md).
+The complete raw-results archive and checksum manifests are available in the
+[benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
 
 ## Benchmarks:
 

@@ -1,18 +1,32 @@
 # Fixed-performance archive and offline reproduction
 
-The raw original campaign and separate follow-up are preserved locally. An
-archive is prepared for review, **not published**. Packaging and the analysis
+The raw original campaign and separate follow-up are preserved locally and in
+the [published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
+Packaging and the analysis
 commands here only read existing measurements; they do not call PCC, download
 datasets or invoke historical executor scripts.
 
-## Proposed Release assets
+## Published Release assets
 
-After approval, use a research-specific GitHub Release such as
-`python-fixed-benchmarks-2026-10-13`, separate from package-version releases.
-Attach `pypcc-fixed-results-windows-20261013.zip`, `SHA256SUMS.txt`, and
-`archive-index.json` (sizes, counts, source commits, verification result).
-Create the tag/release only after its source revision and publication have been
-approved. No Release or tag has been created by this preparation.
+The research-specific Release `python-fixed-benchmarks-2026-10-13` targets
+commit `b6de3e77dabae61a27d7f177b37e5fc5fa74c240`, separate from package-version
+releases. It was published with maintainer approval on 2026-10-13 at 17:59:13 UTC.
+
+- [Raw-results ZIP](https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/pypcc-fixed-results-windows-20261013.zip)
+- [SHA256SUMS.txt](https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/SHA256SUMS.txt)
+- [archive-index.json](https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/archive-index.json)
+
+All three assets were downloaded without authentication and verified against
+their local originals. The 93,800,528-byte ZIP has SHA-256
+`78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf`;
+all 551 member checksums passed again after downloading. The
+[publication verification record](performance_results/publication-verification.json)
+records asset URLs, byte counts, hashes and the resolved tag commit.
+
+The uploaded assets are unchanged pre-publication snapshots. Their preparation
+notes and the archive index's `published: false` field record status at package
+creation, not current Release availability. Publication did not rebuild the ZIP
+or alter historical measurements. PR #16 remains draft and unmerged.
 
 The ZIP retains distinct result roots, so no sensitivity data are pooled into
 the primary campaign:
