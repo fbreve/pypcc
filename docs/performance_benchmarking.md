@@ -201,7 +201,8 @@ Model construction, graph copying, backend identity verification, RNG seeding,
 state hashing, invariant checks, output writing and progress printing are
 outside fit timing. Initialization cannot be isolated further without more
 intrusive instrumentation, so it is explicitly reported with dispatch.
-Data preparation is measured once per fixture, not repeatedly. The reused PR #8
+Dataset/graph preparation is measured once per consecutive dataset group, and
+label preparation once per fixture. It is not repeated per backend or fit. The reused PR #8
 loader encodes, imputes and computes a reference scaler during dataset loading;
 these costs are included in `dataset_load_s`. The saved fixture scaler and label
 mask are prepared in `preprocessing_and_labels_s`. Do not interpret loading of
@@ -248,6 +249,7 @@ No historical result file is used as an output target.
 | `measurements.jsonl` | One execution per line: case/fixture/backend identity, repetition/order, timings, seed, actual stopping metrics, accuracy and final state hashes |
 | `warmups.jsonl` | Same execution fields, marked `first`/`warm`; excluded from summaries |
 | `seed_helper.json` | Numba seed helper first-call latency, when used |
+| `preparation.json` | Per-fixture preparation charges/reuse references, totals for dataset preparation and graph construction; no duplicate charges across seeds |
 | `summary.json` | Per-case/backend/mode/budget timing/iteration medians and IQRs, stop-reason counts, cap fraction |
 | `completion.json` | Completed execution count, fixture identities, skipped cases and status |
 | `failure.json` | Failure description and completed count; prior JSONL records remain available |
@@ -378,11 +380,44 @@ feature counts and processed dimensions are checked against the frozen inventory
 All rows remain in source order. Protocol checksum validation normalizes Git
 checkout line endings as the original study did.
 
-Saved fixture provenance includes protocol/inventory hashes and comparisons to
-the historical processed, graph and label fingerprints. Raw-data or historical
-3/class label-mask mismatches fail. Scaled/graph hash differences are recorded,
-not forced away: library versions, rounding and neighbor tie ordering can differ.
-Review such differences before approving measurements. The actual arrays/hashes
+Saved fixture provenance includes protocol/inventory hashes and actual/expected
+historical processed, graph and label fingerprints. Raw, processed, ordered graph
+(at the historical `k_nn=10`) and historical 3/class label-mask mismatches fail
+explicitly. No unexplained discrepancy is accepted and no bypass is supplied.
+Custom `k_nn` is marked as having no applicable frozen graph reference. Use the
+cache-only `python -m benchmarks.validate_inventory` audit to check the target
+environment before measuring; investigate library versions, data and ordering
+if it fails. The actual arrays/hashes
 remain shared across all backends. Custom label policies, seeds or k-NN values
 are identifiable in the manifest but do not reproduce the PR #8 primary protocol.
 The manifest also hashes the reused loader and frozen inventory/protocol files.
+
+
+### In-process reuse and pilot presets
+
+The execution path caches one prepared dataset/graph for consecutive label seeds.
+Shared arrays are read-only; labels and every model/backend state remain fresh.
+The cache key includes dataset dimensions, data seed, graph k-NN, synthetic flag
+and resolved source cache paths. Changing any of these invalidates the cache.
+Only label-dependent policies and label seeds can reuse the preparation. Dry-run
+reports preparation groups, graph build count and total graph-work proxy after
+reuse. No persistent graph cache or cross-process reuse is introduced.
+
+The first fixture retains the original preparation timers. Reused fixtures
+reference it through `preparation.source_case_id`, report zero loading/graph
+charges, and time their fresh label selection in `preprocessing_and_labels_s`.
+`preparation.json` totals these charges once. Fit initialization/dispatch and
+propagation boundaries are unchanged. Fixture arrays/hashes and self-contained
+NPZ output are unchanged by reuse.
+
+```console
+python -m benchmarks.run --pilot-stage 100 --dry-run
+python -m benchmarks.run --pilot-stage 1000 --dry-run
+```
+
+Both presets select Wine, Digits and GermanCredit; seeds 10 and 11; fixed mode;
+three labels/class; k-NN 10; six repetitions; and all three backends. Execution
+still requires `--execute`, a verified historical cache and a new output directory.
+See [the campaign plan](performance_campaign_plan.md) for stage-specific costs,
+target-machine setup, audit and future execution commands. No pilot performance
+measurements accompany these refinements.

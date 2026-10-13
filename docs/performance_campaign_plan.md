@@ -1,7 +1,8 @@
 # Proposed Python performance campaign (PR #16, phase 1)
 
-Status: dataset integration and workload planning only. Review this matrix before
-any downloads, pilot execution, full measurements or README performance updates.
+Status: dataset selection and experimental design approved; preparation refinements
+and two pilot stages prepared for review. Performance measurements remain unexecuted.
+Full campaigns and README result updates still require separate approval.
 No campaign measurements are supplied by this PR. Historical Python and
 MATLAB/MEX results, scientific manifests, protocols and release assets remain intact.
 
@@ -41,7 +42,7 @@ Use three labels per class, `k_nn=10`, full transductive scaling, and the origin
 PCC parameters (`p_grd=0.5`, `delta_v=0.1`, `deltap=1`, `dexp=2`, `es_chk=2000`).
 All three sequential backends use the same saved dataset, graph and labels.
 Six repetitions give two balanced backend-order rotation cycles per fixture.
-Use PR #8 label seeds 10?19 as ten distinct fixtures, summarized separately.
+Use PR #8 label seeds 10-19 as ten distinct fixtures, summarized separately.
 Propagation seed 0 remains the PR #15 setting; Cython retains its fixed internal
 seed. Seeds do not imply matching cross-backend trajectories.
 
@@ -49,17 +50,17 @@ Recommended stages, each requiring review of the preceding cost assessment:
 
 | Stage | Datasets / label seeds | Mode and budget | Measurements | Warm-ups | Measured iteration cap | Particle-update cap |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| Tiny pilot | Iris, seed 10 | fixed 100 | 18 | 6 | 1,800 | 16,200 |
-| Representative pilot | Wine, Digits, GermanCredit, seed 10 | fixed 100 | 54 | 18 | 5,400 | 81,000 |
-| Primary fixed campaign | all 20, seeds 10?19 | fixed 10,000 | 3,600 | 1,200 | 36,000,000 | 459,000,000 |
-| Initial stopping campaign | all 20, seeds 10?19 | early stopping, cap 100,000 | 3,600 | 1,200 | 360,000,000 | 4,590,000,000 |
-| Optional PR #8 cap comparison | all 20, seeds 10?19 | early stopping, cap 500,000 | 3,600 | 1,200 | 1,800,000,000 | 22,950,000,000 |
+| Pilot stage 1 | Wine, Digits, GermanCredit; seeds 10, 11 | fixed 100 | 108 | 36 | 10,800 | 162,000 |
+| Pilot stage 2 | same datasets and seeds | fixed 1,000 | 108 | 36 | 108,000 | 1,620,000 |
+| Primary fixed campaign | all 20, seeds 10-19 | fixed 10,000 | 3,600 | 1,200 | 36,000,000 | 459,000,000 |
+| Initial stopping campaign | all 20, seeds 10-19 | early stopping, cap 100,000 | 3,600 | 1,200 | 360,000,000 | 4,590,000,000 |
+| Optional PR #8 cap comparison | all 20, seeds 10-19 | early stopping, cap 500,000 | 3,600 | 1,200 | 1,800,000,000 | 22,950,000,000 |
 
 Do not run every row automatically. Start with approved small pilots; an
 additional cached large-data pilot (for example PenDigits at 100 iterations)
-needs explicit review even at this low budget. Tiny runs mainly expose startup
-and initialization costs; extend selected pilots to 1,000 iterations after
-review if timing resolution is inadequate. Use 10,000 fixed iterations as the
+needs explicit review even at this low budget. Stage 1 checks correctness, reset state and timing boundaries. Stage 2 repeats
+the exact same fixtures at 1,000 iterations for more useful throughput estimates.
+Each stage includes six repetitions and all three backends, with balanced order. Use 10,000 fixed iterations as the
 initial propagation comparison budget, rather than copying the expensive
 500,000 uninterrupted research trajectories. For stopping, start at 100,000
 and report actual cap fractions. Review a separate 500,000-cap run if censoring
@@ -82,11 +83,14 @@ campaigns add 4,800 warm-up iterations and 61,200 particle updates. Early
 stopping may reduce work substantially; no savings are assumed here.
 
 The 20 datasets have 85 classes in total. A single graph preparation per dataset
-has a combined `N? * processed_features` proxy of 5,406,433,612; this is not an
+has a combined `N^2 * processed_features` proxy of 5,406,433,612; this is not an
 operation count or an allocated dense distance matrix. The current harness
-prepares graphs once per label fixture: ten seeds repeat this work ten times
-per command, and separate modes repeat preparation. Saved exact fixtures allow
-cross-backend verification but are not a persistent graph-reuse cache.
+now prepares each dataset/graph once for its consecutive label seeds: the full
+ten-seed command builds 20 graphs rather than 200. Separate modes and pilot
+stages are separate processes and repeat preparation. The in-memory cache holds
+only the current dataset, invalidates on data seed, dimensions, graph k-NN or
+source cache path changes, and never reuses particle/backend state. Saved exact
+fixtures allow cross-backend verification but are not a persistent disk cache.
 
 The largest uint8 particle distance table is PenDigits at 329,760 bytes; this
 excludes graph storage, backend buffers, dominance, feature arrays and source
@@ -112,8 +116,8 @@ All commands here are dry-runs; they load no datasets, build no graphs, compile
 no kernels and make no network requests:
 
 ```console
-python -m benchmarks.run --datasets iris --label-seeds 10 --iterations 100 --dry-run
-python -m benchmarks.run --datasets wine digits germancredit --label-seeds 10 --iterations 100 --dry-run
+python -m benchmarks.run --pilot-stage 100 --dry-run
+python -m benchmarks.run --pilot-stage 1000 --dry-run
 python -m benchmarks.run --historical --label-seeds 10 11 12 13 14 15 16 17 18 19 --iterations 10000 --dry-run
 python -m benchmarks.run --historical --label-seeds 10 11 12 13 14 15 16 17 18 19 --mode early_stopping --iterations 100000 --dry-run
 python -m benchmarks.run --datasets mnist_5000 mnist_10000 --label-seeds 10 --iterations 100 --dry-run
@@ -128,12 +132,15 @@ Missing historical data fail; the 20-dataset group is never silently reduced.
 ## Differences from the PR #8 protocol
 
 Dataset identities, dimensions, preprocessing, 3/class labels, sorted class
-selection, seeds 10?19, graph construction and PCC parameters are retained.
+selection, seeds 10-19, graph construction and PCC parameters are retained.
 The group shorthand uses seed 10 for planning convenience; the complete matrix
 explicitly selects all ten historical seeds. Ordinary PR #15 CLI defaults stay
-unchanged. Processed/graph fingerprints are reported against frozen provenance;
-raw-data and primary historical label-mask mismatches fail. Investigate recorded
-processed/graph differences without forcing bitwise backend equality.
+unchanged. Raw, processed-data, ordered-graph and primary historical label fingerprints
+are checked exactly against frozen provenance and mismatches fail. A custom
+`k_nn` has no applicable historical graph reference and is explicitly marked as
+such. There is no mismatch override: investigate data, library versions and
+ordering before measuring on another environment. This validates shared inputs,
+not equality of backend floating-point trajectories.
 
 PR #8 studied uninterrupted 500,000-iteration Numba trajectories with observer
 sampling, hypothetical patience multipliers and scientific accuracy outcomes.
@@ -156,8 +163,83 @@ network prohibition, historical-only selection and workload arithmetic. Existing
 small backend tests exercise sequential invariants and both stopping modes.
 No external data downloads or full benchmark campaigns run in CI.
 
-Local cache-only inspection verified all 20 raw fingerprints, dimensions, class
-identities and scaled fingerprints against the frozen inventory. This is dataset
+Local cache-only inspection verified all 20 raw, processed-data and ordered
+graph fingerprints, dimensions and class identities against the frozen inventory.
+No mismatch occurred: NumPy 2.4.6, SciPy 1.18.1 and scikit-learn 1.9.1 match the
+frozen reference environment. Exact ordered graph matches also exclude neighbor
+ordering differences in this audit. The report is an ignored local artifact at
+`.cache/performance/fingerprint-audit-refined.json`; regenerate it on the target
+machine with the audit command below. This is dataset
 validation, not propagation timing or a repeated historical trajectory audit.
 The repository's Windows/Linux, Python 3.10/3.12 CI remains the required final
 check; inspect the exact final commit before claiming completion.
+
+
+## Preparation reuse and timing report
+
+For consecutive label seeds, the first fixture keeps the original loading,
+preprocessing-plus-labeling, and graph timing boundaries. Later fixtures use the
+same read-only source/scaled data, truth, scaler arrays and ordered graph with a
+fresh deterministic label mask. Their `dataset_load_s` and `graph_build_s` are
+zero because that work was not repeated; `preprocessing_and_labels_s` measures
+only their label selection. `preparation.source_case_id` references the first
+fixture. Array hashes and fixture hashes remain exactly equal to independent
+preparation for every seed. Per-fixture NPZ files are still self-contained.
+
+`preparation.json` reports per-fixture charges and totals, including
+`dataset_preparation_s = dataset_load_s + preprocessing_and_labels_s`, with graph
+construction in `graph_build_s` separately. The historical loader still includes
+encoding, imputation and reference scaling in loading; the saved fixture's scaler
+remains in the original preprocessing boundary. Reuse does not move preparation
+into any fit timer, duplicate its cost across seeds, or substitute lookup time
+for graph construction. Save/hash/cache bookkeeping remains outside those timers.
+
+`summary.json` separately reports median/IQR initialization and dispatch,
+propagation, postprocessing, total fit and time per actual iteration, per
+fixture/backend/mode/budget. Initialization continues to include dispatch, as
+in PR #15; no new probes split the production implementation. Preparation is
+charged once per dataset/group plus per-seed label generation, not per timing
+repetition or backend. Do not add the same preparation total to every backend's
+fit time when estimating campaign duration.
+
+## Target machine preflight and pilot stages
+
+Activate the intended benchmarking environment first and verify all three
+backends are installed and Cython is compiled. A Windows Conda environment needs
+its activated `Library/bin` DLL search path: the initial unactivated local shell
+failed in threadpoolctl with Windows error `0xc06d007f` when graph construction
+selected a brute-force distance kernel. Supplying the environment's normal DLL
+path resolved the error; no library, neighbor algorithm, thread policy or data
+was changed. The complete audit then matched all frozen fingerprints.
+
+Validate cached inputs without downloads, propagation or backend compilation:
+
+```console
+python -m benchmarks.validate_inventory --historical-cache .cache/stopping_patience/sources --output .cache/performance/target-input-audit-01.json
+```
+
+This deliberately constructs one graph per dataset. The optional report file
+must be new and its parent must exist; failures are recorded and the command
+exits unsuccessfully. It includes actual/expected raw, processed and graph
+fingerprints and current/frozen dependency versions. A mismatch or environment
+error must be resolved before execution; do not infer a cause from the hash alone.
+
+After review, the two pilot stages are ready to execute separately on the target
+machine. Each preset fixes the three representative datasets, label seeds 10 and
+11, three labels/class, `k_nn=10`, all three backends, six repetitions and fixed
+mode. Conflicting preset options fail; ordinary CLI remains available for custom
+plans. Output directories must be new:
+
+```console
+python -m benchmarks.run --pilot-stage 100 --historical-cache .cache/stopping_patience/sources --execute --output .cache/performance/pilot-100-01
+python -m benchmarks.run --pilot-stage 1000 --historical-cache .cache/stopping_patience/sources --execute --output .cache/performance/pilot-1000-01
+```
+
+These are future execution commands, not runs completed in this PR. Review
+stage 1 correctness, repeatable states and timing separation before executing
+stage 2. Together they plan 216 measurements, 72 warm-ups, 118,800 measured
+iterations and 1,782,000 particle updates. Neither preset downloads data nor
+requires the conservative expensive-work opt-in. Wine covers a small numerical
+dataset, Digits a higher-dimensional 10-class dataset, and GermanCredit a mixed
+categorical source. They do not estimate PenDigits or all other datasets reliably.
+The full 20-dataset propagation campaign and README updates remain unexecuted.

@@ -1,4 +1,5 @@
 """Deterministic, shared inputs for optional Python performance experiments."""
+import copy
 import hashlib
 import json
 import math
@@ -11,7 +12,7 @@ from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 
 from pcc_graph import build_knn_graph
-from .historical import ENTRIES, FROZEN, fingerprint, load_historical
+from .historical import ENTRIES, FROZEN, fingerprint, load_historical, require_fingerprint
 
 
 REAL_DATASETS = {
@@ -179,14 +180,18 @@ def prepare_fixture(case, mnist_cache=None, historical_cache=None):
     end = time.perf_counter()
     if case.name in ENTRIES and not case.synthetic:
         frozen = FROZEN[case.name]
-        source["processed_fingerprint_matches"] = fingerprint(x, truth) == frozen["processed_data_fingerprint"]
-        source["graph_fingerprint_matches"] = fingerprint(neighbors, degrees) == frozen["graph_fingerprint"]
-        expected = frozen["label_fingerprints"].get(str(case.label_seed))
-        source["label_fingerprint_matches"] = None
-        if case.labels_per_class == 3 and expected is not None:
-            source["label_fingerprint_matches"] = fingerprint(labels) == expected
-            if not source["label_fingerprint_matches"]:
-                raise ValueError("Label fixture differs from frozen PR #8 protocol")
+        source["frozen_fingerprints"]["processed"] = require_fingerprint(
+            case.name, "processed-data", fingerprint(x, truth), frozen["processed_data_fingerprint"])
+        source["processed_fingerprint_matches"] = True
+        source["graph_fingerprint_matches"] = None
+        if case.k_nn == 10:
+            source["frozen_fingerprints"]["graph"] = require_fingerprint(
+                case.name, "ordered graph", fingerprint(neighbors, degrees), frozen["graph_fingerprint"])
+            source["graph_fingerprint_matches"] = True
+        else:
+            source["frozen_fingerprints"]["graph"] = dict(
+                applicable=False, reason="custom k_nn differs from frozen k_nn=10")
+        validate_historical_labels(case, labels, source)
     arrays = dict(raw=raw, x=x, truth=truth, labels=labels, neighbors=neighbors,
                   degrees=degrees, source_indices=indices,
                   scaler_mean=scaler.mean_, scaler_scale=scaler.scale_)
@@ -202,6 +207,67 @@ def prepare_fixture(case, mnist_cache=None, historical_cache=None):
                                  preprocessing_and_labels_s=prepared-loaded,
                                  graph_build_s=end-prepared))
     return arrays, metadata
+
+
+def validate_historical_labels(case, labels, source):
+    if case.synthetic or case.name not in ENTRIES:
+        return
+    expected = FROZEN[case.name]["label_fingerprints"].get(str(case.label_seed))
+    source["label_fingerprint_matches"] = None
+    if case.labels_per_class == 3 and expected is not None:
+        require_fingerprint(case.name, "labels", fingerprint(labels), expected)
+        source["label_fingerprint_matches"] = True
+
+
+def preparation_key(case, mnist_cache=None, historical_cache=None):
+    """Label policy/seed never affect source data, scaling or graph construction."""
+    return (case.name, case.nodes, case.features, case.classes, case.k_nn,
+            case.data_seed, case.synthetic,
+            str(Path(mnist_cache).resolve()) if mnist_cache is not None else None,
+            str(Path(historical_cache).resolve()) if historical_cache is not None else None)
+
+
+class FixturePreparer:
+    """One in-process dataset/graph cache; discard when the preparation key changes."""
+    def __init__(self, prepare=None):
+        self._prepare = prepare_fixture if prepare is None else prepare
+        self._key = None
+        self._arrays = None
+        self._metadata = None
+
+    def prepare(self, case, mnist_cache=None, historical_cache=None):
+        case.validate()
+        key = preparation_key(case, mnist_cache, historical_cache)
+        if key != self._key:
+            # A failed preparation must not publish a partially validated entry.
+            self._key, self._arrays, self._metadata = None, None, None
+            arrays, metadata = self._prepare(case, mnist_cache, historical_cache)
+            shared = {name: value for name, value in arrays.items() if name != "labels"}
+            for value in shared.values():
+                value.flags.writeable = False
+            self._key, self._arrays = key, shared
+            metadata["preparation"] = dict(reused=False, source_case_id=case.case_id)
+            self._metadata = copy.deepcopy(metadata)
+            return arrays, metadata
+        # Only label selection occurs here. Loading/scaling/graph timers are never
+        # replaced with lookup timing or charged again to subsequent fixtures.
+        source = copy.deepcopy(self._metadata["source"])
+        if case.synthetic:
+            source["parameters"] = asdict(case)
+        start = time.perf_counter()
+        labels = select_labels(self._arrays["truth"], case)
+        end = time.perf_counter()
+        validate_historical_labels(case, labels, source)
+        arrays = dict(self._arrays, labels=labels)
+        hashes = dict(self._metadata["hashes"], labels=array_hash(labels))
+        metadata = copy.deepcopy(self._metadata)
+        metadata.update(case=asdict(case), source=source, hashes=hashes,
+                        fixture_sha256=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(),
+                        labeled_nodes=int(np.sum(labels != -1)),
+                        labeled_class_counts={str(c): int(np.sum(labels == c)) for c in np.unique(arrays["truth"])},
+                        preparation=dict(reused=True, source_case_id=self._metadata["preparation"]["source_case_id"]),
+                        timings=dict(dataset_load_s=0., preprocessing_and_labels_s=end-start, graph_build_s=0.))
+        return arrays, metadata
 
 
 def save_fixture(directory, arrays, metadata):

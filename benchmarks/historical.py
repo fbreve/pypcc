@@ -28,6 +28,14 @@ def fingerprint(*arrays):
     return digest.hexdigest()
 
 
+def require_fingerprint(name, kind, actual, expected):
+    if actual != expected:
+        raise ValueError(f"{name}: unexplained frozen {kind} fingerprint mismatch; "
+                         f"expected {expected}, actual {actual}. "
+                         "Investigate library versions, ordering and data before execution; no override.")
+    return dict(expected=expected, actual=actual, matches=True)
+
+
 def cached_read(url, path):
     if not path.is_file():
         raise FileNotFoundError(f"Missing {path}; use --prepare-historical CACHE --datasets NAME explicitly")
@@ -50,7 +58,9 @@ def load_historical(name, cache=None, *, download=False):
                 raise ValueError(f"{name}: frozen source {key} mismatch")
     if fingerprint(raw, truth) != frozen["raw_data_fingerprint"]:
         raise ValueError(f"{name}: frozen raw data mismatch")
-    provenance.update(historical_name=entry["name"],
+    processed_check = require_fingerprint(name, "processed-data", fingerprint(scaled, truth),
+                                          frozen["processed_data_fingerprint"])
+    provenance.update(frozen_fingerprints={"processed": processed_check}, historical_name=entry["name"],
                       protocol_sha256=INVENTORY["protocol_sha256"],
                       inventory_sha256=hashlib.sha256(INVENTORY_PATH.read_bytes()).hexdigest(),
                       processed_fingerprint_matches=fingerprint(scaled, truth) == frozen["processed_data_fingerprint"],

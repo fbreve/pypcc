@@ -7,7 +7,7 @@ import sys
 import time
 
 from .fixtures import (Case, REAL_DATASETS, SYNTHETIC_DEFAULTS, prepare_fixture,
-                       prepare_mnist, save_fixture)
+                       prepare_mnist, save_fixture, FixturePreparer, preparation_key)
 from .historical import ENTRIES, load_historical
 from .runner import (PARAMETERS, environment_manifest, expected_backend, measure,
                      seed_backend, summarize, write_json)
@@ -20,8 +20,18 @@ def execution_order(backends, case_index, repeat):
 
 def plan(cases, backends, repeats, iterations):
     rows = []
+    previous_key, source_case_id = None, None
+    preparation_groups = 0
+    graph_work = 0
     for case in cases:
         case.validate()
+        key = preparation_key(case)
+        reused = key == previous_key
+        if not reused:
+            source_case_id = case.case_id
+            preparation_groups += 1
+            graph_work += case.nodes**2*case.features
+        previous_key = key
         rows.append(dict(case_id=case.case_id, nodes=case.nodes, features=case.features,
                          classes=case.classes, labeled_nodes=case.particles, k_nn=case.k_nn,
                          measured_executions=len(backends)*repeats,
@@ -32,9 +42,12 @@ def plan(cases, backends, repeats, iterations):
                          distance_table_bytes=case.nodes*case.particles,
                          feature_arrays_bytes=2*case.nodes*case.features*8,
                          dominance_bytes=case.nodes*case.classes*8,
+                         preparation_reused=reused, preparation_source_case_id=source_case_id,
                          historical_source=ENTRIES.get(case.name) if not case.synthetic else None))
     updates = sum(row["particle_update_cap"] for row in rows)
-    return dict(cases=rows, case_count=len(rows), backends=backends, repetitions=repeats,
+    return dict(cases=rows, case_count=len(rows),
+                preparation_groups=preparation_groups, graph_builds=preparation_groups,
+                graph_pair_feature_upper_work_total=graph_work, backends=backends, repetitions=repeats,
                 measured_executions=sum(row["measured_executions"] for row in rows),
                 warmup_executions=sum(row["warmup_executions"] for row in rows),
                 measured_iteration_cap=sum(row["measured_iteration_cap"] for row in rows),
@@ -94,7 +107,8 @@ def execute(args, cases, workload):
                                     args.backends, build_info)
     args.output.mkdir(parents=True, exist_ok=False)
     write_json(args.output / "manifest.json", manifest)
-    rows, warmups, fixtures, skipped = [], [], [], []
+    rows, warmups, fixtures, skipped, preparations = [], [], [], [], []
+    preparer = FixturePreparer(prepare_fixture)
     try:
         with (args.output / "measurements.jsonl").open("x", encoding="utf-8") as stream, \
                 (args.output / "warmups.jsonl").open("x", encoding="utf-8") as warm_stream:
@@ -104,13 +118,15 @@ def execute(args, cases, workload):
                 write_json(args.output / "seed_helper.json", {"first_call_s": time.perf_counter()-start})
             for case_index, case in enumerate(cases):
                 try:
-                    arrays, metadata = prepare_fixture(case, args.mnist_cache, args.historical_cache)
+                    arrays, metadata = preparer.prepare(case, args.mnist_cache, args.historical_cache)
                 except FileNotFoundError as exc:
                     if case.name.startswith("mnist_") and args.skip_missing_optional:
                         skipped.append(dict(case_id=case.case_id, reason=str(exc)))
                         print(f"Skipped {case.case_id}: {exc}", file=sys.stderr)
                         continue
                     raise
+                preparations.append(dict(case_id=case.case_id, **metadata["preparation"],
+                                         **metadata["timings"]))
                 save_fixture(args.output / "fixtures" / case.case_id, arrays, metadata)
                 fixtures.append(dict(case_id=case.case_id, fixture_sha256=metadata["fixture_sha256"]))
                 for name in args.backends:
@@ -138,6 +154,14 @@ def execute(args, cases, workload):
                         rows.append(row)
                         print(f"{case.case_id} {name} repetition {repeat+1}/{args.repeats}: "
                               f"{row['effective_iterations']} iterations", flush=True)
+        fields = ("dataset_load_s", "preprocessing_and_labels_s", "graph_build_s")
+        totals = {field: sum(row[field] for row in preparations) for field in fields}
+        totals["dataset_preparation_s"] = totals["dataset_load_s"] + totals["preprocessing_and_labels_s"]
+        write_json(args.output / "preparation.json", dict(
+            schema=1, fixtures=preparations, totals=totals,
+            graph_builds=sum(not row["reused"] for row in preparations),
+            note="Reuse records charge loading/scaling/graph once; labels remain per fixture. "
+                 "Fit initialization/propagation are reported separately in summary.json."))
         write_json(args.output / "summary.json", summarize(rows))
         write_json(args.output / "completion.json", dict(status="complete" if rows else "no_measurements",
                                                         measured_executions=len(rows), fixtures=fixtures, skipped=skipped))
@@ -158,8 +182,9 @@ def main(argv=None):
     parser.add_argument("--synthetic", action="store_true", help="include three small representative synthetic cases")
     parser.add_argument("--synthetic-config", type=Path)
     parser.add_argument("--backends", nargs="+", choices=["numpy", "numba", "cython"], default=["numpy", "numba", "cython"])
+    parser.add_argument("--pilot-stage", choices=["100", "1000"], help="fixed pilot: wine/digits/germancredit, label seeds 10 and 11; defaults to dry-run")
     parser.add_argument("--mode", choices=["fixed", "early_stopping"], default="fixed")
-    parser.add_argument("--iterations", type=int, default=100)
+    parser.add_argument("--iterations", type=int, default=None)
     parser.add_argument("--repeats", type=int, default=6)
     parser.add_argument("--label-seeds", nargs="+", type=int, default=None)
     parser.add_argument("--data-seed", type=int, default=0)
@@ -178,6 +203,18 @@ def main(argv=None):
     parser.add_argument("--allow-expensive", action="store_true")
     args = parser.parse_args(argv)
     try:
+        if args.pilot_stage:
+            if (args.datasets is not None or args.historical or args.synthetic or args.synthetic_config
+                    or args.label_seeds is not None or args.iterations is not None
+                    or args.mode != "fixed" or args.prepare_historical or args.prepare_mnist
+                    or args.labels_per_class != 3 or args.labeled_fraction is not None or args.k_nn != 10
+                    or args.repeats != 6 or args.backends != ["numpy", "numba", "cython"]):
+                raise ValueError("pilot presets fix datasets, seeds, labeling, graph, mode and budget; use ordinary CLI for custom plans")
+            args.datasets = ["wine", "digits", "germancredit"]
+            args.label_seeds = [10, 11]
+            args.iterations = int(args.pilot_stage)
+        if args.iterations is None:
+            args.iterations = 100
         if args.prepare_historical:
             if args.execute or args.prepare_mnist:
                 raise ValueError("preparation and execution must be separate")
@@ -201,6 +238,7 @@ def main(argv=None):
         cases = select_cases(args)
         workload = plan(cases, args.backends, args.repeats, args.iterations)
         workload["mode"] = args.mode
+        workload["pilot_stage"] = args.pilot_stage
         print(json.dumps(workload, indent=2), flush=True)
         if args.execute:
             execute(args, cases, workload)
