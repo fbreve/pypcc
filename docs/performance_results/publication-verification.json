@@ -1,0 +1,29 @@
+{
+  "release_url": "https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13",
+  "tag": "python-fixed-benchmarks-2026-10-13",
+  "target_commit": "b6de3e77dabae61a27d7f177b37e5fc5fa74c240",
+  "published_at": "2026-10-13T17:59:13Z",
+  "assets": [
+    {
+      "name": "archive-index.json",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/archive-index.json",
+      "bytes": 819,
+      "sha256": "c53eead0dfbd5145ed2ef57a7720255ff313de876bba74cf283c20a980237ccf",
+      "unauthenticated_download": true
+    },
+    {
+      "name": "pypcc-fixed-results-windows-20261013.zip",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/pypcc-fixed-results-windows-20261013.zip",
+      "bytes": 93800528,
+      "sha256": "78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf",
+      "unauthenticated_download": true
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/SHA256SUMS.txt",
+      "bytes": 108,
+      "sha256": "63d1921889b757f23350d33db7141cfd6b2a84581eabcfb9ec020eda38282315",
+      "unauthenticated_download": true
+    }
+  ]
+}

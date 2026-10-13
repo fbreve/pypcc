@@ -217,6 +217,9 @@ def environment_manifest(config, backends, build_info=None):
     source_hashes["pcc_step.pyx"] = file_hash(root / "pcc_step.pyx")
     source_hashes.update({str(path.relative_to(root)).replace("\\", "/"): file_hash(path)
                           for path in (root / "benchmarks").glob("*.py")})
+    for relative in ("experiments/patience_data.py", "docs/benchmarks/stopping_patience/protocol.json",
+                     "docs/benchmarks/stopping_patience/inventory.json"):
+        source_hashes[relative] = file_hash(root / relative)
     return dict(schema=1, timestamp_utc=datetime.now(timezone.utc).isoformat(),
                 repository=dict(commit=_git("rev-parse", "HEAD"), dirty=None if status is None else bool(status),
                                 status=status, source_hashes=source_hashes),

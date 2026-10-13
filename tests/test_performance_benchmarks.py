@@ -3,6 +3,9 @@ import contextlib
 from dataclasses import replace
 import io
 import json
+import random
+from itertools import permutations
+from datetime import datetime
 from pathlib import Path
 import tempfile
 import unittest
@@ -185,6 +188,73 @@ class RunnerTests(unittest.TestCase):
             for position in range(3):
                 for backend in backends:
                     self.assertEqual(sum(order[position] == backend for order in orders), 2)
+
+    def test_six_permutations_balance_and_isolate_rngs(self):
+        backends = ["numpy", "numba", "cython"]
+        python_state = random.getstate()
+        numpy_state = np.random.get_state()
+        for seed in (0, 1, 2):
+            for case in range(8):
+                orders = [execution_order(backends, case, repeat, "permutations", seed) for repeat in range(6)]
+                self.assertEqual({tuple(order) for order in orders}, set(permutations(backends)))
+                self.assertEqual(orders, [execution_order(backends, case, repeat, "permutations", seed) for repeat in range(6)])
+                for backend in backends:
+                    for position in range(3):
+                        self.assertEqual(sum(order[position] == backend for order in orders), 2)
+                self.assertEqual(sum(order.index("numba") < order.index("cython") for order in orders), 3)
+        self.assertEqual(random.getstate(), python_state)
+        after = np.random.get_state()
+        self.assertEqual(numpy_state[0], after[0])
+        np.testing.assert_array_equal(numpy_state[1], after[1])
+        self.assertEqual(numpy_state[2:], after[2:])
+        self.assertNotEqual([execution_order(backends, 0, i, "permutations", 0) for i in range(6)],
+                            [execution_order(backends, 0, i, "permutations", 1) for i in range(6)])
+
+    def test_permutation_plan_validation_and_default_preservation(self):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            main(["--datasets", "wine", "digits", "satimage", "pageblocks", "--label-seeds", "10", "11",
+                  "--iterations", "10000", "--order-policy", "permutations", "--order-seed", "2", "--dry-run"])
+        planned = json.loads(output.getvalue())
+        self.assertEqual(planned["measured_executions"], 144)
+        for orders in planned["execution_schedule"].values():
+            self.assertEqual(len({tuple(order) for order in orders}), 6)
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            main(["--datasets", "iris", "--dry-run"])
+        self.assertEqual(json.loads(output.getvalue())["execution_schedule"]["iris-labels0"],
+                         [execution_order(["numpy", "numba", "cython"], 0, repeat) for repeat in range(6)])
+        for extra in (["--repeats", "3"], ["--backends", "numpy", "numba"], ["--order-seed", "-1"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                main(["--order-policy", "permutations", *extra])
+
+    def test_permutation_execution_records_and_original_state(self):
+        try:
+            for backend in ("numpy", "numba", "cython"):
+                expected_backend(backend)
+        except RuntimeError:
+            self.skipTest("all three backends required")
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+            rotate, permuted = Path(tmp)/"rotate", Path(tmp)/"permutations"
+            base = ["--datasets", "iris", "--label-seeds", "10", "--iterations", "2", "--execute"]
+            main([*base, "--output", str(rotate)])
+            main([*base, "--order-policy", "permutations", "--order-seed", "7", "--session-id", "test-session",
+                  "--output", str(permuted)])
+            baseline = [json.loads(line) for line in (rotate/"measurements.jsonl").read_text().splitlines()]
+            rows = [json.loads(line) for line in (permuted/"measurements.jsonl").read_text().splitlines()]
+            self.assertEqual(len(rows), 18)
+            self.assertEqual({tuple(r["execution_order"]) for r in rows}, set(permutations(["numpy", "numba", "cython"])))
+            manifest = json.loads((permuted/"manifest.json").read_text())
+            self.assertEqual(manifest["configuration"]["session_id"], "test-session")
+            for row in rows:
+                self.assertEqual(row["session_id"], "test-session")
+                self.assertEqual(row["execution_order"][row["order_index"]], row["backend"])
+                self.assertEqual(row["execution_order"], manifest["configuration"]["execution_schedule"][row["case_id"]][row["repeat"]])
+                self.assertLessEqual(datetime.fromisoformat(row["call_started_utc"]), datetime.fromisoformat(row["call_completed_utc"]))
+                previous = next(r for r in baseline if r["backend"] == row["backend"] and r["repeat"] == row["repeat"])
+                self.assertEqual(row["state_hashes"], previous["state_hashes"])
+                self.assertEqual(row["fixture_sha256"], previous["fixture_sha256"])
+            completion = json.loads((permuted/"completion.json").read_text())
+            self.assertEqual(completion["session_id"], "test-session")
+            self.assertLessEqual(datetime.fromisoformat(completion["session_started_utc"]), datetime.fromisoformat(completion["session_completed_utc"]))
 
     def test_dry_run_no_loading_and_expensive_gate(self):
         with patch("benchmarks.run.prepare_fixture", side_effect=AssertionError("must not load")), \

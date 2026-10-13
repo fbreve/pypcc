@@ -1,5 +1,14 @@
 # Reproducible Python performance benchmarking
 
+The completed [20-dataset fixed campaign](performance_fixed_results.md) and
+[separate permutation sensitivity analysis](performance_order_sensitivity.md)
+are documented with a [verified archive/reproduction guide](performance_archiving.md).
+Raw artifacts are available in the
+[published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
+Execution examples below describe optional tooling; they are not authorization
+for additional runs. Fixed-iteration measurements are separate from early stopping.
+
+
 The optional `benchmarks/` harness compares sequential NumPy, Numba and Cython.
 It does not change production modules, public APIs, stopping rules, defaults,
 package versions or frozen scientific experiments. No new performance claims
@@ -64,7 +73,8 @@ The default selects the four built-in datasets, 100 iterations and six
 repetitions per case/backend. Loading and conversion to float64 are recorded
 separately from preprocessing. `StandardScaler` fits the **complete selected
 transductive dataset**, including unlabeled samples. Constant columns remain
-in place. There is no imputation, row removal or feature selection.
+in place. The built-ins need no imputation. Historical OpenML preprocessing follows
+the frozen PR #8 protocol below; no rows or constant columns are removed.
 
 Each case builds one symmetric Euclidean graph with the unchanged production
 builder, `k_nn=10`, and graph construction `n_jobs=1`. The exact ordered neighbor
@@ -83,7 +93,8 @@ coverage of every class. Policies that label every node are rejected.
 
 ### Explicit MNIST preparation
 
-Only this command downloads data; regular execution and tests never do:
+MNIST downloads require this explicit preparation command; regular execution
+and tests never download:
 
 ```console
 python -m benchmarks.run --prepare-mnist .cache/performance/mnist-source
@@ -199,7 +210,12 @@ Model construction, graph copying, backend identity verification, RNG seeding,
 state hashing, invariant checks, output writing and progress printing are
 outside fit timing. Initialization cannot be isolated further without more
 intrusive instrumentation, so it is explicitly reported with dispatch.
-Data preparation is measured once per fixture, not repeatedly.
+Dataset/graph preparation is measured once per consecutive dataset group, and
+label preparation once per fixture. It is not repeated per backend or fit. The reused PR #8
+loader encodes, imputes and computes a reference scaler during dataset loading;
+these costs are included in `dataset_load_s`. The saved fixture scaler and label
+mask are prepared in `preprocessing_and_labels_s`. Do not interpret loading of
+historical OpenML data as pure file I/O.
 
 The harness wraps only the instance's backend-dispatch boundary and requests
 existing `return_info=True` metrics. It never wraps individual steps or
@@ -242,6 +258,7 @@ No historical result file is used as an output target.
 | `measurements.jsonl` | One execution per line: case/fixture/backend identity, repetition/order, timings, seed, actual stopping metrics, accuracy and final state hashes |
 | `warmups.jsonl` | Same execution fields, marked `first`/`warm`; excluded from summaries |
 | `seed_helper.json` | Numba seed helper first-call latency, when used |
+| `preparation.json` | Per-fixture preparation charges/reuse references, totals for dataset preparation and graph construction; no duplicate charges across seeds |
 | `summary.json` | Per-case/backend/mode/budget timing/iteration medians and IQRs, stop-reason counts, cap fraction |
 | `completion.json` | Completed execution count, fixture identities, skipped cases and status |
 | `failure.json` | Failure description and completed count; prior JSONL records remain available |
@@ -339,3 +356,109 @@ iterations require an appropriate observer or untimed audit replay; they cannot
 be inferred from runtime. Timing boundaries, compilation/warm-up, binary/build
 provenance and index/label types must be reconciled explicitly. MATLAB/MEX
 execution and any changes to those algorithms are outside this PR.
+
+
+## PR #16 phase 1: historical inventory and proposed campaign
+
+The [campaign plan](performance_campaign_plan.md) is awaiting maintainer review.
+`--historical` selects exactly the frozen PR #8 20 datasets in protocol order,
+with label seed 10 unless `--label-seeds` is supplied. Ordinary PR #15 defaults
+remain four built-ins, seed 0, 100 iterations and six repetitions. Historical
+group selection cannot be combined with other dataset or synthetic selections.
+MNIST 5,000 and 10,000 remain separate explicit scalability cases.
+
+Historical OpenML sources require `--historical-cache CACHE`. Execution only
+reads `<OpenML ID>.json` and `<OpenML ID>.arff`; missing files never download.
+Existing PR #8 `.cache/stopping_patience/sources` files can be reused directly.
+To prepare selected missing sources after review, explicitly run:
+
+```console
+python -m benchmarks.run --datasets germancredit --prepare-historical .cache/performance/historical-sources
+```
+
+`--historical --prepare-historical CACHE` prepares all 20 sources and is a
+separate opt-in download operation, never a benchmark. Existing cache files
+are verified and reused; corrupt files fail without replacement. These caches
+are ignored local artifacts, not committed data or scientific result outputs.
+
+`experiments.patience_data.load` supplies the original median numeric imputation,
+full one-hot encoding of sorted observed nominal values (including `?`), target
+LabelEncoder and full-data StandardScaler semantics. OpenML IDs/version 1,
+source names, raw checksums/fingerprints, class counts/names, numeric/nominal
+feature counts and processed dimensions are checked against the frozen inventory.
+All rows remain in source order. Protocol checksum validation normalizes Git
+checkout line endings as the original study did.
+
+Saved fixture provenance includes protocol/inventory hashes and actual/expected
+historical processed, graph and label fingerprints. Raw, processed, ordered graph
+(at the historical `k_nn=10`) and historical 3/class label-mask mismatches fail
+explicitly. No unexplained discrepancy is accepted and no bypass is supplied.
+Custom `k_nn` is marked as having no applicable frozen graph reference. Use the
+cache-only `python -m benchmarks.validate_inventory` audit to check the target
+environment before measuring; investigate library versions, data and ordering
+if it fails. The actual arrays/hashes
+remain shared across all backends. Custom label policies, seeds or k-NN values
+are identifiable in the manifest but do not reproduce the PR #8 primary protocol.
+The manifest also hashes the reused loader and frozen inventory/protocol files.
+
+
+### In-process reuse and pilot presets
+
+The execution path caches one prepared dataset/graph for consecutive label seeds.
+Shared arrays are read-only; labels and every model/backend state remain fresh.
+The cache key includes dataset dimensions, data seed, graph k-NN, synthetic flag
+and resolved source cache paths. Changing any of these invalidates the cache.
+Only label-dependent policies and label seeds can reuse the preparation. Dry-run
+reports preparation groups, graph build count and total graph-work proxy after
+reuse. No persistent graph cache or cross-process reuse is introduced.
+
+The first fixture retains the original preparation timers. Reused fixtures
+reference it through `preparation.source_case_id`, report zero loading/graph
+charges, and time their fresh label selection in `preprocessing_and_labels_s`.
+`preparation.json` totals these charges once. Fit initialization/dispatch and
+propagation boundaries are unchanged. Fixture arrays/hashes and self-contained
+NPZ output are unchanged by reuse.
+
+```console
+python -m benchmarks.run --pilot-stage 100 --dry-run
+python -m benchmarks.run --pilot-stage 1000 --dry-run
+```
+
+Both presets select Wine, Digits and GermanCredit; seeds 10 and 11; fixed mode;
+three labels/class; k-NN 10; six repetitions; and all three backends. Execution
+still requires `--execute`, a verified historical cache and a new output directory.
+See [the campaign plan](performance_campaign_plan.md) for stage-specific costs,
+target-machine setup, audit and future execution commands. No pilot performance
+measurements accompany these refinements.
+
+
+## Optional fully counterbalanced follow-up schedule
+
+`--order-policy permutations` is an explicit experimental option. It requires
+all three backends and exactly six repetitions. Each fixture executes all six
+backend permutations once, in a deterministic shuffle produced by an isolated
+Python RNG with `--order-seed` (default 0) and case index. Every backend occupies
+each position twice and each native backend precedes the other three times.
+The production/backend RNGs, labels, graph, parameters and fit timing boundaries
+are unchanged. The default `--order-policy rotate` retains the original cyclic
+schedule exactly; prior campaign artifacts are never rewritten.
+
+```console
+python -m benchmarks.run --datasets wine digits satimage pageblocks --label-seeds 10 11 --iterations 10000 --repeats 6 --backends numpy numba cython --mode fixed --order-policy permutations --order-seed 1 --session-id followup-1 --dry-run
+```
+
+Dry-run and the manifest include the complete schedule keyed by fixture.
+Measurements additionally record the full backend order, session ID and UTC
+call start/completion timestamps. These timestamps bracket the measurement
+helper, including its untimed verification; they do not replace or alter fit
+subtimers. Completion records include session start/end UTC timestamps. A
+separate native launcher can record total process wall duration.
+
+The approved follow-up consists of three fresh, consecutive local Windows
+processes, with session-specific order seeds and separate output directories:
+eight fixtures, 144 measurements and 48 warm-ups per session, 432 measurements
+and 144 warm-ups total. No artificial delays establish session independence.
+The user superseded the original distinct-machine-use-period requirement;
+consecutive sessions assess short-term repeatability and order sensitivity,
+not stability across different periods of machine use. No early-stopping fits
+or README performance edits accompany this option.
