@@ -64,7 +64,8 @@ The default selects the four built-in datasets, 100 iterations and six
 repetitions per case/backend. Loading and conversion to float64 are recorded
 separately from preprocessing. `StandardScaler` fits the **complete selected
 transductive dataset**, including unlabeled samples. Constant columns remain
-in place. There is no imputation, row removal or feature selection.
+in place. The built-ins need no imputation. Historical OpenML preprocessing follows
+the frozen PR #8 protocol below; no rows or constant columns are removed.
 
 Each case builds one symmetric Euclidean graph with the unchanged production
 builder, `k_nn=10`, and graph construction `n_jobs=1`. The exact ordered neighbor
@@ -83,7 +84,8 @@ coverage of every class. Policies that label every node are rejected.
 
 ### Explicit MNIST preparation
 
-Only this command downloads data; regular execution and tests never do:
+MNIST downloads require this explicit preparation command; regular execution
+and tests never download:
 
 ```console
 python -m benchmarks.run --prepare-mnist .cache/performance/mnist-source
@@ -199,7 +201,11 @@ Model construction, graph copying, backend identity verification, RNG seeding,
 state hashing, invariant checks, output writing and progress printing are
 outside fit timing. Initialization cannot be isolated further without more
 intrusive instrumentation, so it is explicitly reported with dispatch.
-Data preparation is measured once per fixture, not repeatedly.
+Data preparation is measured once per fixture, not repeatedly. The reused PR #8
+loader encodes, imputes and computes a reference scaler during dataset loading;
+these costs are included in `dataset_load_s`. The saved fixture scaler and label
+mask are prepared in `preprocessing_and_labels_s`. Do not interpret loading of
+historical OpenML data as pure file I/O.
 
 The harness wraps only the instance's backend-dispatch boundary and requests
 existing `return_info=True` metrics. It never wraps individual steps or
@@ -339,3 +345,44 @@ iterations require an appropriate observer or untimed audit replay; they cannot
 be inferred from runtime. Timing boundaries, compilation/warm-up, binary/build
 provenance and index/label types must be reconciled explicitly. MATLAB/MEX
 execution and any changes to those algorithms are outside this PR.
+
+
+## PR #16 phase 1: historical inventory and proposed campaign
+
+The [campaign plan](performance_campaign_plan.md) is awaiting maintainer review.
+`--historical` selects exactly the frozen PR #8 20 datasets in protocol order,
+with label seed 10 unless `--label-seeds` is supplied. Ordinary PR #15 defaults
+remain four built-ins, seed 0, 100 iterations and six repetitions. Historical
+group selection cannot be combined with other dataset or synthetic selections.
+MNIST 5,000 and 10,000 remain separate explicit scalability cases.
+
+Historical OpenML sources require `--historical-cache CACHE`. Execution only
+reads `<OpenML ID>.json` and `<OpenML ID>.arff`; missing files never download.
+Existing PR #8 `.cache/stopping_patience/sources` files can be reused directly.
+To prepare selected missing sources after review, explicitly run:
+
+```console
+python -m benchmarks.run --datasets germancredit --prepare-historical .cache/performance/historical-sources
+```
+
+`--historical --prepare-historical CACHE` prepares all 20 sources and is a
+separate opt-in download operation, never a benchmark. Existing cache files
+are verified and reused; corrupt files fail without replacement. These caches
+are ignored local artifacts, not committed data or scientific result outputs.
+
+`experiments.patience_data.load` supplies the original median numeric imputation,
+full one-hot encoding of sorted observed nominal values (including `?`), target
+LabelEncoder and full-data StandardScaler semantics. OpenML IDs/version 1,
+source names, raw checksums/fingerprints, class counts/names, numeric/nominal
+feature counts and processed dimensions are checked against the frozen inventory.
+All rows remain in source order. Protocol checksum validation normalizes Git
+checkout line endings as the original study did.
+
+Saved fixture provenance includes protocol/inventory hashes and comparisons to
+the historical processed, graph and label fingerprints. Raw-data or historical
+3/class label-mask mismatches fail. Scaled/graph hash differences are recorded,
+not forced away: library versions, rounding and neighbor tie ordering can differ.
+Review such differences before approving measurements. The actual arrays/hashes
+remain shared across all backends. Custom label policies, seeds or k-NN values
+are identifiable in the manifest but do not reproduce the PR #8 primary protocol.
+The manifest also hashes the reused loader and frozen inventory/protocol files.

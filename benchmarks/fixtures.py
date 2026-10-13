@@ -11,6 +11,7 @@ from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 
 from pcc_graph import build_knn_graph
+from .historical import ENTRIES, FROZEN, fingerprint, load_historical
 
 
 REAL_DATASETS = {
@@ -22,6 +23,8 @@ REAL_DATASETS = {
     "mnist_10000": (10000, 784, 10, None),
 }
 
+REAL_DATASETS.update({name: (row["nodes"], row["processed_features"], row["classes"], None)
+                      for name, row in FROZEN.items()})
 
 @dataclass(frozen=True)
 class Case:
@@ -117,7 +120,7 @@ def select_labels(truth, case):
     return labels
 
 
-def load_data(case, mnist_cache=None):
+def load_data(case, mnist_cache=None, historical_cache=None):
     if case.synthetic:
         x, truth = datasets.make_blobs(n_samples=case.nodes, n_features=case.features,
                                       centers=case.classes, random_state=case.data_seed)
@@ -127,6 +130,8 @@ def load_data(case, mnist_cache=None):
         }
     if case.name not in REAL_DATASETS:
         raise ValueError(f"unknown dataset: {case.name}")
+    if case.name in ENTRIES:
+        return load_historical(case.name, historical_cache)
     _, _, _, loader = REAL_DATASETS[case.name]
     if loader is not None:
         data = loader()
@@ -155,10 +160,10 @@ def mnist_indices(nodes, seed):
     return np.random.default_rng(seed).permutation(70000)[:nodes]
 
 
-def prepare_fixture(case, mnist_cache=None):
+def prepare_fixture(case, mnist_cache=None, historical_cache=None):
     case.validate()
     start = time.perf_counter()
-    raw, truth, indices, source = load_data(case, mnist_cache)
+    raw, truth, indices, source = load_data(case, mnist_cache, historical_cache)
     raw = np.asarray(raw, dtype=np.float64)
     truth = np.asarray(truth, dtype=np.int64)
     if raw.shape != (case.nodes, case.features) or len(np.unique(truth)) != case.classes:
@@ -172,12 +177,22 @@ def prepare_fixture(case, mnist_cache=None):
     prepared = time.perf_counter()
     neighbors, degrees = build_knn_graph(x, case.k_nn, n_jobs=1)
     end = time.perf_counter()
+    if case.name in ENTRIES and not case.synthetic:
+        frozen = FROZEN[case.name]
+        source["processed_fingerprint_matches"] = fingerprint(x, truth) == frozen["processed_data_fingerprint"]
+        source["graph_fingerprint_matches"] = fingerprint(neighbors, degrees) == frozen["graph_fingerprint"]
+        expected = frozen["label_fingerprints"].get(str(case.label_seed))
+        source["label_fingerprint_matches"] = None
+        if case.labels_per_class == 3 and expected is not None:
+            source["label_fingerprint_matches"] = fingerprint(labels) == expected
+            if not source["label_fingerprint_matches"]:
+                raise ValueError("Label fixture differs from frozen PR #8 protocol")
     arrays = dict(raw=raw, x=x, truth=truth, labels=labels, neighbors=neighbors,
                   degrees=degrees, source_indices=indices,
                   scaler_mean=scaler.mean_, scaler_scale=scaler.scale_)
     hashes = {name: array_hash(value) for name, value in arrays.items()}
     metadata = dict(schema=1, case=asdict(case), source=source,
-                    preprocessing="full transductive StandardScaler; float64; no row removal",
+                    preprocessing=source.get("preprocessing", "full transductive StandardScaler; float64; no row removal"),
                     graph="symmetric Euclidean k-NN; production builder; n_jobs=1; ordered lists",
                     hashes=hashes,
                     fixture_sha256=hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(),

@@ -50,7 +50,10 @@ def retrieve(url, path):
     return path.read_bytes()
 
 
-def load(entry, cache):
+def load(entry, cache, *, fetch=None):
+    """Reuse preprocessing with an optional cache-only reader; default is unchanged."""
+    if fetch is None:
+        fetch = retrieve
     if 'loader' in entry:
         data = getattr(datasets, entry['loader'])()
         x, y = np.asarray(data.data, dtype=np.float64), data.target
@@ -60,11 +63,11 @@ def load(entry, cache):
     else:
         ident = entry['openml_id']
         url = f'https://www.openml.org/api/v1/json/data/{ident}'
-        raw_meta = retrieve(url, cache / f'{ident}.json')
+        raw_meta = fetch(url, cache / f'{ident}.json')
         meta = json.loads(raw_meta)['data_set_description']
         if int(meta['version']) != entry['version']:
             raise ValueError('Pinned dataset version mismatch')
-        raw = retrieve(meta['url'], cache / f'{ident}.arff')
+        raw = fetch(meta['url'], cache / f'{ident}.arff')
         md5 = hashlib.md5(raw).hexdigest()
         if md5 != meta['md5_checksum']:
             raise ValueError('OpenML file checksum mismatch')
