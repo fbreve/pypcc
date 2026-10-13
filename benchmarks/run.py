@@ -146,7 +146,7 @@ def main(argv=None):
     parser.add_argument("--backends", nargs="+", choices=["numpy", "numba", "cython"], default=["numpy", "numba", "cython"])
     parser.add_argument("--mode", choices=["fixed", "early_stopping"], default="fixed")
     parser.add_argument("--iterations", type=int, default=100)
-    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--repeats", type=int, default=6)
     parser.add_argument("--label-seeds", nargs="+", type=int, default=[0])
     parser.add_argument("--data-seed", type=int, default=0)
     parser.add_argument("--propagation-seed", type=int, default=0)

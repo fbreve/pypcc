@@ -179,7 +179,12 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("timestamp_utc", manifest)
         self.assertIsNone(manifest["cython_extension"])
         backends = ["numpy", "numba", "cython"]
-        self.assertEqual([execution_order(backends, 0, r)[0] for r in range(3)], backends)
+        for case_index in range(3):
+            orders = [execution_order(backends, case_index, r) for r in range(6)]
+            self.assertEqual(orders[:3], orders[3:])
+            for position in range(3):
+                for backend in backends:
+                    self.assertEqual(sum(order[position] == backend for order in orders), 2)
 
     def test_dry_run_no_loading_and_expensive_gate(self):
         with patch("benchmarks.run.prepare_fixture", side_effect=AssertionError("must not load")), \
@@ -187,8 +192,11 @@ class RunnerTests(unittest.TestCase):
             main(["--datasets", "mnist_10000", "--dry-run"])
         workload = json.loads(output.getvalue())
         self.assertTrue(workload["requires_expensive_opt_in"])
-        self.assertEqual(workload["measured_executions"], 15)
-        self.assertEqual(workload["particle_update_cap"], 45000)
+        self.assertEqual(workload["repetitions"], 6)
+        self.assertEqual(workload["measured_executions"], 18)
+        self.assertEqual(workload["warmup_executions"], 6)
+        self.assertEqual(workload["measured_iteration_cap"], 1800)
+        self.assertEqual(workload["particle_update_cap"], 54000)
         with tempfile.TemporaryDirectory() as temp, contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()):
             destination = Path(temp) / "untouched"
@@ -201,11 +209,11 @@ class RunnerTests(unittest.TestCase):
                 contextlib.redirect_stderr(io.StringIO()), \
                 patch("benchmarks.fixtures.datasets.fetch_openml", side_effect=AssertionError("no download")):
             destination = Path(temp) / "run"
-            args = ["--datasets", "iris", "--backends", "numpy", "--iterations", "2", "--repeats", "2",
+            args = ["--datasets", "iris", "--backends", "numpy", "--iterations", "2",
                     "--execute", "--output", str(destination)]
             main(args)
             rows = [json.loads(line) for line in (destination / "measurements.jsonl").read_text().splitlines()]
-            self.assertEqual(len(rows), 2)
+            self.assertEqual(len(rows), 6)
             self.assertEqual(rows[0]["state_hashes"], rows[1]["state_hashes"])
             original = (destination / "manifest.json").read_bytes()
             with self.assertRaises(SystemExit):

@@ -24,11 +24,11 @@ package. No new runtime dependency is required.
 The default action is a dry-run. Execution requires `--execute` and a **new**
 output directory. All examples write ignored local results under `.cache/`.
 
-Small validation (two repetitions, five iterations, all three backends):
+Small validation (six repetitions, five iterations, all three backends):
 
 ```console
-python -m benchmarks.run --datasets iris --iterations 5 --repeats 2 --dry-run
-python -m benchmarks.run --datasets iris --iterations 5 --repeats 2 --execute --output .cache/performance/small-01
+python -m benchmarks.run --datasets iris --iterations 5 --repeats 6 --dry-run
+python -m benchmarks.run --datasets iris --iterations 5 --repeats 6 --execute --output .cache/performance/small-01
 ```
 
 Medium fixed-budget experiment (review the plan before executing):
@@ -60,7 +60,7 @@ cap-limited early-stopping results.
 | `mnist_5000` | 5000 | 784 | 10 | deterministic subset of OpenML `mnist_784`, version 1 |
 | `mnist_10000` | 10000 | 784 | 10 | same cached full source |
 
-The default selects the four built-in datasets, 100 iterations and five
+The default selects the four built-in datasets, 100 iterations and six
 repetitions per case/backend. Loading and conversion to float64 are recorded
 separately from preprocessing. `StandardScaler` fits the **complete selected
 transductive dataset**, including unlabeled samples. Constant columns remain
@@ -162,9 +162,12 @@ Matching numbers do not imply matching draws or trajectories. Repetitions
 within one backend must reproduce state hashes and stopping metrics; no
 cross-backend bitwise-equality requirement is imposed.
 
-Backend order rotates by case index and repetition. Five repetitions are
-default (`--repeats`); complete three-repetition cycles balance positions for
-three backends, while five reduces bias without exact balance. Summaries are
+Backend order rotates by case index and repetition. Six repetitions are
+default (`--repeats`), giving two complete three-repetition rotation cycles
+for NumPy, Numba and Cython. Each backend occupies every execution position
+exactly twice per case. Custom repetition counts remain supported, but counts
+that are not multiples of the selected backend count need not balance positions.
+Summaries are
 per fixture/backend/mode/budget, with median, Q1, Q3, IQR, minimum and maximum.
 Quartiles use NumPy's `method="linear"`. There is no across-dataset pooling.
 Timing variation within a case is distinct from variation across label masks,
@@ -259,7 +262,7 @@ characterizes these generated graphs, not every real-world topology.
 
 ## Workload planning and validation
 
-Dry-run lists case count, backend executions, five default repetitions,
+Dry-run lists case count, backend executions, six default repetitions,
 warm-ups, per-case iteration caps, total capped iterations, particle-update
 caps, distance-table sizes and an `N^2 * features` graph-work upper proxy.
 It performs no loading, downloads, graph construction or compilation.
@@ -274,10 +277,14 @@ in the distance-table estimate. Review dry-run, estimate wall time from an
 approved small pilot on the same machine, and obtain approval before expensive
 experiments. The harness never launches a pilot automatically.
 
-The small Iris command above plans one case, six measurements, six warm-ups,
-30 measured propagation iterations and 270 particle updates. The default
-MNIST-10000 plan has one case, 15 measurements, six warm-ups and a 100-iteration
-cap, requiring explicit opt-in even at that conservative budget.
+The small Iris command above plans one case, 18 measurements, six warm-ups,
+90 measured propagation iterations and 810 particle updates. The default
+MNIST-10000 plan has one case, 18 measurements, six warm-ups and a 100-iteration
+cap: 1800 capped measured iterations and 54000 particle updates. It requires
+explicit opt-in even at that conservative budget. The two-subset MNIST example
+plans 36 measurements, 12 warm-ups, 3600 capped measured iterations and 108000
+particle updates. The four-dataset default plans 72 measurements, 24 warm-ups,
+7200 capped measured iterations and 97200 particle updates.
 
 ```console
 python -m unittest -v tests.test_performance_benchmarks
