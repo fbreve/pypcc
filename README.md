@@ -135,6 +135,12 @@ Python development headers (for example, GCC and python3-dev on Debian/Ubuntu).
 Setuptools locates installed MSVC tools automatically. Compiler selection uses
 `/O2` for MSVC and `-O3` for GCC/Clang, without fast-math flags.
 
+The Python distribution keeps the name `pcc_step`. Its version is maintained only
+in the root `VERSION` file, which `setup.py` reads and includes in source archives.
+For an approved version update, edit that file; wheel, source distribution and
+installed metadata inherit the value automatically. Read the installed version
+with `importlib.metadata.version("pcc_step")`.
+
 `pyproject.toml` declares setuptools, wheel, Cython and NumPy headers for isolated
 builds; preinstalling Cython into the runtime environment is unnecessary. Pip
 resolves Numba's compatible NumPy requirement when using the optional extra.
