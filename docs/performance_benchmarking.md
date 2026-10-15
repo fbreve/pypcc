@@ -1,10 +1,29 @@
 # Reproducible Python performance benchmarking
 
+Original detailed artifacts and legacy analysis inputs are preserved in the
+[early-stopping archive](performance_early_stopping_archiving.md). This dated
+report retains its original scientific results; local paths describe the original run.
+
+The [completed full early-stopping campaign](performance_full_campaign_results.md)
+reports all 3,600 measured fits and 1,200 warm-ups across twenty historical datasets
+and label seeds 10–19, with strict integrity audits, convergence, accuracy and timing
+analysis. The [frozen plan](performance_full_campaign_plan.md),
+[seed-10 report](performance_full_seed10_results.md) and
+[seed-11 report](performance_full_seed11_results.md) preserve the staged history.
+
 The completed [20-dataset fixed campaign](performance_fixed_results.md) and
 [separate permutation sensitivity analysis](performance_order_sensitivity.md)
 are documented with a [verified archive/reproduction guide](performance_archiving.md).
 Raw artifacts are available in the
 [published benchmark Release](https://github.com/fbreve/pypcc/releases/tag/python-fixed-benchmarks-2026-10-13).
+The separate [early-stopping calibration pilot](performance_early_stopping_pilot.md)
+reports 72 approved fits, stopping iterations, accuracy, timing variability,
+correctness audits and full-campaign cost scenarios. Its results remain separate
+from the fixed-iteration campaign.
+The [completed second calibration](performance_second_calibration_results.md)
+adds 48 fits on the remaining 16 datasets, with censored outcomes, correctness
+audit and revised full-campaign forecasts. Its [optional resumable controller](resumable_benchmarking.md)
+preserves immutable results and requires explicit retries of ambiguous attempts.
 Execution examples below describe optional tooling; they are not authorization
 for additional runs. Fixed-iteration measurements are separate from early stopping.
 

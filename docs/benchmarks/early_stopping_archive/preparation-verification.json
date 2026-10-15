@@ -1,0 +1,32 @@
+{
+  "archive_sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+  "focused_tests": {
+    "run": 65,
+    "passed": 65
+  },
+  "portable_safety_tests_optimized_mode": {
+    "run": 5,
+    "passed": 5
+  },
+  "initial_candidate_setup": "Initial test process started before copied Cython binary was available and reported four fallback errors. Corrected only the isolated worktree setup; all 65 tests passed in a fresh process using the unchanged binary.",
+  "binary_sha256": "e29083201d16ae30b1470f7abd878ec922c2ba645bff77aa50522a49b39b92a0",
+  "candidate_ci": "Pending: no candidate branch has been pushed; original PR head passed all four CI jobs.",
+  "remote_actions": false,
+  "independent_reporting_statistics": {
+    "audit": "passed",
+    "pooled_timing_summaries": 120,
+    "backend_totals": 3,
+    "paired_backend_comparisons": 60,
+    "permutation_position_summaries": 27,
+    "stage_totals": 10
+  },
+  "portable_offline_analysis": {
+    "audit": "passed",
+    "measurements": 3600,
+    "warmups": 1200,
+    "fixtures": 200,
+    "iterations": 568303200,
+    "early_stops": 3120,
+    "censored": 480
+  }
+}

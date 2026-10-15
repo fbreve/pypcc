@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "published": true,
+  "asset": "pypcc-early-stopping-campaign-v1.zip",
+  "audit": "passed",
+  "members": 96437,
+  "bytes": 335484211,
+  "sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+  "source_roots": 23,
+  "source_files": 96205,
+  "offline_analysis": "passed",
+  "baseline": {
+    "tag": "python-fixed-benchmarks-2026-10-13",
+    "commit": "b6de3e77dabae61a27d7f177b37e5fc5fa74c240",
+    "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/pypcc-fixed-results-windows-20261013.zip",
+    "bytes": 93800528,
+    "sha256": "78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf",
+    "included": "Verbatim measurements and 200 fixture metadata files, verified against published ZIP; no duplicate full PR16 Release."
+  },
+  "bundle": {
+    "local_only": true,
+    "included_in_release": false,
+    "path": ".cache\\pr17-original-20261015.bundle",
+    "bytes": 144153095,
+    "sha256": "1cf1ca3a080b1772ce49e227f1fb67b48e8378ccf9a6f51c1dcdd954ff46caac",
+    "reachable_blobs": 13323,
+    "credential_pattern_candidates": 0,
+    "blobs_with_windows_user_paths": 73,
+    "blobs_with_email_patterns": 2,
+    "limitations": "Pattern scan is not proof of absence of private data. Paths/emails and original repository history are retained only in the local backup. Archive also contains original machine/user paths in scientific provenance; these are disclosed, not redacted."
+  },
+  "additional_planning_files": 8,
+  "asset_local_directory": "complete-v1",
+  "full_final_extraction_verification": "passed",
+  "tag": "python-early-stopping-benchmarks-2026-10-15-v1",
+  "release_url": "https://github.com/fbreve/pypcc/releases/tag/python-early-stopping-benchmarks-2026-10-15-v1",
+  "published_at": "2026-10-15T15:53:44Z",
+  "tag_target_commit": "35b6da469c7d72d0a791ce800ae3842f32d0a4ad",
+  "status_scope": "Current repository status. This file is not the immutable pre-publication archive-index.json published as a Release asset.",
+  "historical_preparation": {
+    "schema": 1,
+    "published": false,
+    "proposed_tag": "python-early-stopping-benchmarks-2026-10-15-v1",
+    "asset": "pypcc-early-stopping-campaign-v1.zip",
+    "audit": "passed",
+    "members": 96437,
+    "bytes": 335484211,
+    "sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+    "source_roots": 23,
+    "source_files": 96205,
+    "offline_analysis": "passed",
+    "baseline": {
+      "tag": "python-fixed-benchmarks-2026-10-13",
+      "commit": "b6de3e77dabae61a27d7f177b37e5fc5fa74c240",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/pypcc-fixed-results-windows-20261013.zip",
+      "bytes": 93800528,
+      "sha256": "78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf",
+      "included": "Verbatim measurements and 200 fixture metadata files, verified against published ZIP; no duplicate full PR16 Release."
+    },
+    "bundle": {
+      "local_only": true,
+      "included_in_release": false,
+      "path": ".cache\\pr17-original-20261015.bundle",
+      "bytes": 144153095,
+      "sha256": "1cf1ca3a080b1772ce49e227f1fb67b48e8378ccf9a6f51c1dcdd954ff46caac",
+      "reachable_blobs": 13323,
+      "credential_pattern_candidates": 0,
+      "blobs_with_windows_user_paths": 73,
+      "blobs_with_email_patterns": 2,
+      "limitations": "Pattern scan is not proof of absence of private data. Paths/emails and original repository history are retained only in the local backup. Archive also contains original machine/user paths in scientific provenance; these are disclosed, not redacted."
+    },
+    "additional_planning_files": 8,
+    "asset_local_directory": "complete-v1",
+    "full_final_extraction_verification": "passed"
+  },
+  "frozen_published_index": {
+    "url": "https://github.com/fbreve/pypcc/releases/download/python-early-stopping-benchmarks-2026-10-15-v1/archive-index.json",
+    "bytes": 1705,
+    "sha256": "126bff44a6e9128fdf16920d3ce66927cac436608debe74dbfa6a8638323bdfb",
+    "published_field": false,
+    "meaning": "Preparation-time status retained verbatim in the immutable Release asset."
+  },
+  "independent_verification": {
+    "integrity": "passed",
+    "portable_statistical_reproduction": "passed",
+    "record": "publication-verification.json",
+    "content_discrepancies": [],
+    "metadata_note": "Only download_count increased by one per asset; the overbroad final metadata guard stopped, and read-only inspection confirmed no identity/content changes."
+  },
+  "pr_branch_replaced": true,
+  "clean_candidate_commit": "35b6da469c7d72d0a791ce800ae3842f32d0a4ad"
+}

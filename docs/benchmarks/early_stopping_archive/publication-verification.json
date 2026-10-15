@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "status": "integrity_and_statistical_reproduction_passed",
+  "release_url": "https://github.com/fbreve/pypcc/releases/tag/python-early-stopping-benchmarks-2026-10-15-v1",
+  "release_id": 413997202,
+  "published_at": "2026-10-15T15:53:44Z",
+  "tag": "python-early-stopping-benchmarks-2026-10-15-v1",
+  "tag_target_commit": "35b6da469c7d72d0a791ce800ae3842f32d0a4ad",
+  "assets": [
+    {
+      "name": "archive-index.json",
+      "bytes": 1705,
+      "sha256": "126bff44a6e9128fdf16920d3ce66927cac436608debe74dbfa6a8638323bdfb",
+      "github_digest": "sha256:126bff44a6e9128fdf16920d3ce66927cac436608debe74dbfa6a8638323bdfb",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-early-stopping-benchmarks-2026-10-15-v1/archive-index.json",
+      "unauthenticated_download": true
+    },
+    {
+      "name": "pypcc-early-stopping-campaign-v1.zip",
+      "bytes": 335484211,
+      "sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+      "github_digest": "sha256:3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-early-stopping-benchmarks-2026-10-15-v1/pypcc-early-stopping-campaign-v1.zip",
+      "unauthenticated_download": true
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 104,
+      "sha256": "ef19c016695cbd567ea38059f210fa649358a0e967723e6300f1f9c6d5049317",
+      "github_digest": "sha256:ef19c016695cbd567ea38059f210fa649358a0e967723e6300f1f9c6d5049317",
+      "url": "https://github.com/fbreve/pypcc/releases/download/python-early-stopping-benchmarks-2026-10-15-v1/SHA256SUMS.txt",
+      "unauthenticated_download": true
+    }
+  ],
+  "archive": {
+    "audit": "passed",
+    "members": 96437,
+    "bytes": 335484211,
+    "sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf"
+  },
+  "offline_analysis": {
+    "measurements": 3600,
+    "warmups": 1200,
+    "fixtures": 200,
+    "iterations": 568303200,
+    "early_stops": 3120,
+    "censored": 480,
+    "pilot_fits": 72,
+    "second_calibration_fits": 48,
+    "exact_statistics_match": true
+  },
+  "logging_regression_test": "passed",
+  "metadata_guard": {
+    "status": "stopped_on_expected_download_counter_changes",
+    "differences": [
+      {
+        "asset": "SHA256SUMS.txt",
+        "field": "download_count",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "asset": "archive-index.json",
+        "field": "download_count",
+        "before": 1,
+        "after": 2
+      },
+      {
+        "asset": "pypcc-early-stopping-campaign-v1.zip",
+        "field": "download_count",
+        "before": 0,
+        "after": 1
+      }
+    ],
+    "asset_identity_or_content_changes": false,
+    "automatic_retry": false
+  },
+  "publication_assets_modified": false,
+  "bundle_uploaded": false,
+  "benchmark_execution": false,
+  "historical_verification_context": {
+    "pr_head_at_independent_verification": "6f995d15a08e975c511b8cbd602ebfbfe339c60d",
+    "pr_draft_at_independent_verification": true
+  },
+  "current_repository_context": {
+    "clean_pr_head_before_documentation": "35b6da469c7d72d0a791ce800ae3842f32d0a4ad",
+    "branch_replaced": true,
+    "pr_draft": true
+  }
+}

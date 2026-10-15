@@ -1,0 +1,51 @@
+{
+  "audit": "passed",
+  "measurements": 360,
+  "warmups": 120,
+  "fixtures": 20,
+  "early_stops": 336,
+  "censored": 24,
+  "cap_hits": 24,
+  "propagation_s": 3321.086036499357,
+  "fit_predict_s": 3321.2293277989374,
+  "backend_summary": [
+    {
+      "backend": "numpy",
+      "measurements": 120,
+      "iterations": 18701328,
+      "early_stops": 108,
+      "censored": 12,
+      "censor_fraction": 0.1,
+      "propagation_total_s": 3229.875201999559,
+      "fit_total_s": 3229.921306399745,
+      "accuracy_macro_percent": 66.85169595009025,
+      "accuracy_spread_percentage_points": 57.38505489854554
+    },
+    {
+      "backend": "numba",
+      "measurements": 120,
+      "iterations": 18290514,
+      "early_stops": 114,
+      "censored": 6,
+      "censor_fraction": 0.05,
+      "propagation_total_s": 29.94631779973861,
+      "fit_total_s": 29.994176898966543,
+      "accuracy_macro_percent": 65.8933043623067,
+      "accuracy_spread_percentage_points": 60.39796097580014
+    },
+    {
+      "backend": "cython",
+      "measurements": 120,
+      "iterations": 17367414,
+      "early_stops": 114,
+      "censored": 6,
+      "censor_fraction": 0.05,
+      "propagation_total_s": 61.264516700059175,
+      "fit_total_s": 61.31384450022597,
+      "accuracy_macro_percent": 66.58220158054957,
+      "accuracy_spread_percentage_points": 61.63841795659594
+    }
+  ],
+  "outliers_excluded": 0,
+  "archive_tag": "python-early-stopping-benchmarks-2026-10-15-v1"
+}
