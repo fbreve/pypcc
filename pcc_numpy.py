@@ -186,13 +186,15 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
-                        return_info=False):
+                        return_info=False, observer=None):
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
     it = -1
     max_mmpot = 0.0
     stop_cnt = 0
+    if observer is not None:
+        observer(0, dominance, part_curnode, part_strength, dist_table, owndeg, None)
     
     for it in range(max_iter):
         pcc_step_numpy(neib_list, neib_qt,
@@ -212,5 +214,11 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                 if stop_cnt > stop_max:
                     break
 
+        if observer is not None:
+            observer(it + 1, dominance, part_curnode, part_strength, dist_table, owndeg, None)
+
+    if observer is not None:
+        observer(it + 1, dominance, part_curnode, part_strength, dist_table, owndeg,
+                 propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt))
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
