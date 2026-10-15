@@ -95,7 +95,7 @@ class TrajectoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Trajectory([-1, -1], milestones=schedule)
         with self.assertRaises(ValueError):
-            observe_fit(PCC(impl='numba'), [0, 1])
+            observe_fit(PCC(impl='cython'), [0, 1])
         with self.assertRaises(ValueError):
             observe_fit(PCC(impl='numpy'), [0, -1])
         args = state()
@@ -108,15 +108,16 @@ class TrajectoryTests(unittest.TestCase):
         self.assertEqual(trajectory.rows[-1]['assignments'], [0, 0, 0])
 
     def test_portable_bundle_and_partial_corruption(self):
-        args = state()
-        trajectory = Trajectory(args[2], milestones=(0,))
-        provenance = metadata(dataset='tiny', label_seed=0, propagation_seed=19,
-                              arrays={'labels': args[2], 'neighbors': args[0]}, parameters={'max_iter': 2})
+        model = PCC(impl='numpy')
+        model.set_graph(np.array([[1], [2], [0]]), np.ones(3, dtype=np.int64))
+        _, trajectory, _ = observe_fit(model, [0, -1, 1], propagation_seed=19,
+                                      milestones=(0,), max_iter=2, early_stop=False)
+        provenance = metadata(dataset='tiny', label_seed=0, collector=trajectory)
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp) / 'bundle'
+            incomplete = Trajectory([0, -1, 1])
             with self.assertRaises(ValueError):
-                write_output(directory, trajectory, provenance)
-            pcc_propagate_numpy(*args, *buffers(args), 2, False, 2000, 1, observer=trajectory)
+                write_output(directory, incomplete, provenance)
             write_output(directory, trajectory, provenance)
             self.assertEqual(read_output(directory)['observations'], trajectory.rows)
             with (directory / 'trajectory.csv').open(newline='', encoding='utf-8') as stream:

@@ -1,57 +1,13 @@
-"""Stage A: opt-in NumPy trajectory diagnostics; no historical campaign runner.
-
-Use a fresh collector for one propagation call. Ground truth is used only here,
-after iteration boundaries, never by the propagation or stopping calculations.
-"""
-import csv
+"""Bounded single-fit NumPy/Numba diagnostics, separate from benchmark timing."""
 import hashlib
-import importlib.metadata
+import inspect
 import json
-import platform
-import subprocess
 import time
-from pathlib import Path
 
 import numpy as np
 
-
-def observe_fit(model, labels, *, truth=None, milestones=(0, 10000),
-                include_checks=True, **fit_parameters):
-    """Observe one fit using instance-local dispatch; reject native fallback.
-
-    Truth is in public label space here. Returns predictions, collector, metrics.
-    This research helper leaves the public model API and its defaults unchanged.
-    """
-    from pcc_numpy import pcc_propagate_numpy
-    if model.impl != 'numpy' or model.update_mode != 'sequential':
-        raise ValueError('Stage A instrumentation supports explicit sequential NumPy only')
-    if np.unique(np.asarray(labels)[np.asarray(labels) != -1]).size < 2:
-        raise ValueError('trajectory requires at least two labeled classes')
-    if model._get_backend_fn() is not pcc_propagate_numpy:
-        raise ValueError('unexpected backend dispatch')
-    result = {}
-
-    def observed(*args, **kwargs):
-        mapped_truth = None
-        if truth is not None:
-            mapped_truth = np.full(np.asarray(truth).shape, -2, dtype=np.int64)
-            for label, index in model.label_to_idx.items():
-                mapped_truth[np.asarray(truth) == label] = index
-        collector = Trajectory(args[2], truth=mapped_truth, milestones=milestones,
-                               include_checks=include_checks)
-        result['collector'] = collector
-        result['metrics'] = pcc_propagate_numpy(*args, **kwargs, observer=collector, return_info=True)
-
-    original = model.__dict__.get('_get_backend_fn')
-    model._get_backend_fn = lambda: observed
-    try:
-        predictions = model.fit_predict(labels, **fit_parameters)
-    finally:
-        if original is None:
-            del model._get_backend_fn
-        else:
-            model._get_backend_fn = original
-    return predictions, result['collector'], result['metrics']
+DEFAULT_MAX_OBSERVATIONS = 128
+DEFAULT_MAX_BYTES = 64 * 1024 * 1024
 
 
 def array_hash(value):
@@ -63,46 +19,93 @@ def array_hash(value):
     return digest.hexdigest()
 
 
+def numpy_rng_hash(state=None):
+    state = np.random.get_state() if state is None else state
+    return hashlib.sha256(json.dumps(
+        [state[0], state[1].tolist(), *state[2:]], allow_nan=False).encode()).hexdigest()
+
+
+def effective_parameters(parameters):
+    from pcc import ParticleCompetitionAndCooperation as PCC
+    defaults = {k: p.default for k, p in inspect.signature(PCC.fit_predict).parameters.items()
+                if k not in ('self', 'labels')}
+    if set(parameters) - set(defaults):
+        raise ValueError('unknown execution parameters')
+    defaults.update(parameters)
+    for key in defaults:
+        convert = bool if key == 'early_stop' else int if key in ('max_iter', 'es_chk') else float
+        defaults[key] = convert(defaults[key])
+    if defaults['max_iter'] < 0 or not all(np.isfinite(v) for v in defaults.values()):
+        raise ValueError('invalid execution parameters')
+    return defaults
+
+
+def schedule_for(cap, milestones, include_checks, limit):
+    if include_checks and (cap + 9) // 10 > limit:
+        raise ValueError('stopping-check sampling exceeds max_observations')
+    schedule = {i for i in milestones if i <= cap} | {cap}
+    if include_checks:
+        schedule.update(range(1, cap + 1, 10))
+    if len(schedule) > limit:
+        raise ValueError('milestones exceed max_observations')
+    return sorted(schedule)
+
+
 class Trajectory:
-    """Read-only collector for pcc_propagate_numpy(observer=collector).
+    """Trusted NumPy observer; defaults retain milestones and final only.
 
-    Iterations count completed steps. Check boundaries are 1, 11, 21, ...,
-    because production checks zero-based loop indices divisible by ten.
-    Changes/stability compare observations, not every intervening iteration.
-    Labels and truth must use the same internal class indices as dominance.
+    Check sampling is explicit. Row count and estimated storage are bounded.
+    Changes compare adjacent observations, not every intervening iteration.
     """
-
-    def __init__(self, labels, *, truth=None, milestones=(0, 10000),
-                 include_checks=True):
+    def __init__(self, labels, *, truth=None, milestones=(0, 10000), include_checks=False,
+                 max_observations=DEFAULT_MAX_OBSERVATIONS, max_bytes=DEFAULT_MAX_BYTES):
         schedule = list(milestones)
-        if any(type(i) is not int or i < 0 for i in schedule):
-            raise ValueError('milestones must be nonnegative integers')
+        if any(type(i) is not int or i < 0 or i > np.iinfo(np.int64).max for i in schedule):
+            raise ValueError('milestones must be nonnegative int64 Python integers')
         if schedule != sorted(set(schedule)):
             raise ValueError('milestones must be strictly increasing')
-        self.milestones = schedule
-        self.include_checks = bool(include_checks)
-        self.labels = np.array(labels, copy=True)
+        if type(max_observations) is not int or max_observations < 1:
+            raise ValueError('max_observations must be positive')
+        if type(max_bytes) is not int or max_bytes < 1:
+            raise ValueError('max_bytes must be positive')
+        if type(include_checks) is not bool:
+            raise ValueError('include_checks must be boolean')
+        self.milestones, self.include_checks = schedule, include_checks
+        self.max_observations, self.max_bytes = max_observations, max_bytes
+        self.labels = np.array(labels, dtype=np.int64, copy=True)
         self.truth = None if truth is None else np.array(truth, copy=True)
         if self.labels.ndim != 1 or (self.truth is not None and self.truth.shape != self.labels.shape):
             raise ValueError('labels/truth must be matching vectors')
-        self.rows = []
-        self.previous = None
-        self.previous_assignments = None
-        self.started = time.perf_counter()
-        self.finished = False
+        self.rows, self.previous, self.previous_assignments = [], None, None
+        self.started, self.finished = time.perf_counter(), False
+        self.execution, self.metrics = None, None
+
+    def estimated_bytes(self, rows, classes, native_bytes=0):
+        # Conservative Python list/dict + scratch accounting, not a process RSS limit.
+        n = self.labels.size
+        return int(native_bytes + rows * (128 * n + 16384) + 128 * n * classes)
 
     def __call__(self, iteration, dominance, positions, strengths, distances, owndeg, info):
+        self.capture(iteration, dominance, positions, strengths, distances, owndeg, info)
+
+    def capture(self, iteration, dominance, positions, strengths, distances, owndeg, info,
+                *, selected=False, native=False, elapsed=None):
         if self.finished:
             raise ValueError('collector is single-use')
-        if info is None and iteration not in self.milestones and not (
+        if not selected and info is None and iteration not in self.milestones and not (
                 self.include_checks and iteration > 0 and (iteration - 1) % 10 == 0):
             return
         if dominance.shape[0] != self.labels.size or dominance.shape[1] < 2:
             raise ValueError('trajectory requires matching nodes and at least two classes')
         if info is not None and self.rows and self.rows[-1]['iteration'] == iteration:
             self.rows[-1].update(final=True, stop_reason=info['stop_reason'])
-            self.finished = True
+            self.finished, self.metrics = True, dict(info)
             return
+        if self.rows and iteration <= self.rows[-1]['iteration']:
+            raise ValueError('observations must be strictly increasing')
+        if len(self.rows) >= self.max_observations or self.estimated_bytes(
+                len(self.rows) + 1, dominance.shape[1]) > self.max_bytes:
+            raise ValueError('observation storage budget exceeded')
         assigned = np.argmax(dominance, axis=1)
         known = self.labels != -1
         assigned[known] = self.labels[known]
@@ -112,9 +115,8 @@ class Trajectory:
         hashes = {name: array_hash(value) for name, value in dict(
             assignments=assigned, dominance=dominance, positions=positions,
             strengths=strengths, distances=distances, owndeg=owndeg).items()}
-        rng = np.random.get_state()
-        hashes['numpy_rng'] = hashlib.sha256(json.dumps(
-            [rng[0], rng[1].tolist(), *rng[2:]], allow_nan=False).encode()).hexdigest()
+        if not native:
+            hashes['numpy_rng'] = numpy_rng_hash()
         row = dict(iteration=int(iteration), assignments=assigned.tolist(),
                    class_changes=None if self.previous is None else int(np.count_nonzero(
                        assigned != self.previous_assignments)),
@@ -125,61 +127,106 @@ class Trajectory:
                    margin_mean=float(gap.mean()), margin_min=float(gap.min()),
                    accuracy_unlabeled_retrospective=None if self.truth is None or not unknown.any()
                    else float(np.mean(assigned[unknown] == self.truth[unknown])),
-                   state_hashes=hashes, elapsed_instrumented_s=time.perf_counter() - self.started,
+                   state_hashes=hashes, elapsed_instrumented_s=(elapsed if native else time.perf_counter() - self.started),
                    final=info is not None, stop_reason=None if info is None else info['stop_reason'])
         self.rows.append(row)
-        self.previous = dominance.copy()
-        self.previous_assignments = assigned.copy()
+        self.previous, self.previous_assignments = dominance.copy(), assigned.copy()
         self.finished = info is not None
+        if info is not None:
+            self.metrics = dict(info)
 
 
-def metadata(*, dataset, label_seed, propagation_seed, arrays, parameters):
-    """Capture provenance without seeding, fitting, downloading or loading data."""
-    root = Path(__file__).resolve().parents[1]
-    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
-    return dict(protocol='convergence-trajectories-stage-a-v1', dataset=dataset,
-                protocol_sha256=hashlib.sha256((root / 'docs/convergence_trajectories_protocol.md').read_bytes().replace(b'\r\n', b'\n')).hexdigest(),
-                label_seed=label_seed, backend='numpy', update_mode='sequential',
-                source_commit=commit, source_dirty=dirty, python=platform.python_version(),
-                platform=platform.platform(),
-                dependencies={name: importlib.metadata.version(name) for name in
-                              ('numpy', 'scipy', 'scikit-learn')},
-                fixture_hashes={name: array_hash(value) for name, value in arrays.items()},
-                parameters=dict(parameters), propagation_seed=propagation_seed,
-                seed_policy='caller seeds NumPy once before a single propagation call',
-                evaluation='retrospective transductive diagnostic only',
-                timing='instrumented elapsed time; not a kernel benchmark')
+def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_checks=False,
+                propagation_seed=None, max_observations=DEFAULT_MAX_OBSERVATIONS,
+                max_bytes=DEFAULT_MAX_BYTES, **fit_parameters):
+    """Observe one fit. An explicit seed seeds only the selected backend, once.
+
+    With no seed, preserve caller RNG state and record an unknown seed.
+    The original NumPy return tuple and instance-local dispatch are preserved.
+    """
+    from pcc_numpy import pcc_propagate_numpy
+    if model.impl not in ('numpy', 'numba') or model.update_mode != 'sequential':
+        raise ValueError('diagnostics require explicit sequential NumPy or Numba')
+    backend = pcc_propagate_numpy
+    if model.impl == 'numba':
+        from pcc_numba import pcc_propagate_numba
+        backend = pcc_propagate_numba
+    if model._get_backend_fn() is not backend:
+        raise ValueError('unexpected backend dispatch')
+    labels = np.asarray(labels, dtype=np.int64)
+    if np.unique(labels[labels != -1]).size < 2:
+        raise ValueError('trajectory requires at least two labeled classes')
+    if model.neib_list is None or labels.shape != (model.neib_list.shape[0],):
+        raise ValueError('set a matching graph before observing')
+    truth = None if truth is None else np.asarray(truth, dtype=np.int64)
+    if truth is not None and truth.shape != labels.shape:
+        raise ValueError('truth must match labels')
+    if propagation_seed is not None and (type(propagation_seed) is not int or not 0 <= propagation_seed < 2**32):
+        raise ValueError('propagation_seed must be an unsigned 32-bit integer or None')
+    parameters = effective_parameters(fit_parameters)
+    probe = Trajectory(labels, truth=truth, milestones=milestones, include_checks=include_checks,
+                       max_observations=max_observations, max_bytes=max_bytes)
+    schedule = schedule_for(parameters['max_iter'], probe.milestones, include_checks, max_observations)
+    from .trajectory_io import source_metadata
+    source = source_metadata()
+    result = {}
+
+    def observed(*args, **kwargs):
+        actual_parameters = effective_parameters(dict(p_grd=args[3], delta_v=args[4],
+            deltap=args[13], dexp=args[14], max_iter=args[-4], early_stop=args[-3], es_chk=args[-2]))
+        if actual_parameters != parameters:
+            raise ValueError('effective backend parameters differ from requested fit')
+        mapped_truth = None
+        if truth is not None:
+            mapped_truth = np.full(truth.shape, -2, dtype=np.int64)
+            for label, index in model.label_to_idx.items():
+                mapped_truth[truth == label] = index
+        collector = Trajectory(args[2], truth=mapped_truth, milestones=probe.milestones,
+                               include_checks=include_checks, max_observations=max_observations,
+                               max_bytes=max_bytes)
+        native_bytes, native_buffer = 0, None
+        if model.impl == 'numba':
+            from .numba_trajectories import allocate_buffer, propagate_observed, seed_numba
+            native_buffer, native_bytes = allocate_buffer(args, schedule, collector)
+        elif collector.estimated_bytes(len(schedule), model.c) > max_bytes:
+            raise ValueError('observation storage budget exceeded')
+        if propagation_seed is not None:
+            if model.impl == 'numba':
+                seed_numba(propagation_seed)
+            else:
+                np.random.seed(propagation_seed)
+        arrays = dict(neighbors=model.neib_list, degrees=model.neib_qt, labels=model.labels)
+        if truth is not None:
+            arrays['truth'] = truth
+        collector.execution = dict(source, backend=model.impl, parameters=actual_parameters,
+            fixture_hashes={k: array_hash(v) for k, v in arrays.items()},
+            nodes=model.node.amount, classes=model.c, particles=model.part.amount,
+            graph_has_edges=bool(np.any(args[1])), class_index_to_label=model.unique_labels.tolist(),
+            k_nn=int(model.k_nn), stop_max=int(args[-1]), truth_present=truth is not None,
+            propagation_seed=propagation_seed,
+            seed_policy=model.impl + ('-seed-once' if propagation_seed is not None else '-caller-state'),
+            initial_numpy_rng=numpy_rng_hash() if model.impl == 'numpy' else None,
+            rng_fingerprint='numpy-state' if model.impl == 'numpy' else 'not-captured',
+            budget=dict(max_observations=max_observations, max_bytes=max_bytes,
+                        scheduled_observations=len(schedule), native_buffer_bytes=native_bytes,
+                        estimated_peak_bytes=collector.estimated_bytes(len(schedule), model.c, native_bytes)))
+        collector.started = time.perf_counter()
+        if model.impl == 'numba':
+            metrics = propagate_observed(args, native_buffer, collector)
+        else:
+            metrics = backend(*args, **kwargs, observer=collector, return_info=True)
+        result.update(collector=collector, metrics=metrics)
+
+    original = model.__dict__.get('_get_backend_fn')
+    model._get_backend_fn = lambda: observed
+    try:
+        predictions = model.fit_predict(labels, **parameters)
+    finally:
+        if original is None:
+            del model._get_backend_fn
+        else:
+            model._get_backend_fn = original
+    return predictions, result['collector'], result['metrics']
 
 
-def write_output(directory, collector, provenance):
-    """Write a new bundle; manifest written last marks successful completion."""
-    if not collector.finished:
-        raise ValueError('cannot export incomplete trajectory')
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=False)
-    payload = dict(metadata=dict(provenance, milestones=collector.milestones,
-                                include_checks=collector.include_checks), observations=collector.rows)
-    (directory / 'trajectory.json').write_text(json.dumps(payload, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-    context = {key: provenance[key] for key in ('dataset', 'label_seed', 'backend')}
-    with (directory / 'trajectory.csv').open('w', newline='', encoding='utf-8') as stream:
-        writer = csv.DictWriter(stream, fieldnames=[*context, *collector.rows[0]])
-        writer.writeheader()
-        for row in collector.rows:
-            writer.writerow({key: json.dumps(value, allow_nan=False) if isinstance(value, (list, dict))
-                             else value for key, value in dict(context, **row).items()})
-    manifest = {name: hashlib.sha256((directory / name).read_bytes()).hexdigest()
-                for name in ('trajectory.json', 'trajectory.csv')}
-    (directory / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-
-
-def read_output(directory):
-    """Reject partial or corrupted bundles before returning JSON observations."""
-    directory = Path(directory)
-    manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
-    if set(manifest) != {'trajectory.json', 'trajectory.csv'}:
-        raise ValueError('invalid trajectory manifest')
-    for name, expected in manifest.items():
-        if hashlib.sha256((directory / name).read_bytes()).hexdigest() != expected:
-            raise ValueError('trajectory checksum mismatch: ' + name)
-    return json.loads((directory / 'trajectory.json').read_text(encoding='utf-8'))
+from .trajectory_io import metadata, write_output, read_output  # noqa: E402
