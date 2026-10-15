@@ -17,6 +17,60 @@ def strip_timing(rows):
 
 
 class NativeTrajectoryTests(unittest.TestCase):
+    def test_zero_cap_single_slot_and_exact_milestone_stop(self):
+        for cap, schedule, expected in ((0, [0], [0]),
+                                        (100, [0, 21, 100], [0, 21]),
+                                        (21, [0, 21], [0, 21]),
+                                        (5, [5], [5])):
+            args = state()
+            args[1][:] = 0
+            args += buffers(args) + [cap, True, 2000, 1]
+            trace = Trajectory(args[2], milestones=tuple(schedule), max_observations=len(schedule))
+            trace.execution = {}
+            buffer, _ = allocate_buffer(args, schedule, trace)
+            seed_numba(19)
+            info = propagate_observed(args, buffer, trace)
+            self.assertEqual([row['iteration'] for row in trace.rows], expected)
+            self.assertEqual(int(buffer[-1][0]), len(expected))
+            self.assertEqual(sum(row['final'] for row in trace.rows), 1)
+            self.assertEqual(trace.rows[-1]['stop_reason'], info['stop_reason'])
+            if cap in (21, 100):
+                self.assertEqual(info['stop_reason'], 'early_stop')
+
+    def test_capacity_exact_bytes_limits_and_malformed_schedule(self):
+        args = state()
+        args += buffers(args) + [3, False, 2000, 1]
+        schedule = [0, 1, 2, 3]
+        trace = Trajectory(args[2], milestones=tuple(schedule), max_observations=4)
+        buffer, native_bytes = allocate_buffer(args, schedule, trace)
+        required = trace.estimated_bytes(4, args[5], native_bytes)
+        exact = Trajectory(args[2], milestones=tuple(schedule), max_observations=4, max_bytes=required)
+        exact.execution = {}
+        exact_buffer, _ = allocate_buffer(args, schedule, exact)
+        propagate_observed(args, exact_buffer, exact)
+        self.assertEqual(len(exact.rows), 4)  # final deduplication at full capacity
+        for limits in (dict(max_observations=3), dict(max_bytes=required - 1)):
+            with self.assertRaises(ValueError):
+                allocate_buffer(args, schedule, Trajectory(args[2], **limits))
+        for malformed in ([], [0, 1], [0, 3, 3], [3, 0], [-1, 3], [0, 4], [0., 3]):
+            with self.subTest(schedule=malformed), self.assertRaises(ValueError):
+                allocate_buffer(args, malformed, trace)
+        # Reject shortened externally supplied buffers BEFORE the native loop.
+        fresh = Trajectory(args[2])
+        fresh.execution = {}
+        good, _ = allocate_buffer(args, [0, 3], fresh)
+        for index in (1, 2, 3, 4, 5, 6):
+            short = list(good)
+            short[index] = short[index][:-1].copy()
+            before = [array_hash(args[i]) for i in (7, 9, 10, 11, 12)]
+            seed_numba(19)
+            with self.assertRaises(ValueError):
+                propagate_observed(args, tuple(short), fresh)
+            subsequent = next_random()
+            seed_numba(19)
+            self.assertEqual(subsequent, next_random())
+            self.assertEqual(before, [array_hash(args[i]) for i in (7, 9, 10, 11, 12)])
+
     def test_snapshots_match_unobserved_prefix_states(self):
         schedule = [0, 1, 3, 11, 27]
         args = state()

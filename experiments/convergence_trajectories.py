@@ -79,6 +79,7 @@ class Trajectory:
         self.rows, self.previous, self.previous_assignments = [], None, None
         self.started, self.finished = time.perf_counter(), False
         self.execution, self.metrics = None, None
+        self.phase_timings = {}
 
     def estimated_bytes(self, rows, classes, native_bytes=0):
         # Conservative Python list/dict + scratch accounting, not a process RSS limit.
@@ -89,7 +90,7 @@ class Trajectory:
         self.capture(iteration, dominance, positions, strengths, distances, owndeg, info)
 
     def capture(self, iteration, dominance, positions, strengths, distances, owndeg, info,
-                *, selected=False, native=False, elapsed=None):
+                *, selected=False, native=False, elapsed=None, cython_rng=None):
         if self.finished:
             raise ValueError('collector is single-use')
         if not selected and info is None and iteration not in self.milestones and not (
@@ -117,6 +118,8 @@ class Trajectory:
             strengths=strengths, distances=distances, owndeg=owndeg).items()}
         if not native:
             hashes['numpy_rng'] = numpy_rng_hash()
+        if cython_rng is not None:
+            hashes['cython_rng'] = array_hash(cython_rng)
         row = dict(iteration=int(iteration), assignments=assigned.tolist(),
                    class_changes=None if self.previous is None else int(np.count_nonzero(
                        assigned != self.previous_assignments)),
@@ -144,13 +147,17 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
     With no seed, preserve caller RNG state and record an unknown seed.
     The original NumPy return tuple and instance-local dispatch are preserved.
     """
+    overall_start = time.perf_counter()
     from pcc_numpy import pcc_propagate_numpy
-    if model.impl not in ('numpy', 'numba') or model.update_mode != 'sequential':
-        raise ValueError('diagnostics require explicit sequential NumPy or Numba')
+    if model.impl not in ('numpy', 'numba', 'cython') or model.update_mode != 'sequential':
+        raise ValueError('diagnostics require an explicit sequential backend')
     backend = pcc_propagate_numpy
     if model.impl == 'numba':
         from pcc_numba import pcc_propagate_numba
         backend = pcc_propagate_numba
+    elif model.impl == 'cython':
+        from pcc_step import pcc_propagate
+        backend = pcc_propagate
     if model._get_backend_fn() is not backend:
         raise ValueError('unexpected backend dispatch')
     labels = np.asarray(labels, dtype=np.int64)
@@ -163,15 +170,25 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
         raise ValueError('truth must match labels')
     if propagation_seed is not None and (type(propagation_seed) is not int or not 0 <= propagation_seed < 2**32):
         raise ValueError('propagation_seed must be an unsigned 32-bit integer or None')
+    if model.impl == 'cython' and propagation_seed not in (None, 123456789):
+        raise ValueError('Cython always starts from its fixed seed 123456789')
+    if model.impl == 'cython':
+        propagation_seed = 123456789
     parameters = effective_parameters(fit_parameters)
     probe = Trajectory(labels, truth=truth, milestones=milestones, include_checks=include_checks,
                        max_observations=max_observations, max_bytes=max_bytes)
     schedule = schedule_for(parameters['max_iter'], probe.milestones, include_checks, max_observations)
     from .trajectory_io import source_metadata
-    source = source_metadata()
+    source_start = time.perf_counter()
+    profile = dict(preflight_s=source_start - overall_start)
+    source_profile = {}
+    source = source_metadata(profile=source_profile)
+    profile['source_metadata_s'] = time.perf_counter() - source_start
     result = {}
 
     def observed(*args, **kwargs):
+        setup_start = time.perf_counter()
+        profile['model_initialization_s'] = setup_start - fit_start
         actual_parameters = effective_parameters(dict(p_grd=args[3], delta_v=args[4],
             deltap=args[13], dexp=args[14], max_iter=args[-4], early_stop=args[-3], es_chk=args[-2]))
         if actual_parameters != parameters:
@@ -188,12 +205,15 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
         if model.impl == 'numba':
             from .numba_trajectories import allocate_buffer, propagate_observed, seed_numba
             native_buffer, native_bytes = allocate_buffer(args, schedule, collector)
+        elif model.impl == 'cython':
+            from .native_trajectories import allocate_buffer, propagate_cython
+            native_buffer, native_bytes = allocate_buffer(args, schedule, collector, cython=True)
         elif collector.estimated_bytes(len(schedule), model.c) > max_bytes:
             raise ValueError('observation storage budget exceeded')
         if propagation_seed is not None:
             if model.impl == 'numba':
                 seed_numba(propagation_seed)
-            else:
+            elif model.impl == 'numpy':
                 np.random.seed(propagation_seed)
         arrays = dict(neighbors=model.neib_list, degrees=model.neib_qt, labels=model.labels)
         if truth is not None:
@@ -204,29 +224,45 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
             graph_has_edges=bool(np.any(args[1])), class_index_to_label=model.unique_labels.tolist(),
             k_nn=int(model.k_nn), stop_max=int(args[-1]), truth_present=truth is not None,
             propagation_seed=propagation_seed,
-            seed_policy=model.impl + ('-seed-once' if propagation_seed is not None else '-caller-state'),
+            seed_policy=('cython-fixed-seed' if model.impl == 'cython' else
+                         model.impl + ('-seed-once' if propagation_seed is not None else '-caller-state')),
             initial_numpy_rng=numpy_rng_hash() if model.impl == 'numpy' else None,
-            rng_fingerprint='numpy-state' if model.impl == 'numpy' else 'not-captured',
+            rng_fingerprint={'numpy': 'numpy-state', 'numba': 'not-captured', 'cython': 'xorshift32-state'}[model.impl],
             budget=dict(max_observations=max_observations, max_bytes=max_bytes,
                         scheduled_observations=len(schedule), native_buffer_bytes=native_bytes,
                         estimated_peak_bytes=collector.estimated_bytes(len(schedule), model.c, native_bytes)))
         collector.started = time.perf_counter()
+        profile['diagnostic_setup_s'] = collector.started - setup_start
         if model.impl == 'numba':
             metrics = propagate_observed(args, native_buffer, collector)
+        elif model.impl == 'cython':
+            metrics = propagate_cython(args, native_buffer, collector)
         else:
             metrics = backend(*args, **kwargs, observer=collector, return_info=True)
-        result.update(collector=collector, metrics=metrics)
+        result.update(collector=collector, metrics=metrics, propagation_end=time.perf_counter())
 
     original = model.__dict__.get('_get_backend_fn')
     model._get_backend_fn = lambda: observed
     try:
+        fit_start = time.perf_counter()
         predictions = model.fit_predict(labels, **parameters)
     finally:
         if original is None:
             del model._get_backend_fn
         else:
             model._get_backend_fn = original
-    return predictions, result['collector'], result['metrics']
+    ended = time.perf_counter()
+    collector = result['collector']
+    profile.update(collector.phase_timings)
+    profile['model_finalization_s'] = ended - result['propagation_end']
+    if model.impl in ('numba', 'cython'):
+        timings = collector.execution['timings']
+        profile['native_propagation_s'] = timings['native_propagation_s']
+        profile['snapshot_postprocessing_s'] = timings['postprocessing_s']
+    profile['unattributed_s'] = ended - overall_start - sum(profile.values())
+    profile['complete_fit_s'] = ended - overall_start
+    collector.phase_timings = dict(phases=profile, source_components=source_profile)
+    return predictions, collector, result['metrics']
 
 
 from .trajectory_io import metadata, write_output, read_output  # noqa: E402

@@ -27,13 +27,13 @@ def fixture(backend='numpy', **kwargs):
 
 class InfrastructureTests(unittest.TestCase):
     def test_zero_cap_early_stop_and_fully_labeled_bundles(self):
-        for backend in ('numpy', 'numba'):
+        for backend in ('numpy', 'numba', 'cython'):
             for cap in (0, 21, 100):
                 model = PCC(impl=backend)
                 model.set_graph(np.empty((4, 0), dtype=np.int64), np.zeros(4, dtype=np.int64))
                 predictions, trace, info = observe_fit(model, [10, 10, 20, 20],
                     truth=[10, 10, 20, 20], max_iter=cap, milestones=(0, 7),
-                    include_checks=True, propagation_seed=19)
+                    include_checks=True, propagation_seed=123456789 if backend == 'cython' else 19)
                 self.assertEqual(info['effective_iterations'], min(cap, 21))
                 self.assertEqual(info['stop_reason'], 'max_iter' if cap == 0 else 'early_stop')
                 self.assertIsNone(trace.rows[-1]['accuracy_unlabeled_retrospective'])
@@ -49,6 +49,11 @@ class InfrastructureTests(unittest.TestCase):
         self.assertEqual(provenance['parameters']['es_chk'], 2000)
         self.assertEqual(provenance['parameters']['max_iter'], 12)
         self.assertEqual(provenance['propagation_seed'], 19)
+        phases = trace.phase_timings['phases']
+        self.assertAlmostEqual(sum(v for k, v in phases.items() if k != 'complete_fit_s'),
+                               phases['complete_fit_s'], places=9)
+        self.assertGreaterEqual(phases['unattributed_s'], 0.)
+        self.assertLessEqual(sum(trace.phase_timings['source_components'].values()), phases['source_metadata_s'])
         for kwargs in (dict(parameters={'max_iter': 13}), dict(backend='numba'),
                        dict(propagation_seed=20), dict(k_nn=1)):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):

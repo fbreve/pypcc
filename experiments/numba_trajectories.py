@@ -7,6 +7,7 @@ from numba import njit
 from pcc_numba import _pcc_propagate_numba_sequential
 from pcc_metrics import propagation_info
 from pcc_validation import validate_step_inputs, validate_buffers
+from .native_trajectories import allocate_buffer, validate_buffer, finish_trace
 
 
 @njit
@@ -35,34 +36,19 @@ def record_native(iteration, dominance, positions, strengths, distances, owndeg,
         cursor[1] += 1
 
 
-def allocate_buffer(args, schedule, collector):
-    slots, n, c, p = len(schedule), args[11].shape[0], args[5], args[7].size
-    required = slots * (16 * n * c + 16 * p + n * p + 16) + 16
-    if collector.estimated_bytes(slots, c, required) > collector.max_bytes:
-        raise ValueError('native observation storage budget exceeded')
-    state = (np.asarray(schedule, dtype=np.int64), np.empty(slots, dtype=np.int64),
-             np.empty((slots, n, c)), np.empty((slots, p), dtype=np.int64),
-             np.empty((slots, p)), np.empty((slots, n, p), dtype=np.uint8),
-             np.empty((slots, n, c)), np.zeros(2, dtype=np.int64))
-    assert sum(a.nbytes for a in state) == required
-    return state, required
-
-
 def propagate_observed(args, state, collector):
+    validation_started = time.perf_counter()
+    validate_buffer(args, state, collector)
     max_degree = validate_step_inputs(*args[:3], args[5], args[6], *args[7:13])
     validate_buffers(args[5], max_degree, *args[15:22])
     signatures_before = len(_pcc_propagate_numba_sequential.signatures)
     start = time.perf_counter()
+    collector.phase_timings['native_validation_s'] = start - validation_started
     iterations, stalled = _pcc_propagate_numba_sequential(*args, True, record_native, state)
     native_elapsed = time.perf_counter() - start
     info = propagation_info(iterations, args[-3], args[-4], args[-1], stalled)
-    _, observed_iterations, dom, pos, strength, dist, own, cursor = state
-    for index in range(cursor[0]):
-        final = index == cursor[0] - 1
-        collector.capture(int(observed_iterations[index]), dom[index], pos[index], strength[index],
-                          dist[index], own[index], info if final else None, selected=True,
-                          native=True, elapsed=native_elapsed if final else None)
+    postprocessing = finish_trace(state, collector, info, native_elapsed)
     collector.execution['timings'] = dict(native_propagation_s=native_elapsed,
-        postprocessing_s=time.perf_counter() - start - native_elapsed,
+        postprocessing_s=postprocessing,
         compilation_occurred=len(_pcc_propagate_numba_sequential.signatures) != signatures_before)
     return info

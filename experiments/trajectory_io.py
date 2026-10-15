@@ -9,6 +9,7 @@ import math
 import platform
 import re
 import subprocess
+import time
 from pathlib import Path
 
 import numpy as np
@@ -20,16 +21,21 @@ STATE_KEYS = {'assignments', 'dominance', 'positions', 'strengths', 'distances',
 SOURCE_FILES = ['pcc.py', 'pcc_numpy.py', 'pcc_numba.py', 'pcc_metrics.py',
                 'experiments/convergence_trajectories.py', 'experiments/trajectory_io.py',
                 'experiments/numba_trajectories.py']
+LEGACY_SOURCE_FILES = set(SOURCE_FILES)
+SOURCE_FILES += ['pcc_step.pyx', 'experiments/native_trajectories.py']
 ROW_KEYS = {'iteration', 'assignments', 'class_changes', 'dominance_mean_abs_change',
             'dominance_max_abs_change', 'margin_mean', 'margin_min',
             'accuracy_unlabeled_retrospective', 'state_hashes', 'elapsed_instrumented_s',
             'final', 'stop_reason'}
 
 
-def source_metadata():
+def source_metadata(profile=None):
+    began = time.perf_counter()
     root = Path(__file__).resolve().parents[1]
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+    commit_end = time.perf_counter()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
+    git_end = time.perf_counter()
     def digest(path):
         return hashlib.sha256((root / path).read_bytes().replace(b'\r\n', b'\n')).hexdigest()
     versions = {}
@@ -38,10 +44,19 @@ def source_metadata():
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             versions[name] = 'not-installed'
+    versions_end = time.perf_counter()
+    protocol_hash = digest('docs/convergence_trajectories_protocol.md')
+    source_hashes = {name: digest(name) for name in SOURCE_FILES}
+    hashes_end = time.perf_counter()
+    platform_name = platform.platform()
+    platform_end = time.perf_counter()
+    if profile is not None:
+        profile.update(git_commit_s=commit_end - began, git_status_s=git_end - commit_end,
+            dependency_versions_s=versions_end - git_end, source_hashes_s=hashes_end - versions_end,
+            platform_s=platform_end - hashes_end)
     return dict(protocol=PROTOCOL, source_commit=commit, source_dirty=dirty,
-                protocol_sha256=digest('docs/convergence_trajectories_protocol.md'),
-                source_hashes={name: digest(name) for name in SOURCE_FILES},
-                python=platform.python_version(), platform=platform.platform(),
+                protocol_sha256=protocol_hash, source_hashes=source_hashes,
+                python=platform.python_version(), platform=platform_name,
                 dependencies=versions)
 
 
@@ -83,7 +98,7 @@ def metadata(*, dataset, label_seed, propagation_seed=UNSET, arrays=None, parame
             raise ValueError('parameters do not match observed execution')
         facts['parameters'] = effective
     if backend is not None:
-        if backend not in ('numpy', 'numba') or (collector is not None and backend != facts['backend']):
+        if backend not in ('numpy', 'numba', 'cython') or (collector is not None and backend != facts['backend']):
             raise ValueError('backend mismatch')
         facts['backend'] = backend
     elif collector is None:
@@ -175,9 +190,9 @@ def validate_payload(payload):
         'rng_fingerprint', 'budget', 'milestones', 'include_checks', 'metrics', 'evaluation', 'timing'}
     if not isinstance(m, dict) or not required <= set(m) or m['protocol'] != PROTOCOL:
         raise ValueError('missing/unsupported trajectory metadata')
-    if set(m) != required | ({'timings'} if m['backend'] == 'numba' else set()):
+    if set(m) != required | ({'timings'} if m['backend'] in ('numba', 'cython') else set()):
         raise ValueError('unexpected metadata fields')
-    if (m['backend'] not in ('numpy', 'numba') or not isinstance(m['dataset'], str) or not m['dataset'].strip()
+    if (m['backend'] not in ('numpy', 'numba', 'cython') or not isinstance(m['dataset'], str) or not m['dataset'].strip()
             or not integer(m['label_seed']) or m['label_seed'] >= 2**32
             or m['label_seed_verification'] != 'caller-declared'
             or type(m['source_dirty']) is not bool or not isinstance(m['source_commit'], str)
@@ -189,7 +204,8 @@ def validate_payload(payload):
             raise ValueError('invalid hashes: ' + field)
     if not isinstance(m['protocol_sha256'], str) or HASH.fullmatch(m['protocol_sha256']) is None:
         raise ValueError('invalid protocol hash')
-    if set(m['source_hashes']) != set(SOURCE_FILES):
+    if set(m['source_hashes']) != set(SOURCE_FILES) and not (
+            m['backend'] != 'cython' and set(m['source_hashes']) == LEGACY_SOURCE_FILES):
         raise ValueError('incomplete source fingerprints')
     if any(not isinstance(m[k], str) or not m[k] for k in ('python', 'platform')):
         raise ValueError('missing environment metadata')
@@ -227,6 +243,8 @@ def validate_payload(payload):
     allowed = {m['backend'] + '-caller-state'} if seed is None else {m['backend'] + '-seed-once'}
     if m['backend'] == 'numpy' and seed is not None:
         allowed.add('numpy-caller-seed-verified')
+    if m['backend'] == 'cython':
+        allowed = {'cython-fixed-seed'} if seed == 123456789 else set()
     if policy not in allowed:
         raise ValueError('seed policy mismatch')
     if m['backend'] == 'numpy':
@@ -236,6 +254,9 @@ def validate_payload(payload):
             from .convergence_trajectories import numpy_rng_hash
             if m['initial_numpy_rng'] != numpy_rng_hash(np.random.RandomState(seed).get_state()):
                 raise ValueError('initial RNG/seed mismatch')
+    elif m['backend'] == 'cython':
+        if m['rng_fingerprint'] != 'xorshift32-state' or m['initial_numpy_rng'] is not None:
+            raise ValueError('invalid Cython RNG metadata')
     elif m['rng_fingerprint'] != 'not-captured' or m['initial_numpy_rng'] is not None:
         raise ValueError('invalid Numba RNG metadata')
     b = m['budget']
@@ -245,7 +266,7 @@ def validate_payload(payload):
                        max_observations=b['max_observations'], max_bytes=b['max_bytes'])
     schedule = schedule_for(p['max_iter'], probe.milestones, probe.include_checks,
                             min(probe.max_observations, b['max_bytes'] // 16384 + 1))
-    native_bytes = len(schedule) * (16 * m['nodes'] * m['classes'] + 16 * m['particles'] + m['nodes'] * m['particles'] + 16) + 16 if m['backend'] == 'numba' else 0
+    native_bytes = len(schedule) * (16 * m['nodes'] * m['classes'] + 16 * m['particles'] + m['nodes'] * m['particles'] + 16 + (4 if m['backend'] == 'cython' else 0)) + 16 if m['backend'] in ('numba', 'cython') else 0
     if b['native_buffer_bytes'] != native_bytes:
         raise ValueError('inconsistent native buffer size')
     expected_bytes = native_bytes + len(schedule) * (128 * m['nodes'] + 16384) + 128 * m['nodes'] * m['classes']
@@ -279,12 +300,16 @@ def validate_payload(payload):
                 not integer(v) or v >= m['classes'] for v in assignments):
             raise ValueError('invalid assignments')
         hashes = row['state_hashes']
-        keys = STATE_KEYS | ({'numpy_rng'} if m['backend'] == 'numpy' else set())
+        keys = STATE_KEYS | ({'numpy_rng'} if m['backend'] == 'numpy' else {'cython_rng'} if m['backend'] == 'cython' else set())
         if not isinstance(hashes, dict) or set(hashes) != keys or any(
                 not isinstance(v, str) or HASH.fullmatch(v) is None for v in hashes.values()):
             raise ValueError('invalid observation hashes')
         if hashes['assignments'] != array_hash(np.array(assignments, dtype=np.int64)):
             raise ValueError('assignment fingerprint mismatch')
+        if iteration == 0 and m['backend'] == 'cython' and hashes['cython_rng'] != array_hash(np.array([123456789], dtype=np.uint32)):
+            raise ValueError('initial Cython RNG fingerprint mismatch')
+        if iteration == 0 and m['backend'] == 'numpy' and hashes['numpy_rng'] != m['initial_numpy_rng']:
+            raise ValueError('initial NumPy RNG fingerprint mismatch')
         changes = None if previous is None else sum(a != b for a, b in zip(assignments, previous))
         if row['class_changes'] != changes or (changes is not None and not integer(row['class_changes'])):
             raise ValueError('class change count mismatch')
@@ -298,7 +323,7 @@ def validate_payload(payload):
         if (accuracy_available and not finite(accuracy, maximum=1.)) or (not accuracy_available and accuracy is not None):
             raise ValueError('invalid retrospective accuracy')
         elapsed = row['elapsed_instrumented_s']
-        if m['backend'] == 'numba' and not final:
+        if m['backend'] in ('numba', 'cython') and not final:
             if elapsed is not None:
                 raise ValueError('native intermediate timing is unavailable')
         elif not finite(elapsed) or elapsed < previous_time:
@@ -306,7 +331,7 @@ def validate_payload(payload):
         else:
             previous_time = elapsed
         previous = assignments
-    if m['backend'] == 'numba':
+    if m['backend'] in ('numba', 'cython'):
         timings = m.get('timings')
         if not isinstance(timings, dict) or set(timings) != {'native_propagation_s', 'postprocessing_s', 'compilation_occurred'} or any(
                 not finite(timings[k]) for k in ('native_propagation_s', 'postprocessing_s')) or type(timings['compilation_occurred']) is not bool:

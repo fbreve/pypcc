@@ -1,6 +1,6 @@
 # Convergence trajectories: diagnostic protocol (PR #18)
 
-Status: Stage A NumPy and Numba instrumentation implemented; Cython instrumentation and historical experiments remain pending. No historical measurements are changed.
+Status: Stage A NumPy, Numba and Cython instrumentation implemented; historical experiments remain pending. No historical measurements are changed.
 
 ## Research questions
 
@@ -39,14 +39,14 @@ Stage D: descriptive plots and comparison with PR #16/#17 endpoints; no algorith
 
 ## Stage A implementation and limits
 
-NumPy and Numba observations are now available. Cython instrumentation remains
-pending. Neither production fit defaults nor ordinary benchmark runners change.
+NumPy, Numba and Cython observations are now available.
+Neither production fit defaults nor ordinary benchmark runners change.
 All observations come from one fit and one continuous propagation loop.
 
 ### Interface and provenance
 
 `observe_fit` still returns `(predictions, collector, metrics)`. It requires an
-explicit sequential `impl="numpy"` or `impl="numba"`, rejects fallback and fewer
+explicit sequential `impl="numpy"`, `impl="numba"` or `impl="cython"`, rejects fallback and fewer
 than two labeled classes, wraps only that model's dispatch, and restores dispatch
 on failure. Truth is mapped from public labels to internal class indices; absent
 truth classes count as incorrect. Accuracy is retrospective and cannot enter the
@@ -61,7 +61,7 @@ neighbors = np.array([[1, 3], [0, 2], [1, 3], [0, 2]])
 degrees = np.full(4, 2)
 labels = np.array([10, -1, -1, 20])
 truth = np.array([10, 10, 20, 20])
-model = PCC(impl="numba")  # "numpy" uses the same diagnostic interface
+model = PCC(impl="numba")  # "numpy" and "cython" use the same diagnostic interface
 model.set_graph(neighbors, degrees)
 predictions, trace, metrics = observe_fit(
     model, labels, truth=truth, propagation_seed=19,
@@ -89,6 +89,9 @@ execution at export. A legacy externally seeded NumPy claim is accepted only if
 the complete captured initial RNG state matches `RandomState(seed)` exactly.
 An externally seeded Numba state cannot be verified through a public state API,
 so its numeric seed must remain unknown unless passed to `observe_fit` explicitly.
+For Cython, omit `propagation_seed` or pass 123456789: it always uses its original
+fixed per-call xorshift seed, recorded as `cython-fixed-seed`. Any other seed is
+rejected rather than ignored. The example's seed 19 is only valid for NumPy/Numba.
 
 ### Frequency, resources and compatibility
 
@@ -108,7 +111,8 @@ can be increased explicitly with `max_observations` and `max_bytes`. A standalon
 NumPy `Trajectory` checks limits at capture time because it does not know the cap.
 
 For S snapshots, N nodes, C classes and P particles, the native buffer uses exactly
-`S * (16*N*C + 16*P + N*P + 16) + 16` bytes. It retains dominance and raw owndeg,
+`S * (16*N*C + 16*P + N*P + 16) + 16` bytes for Numba; Cython adds `4*S` bytes
+for native RNG states. It retains dominance and raw owndeg,
 positions, strengths and uint8 distances, then releases the buffer after Python
 postprocessing. Shared conservative accounting adds
 `S * (128*N + 16384) + 128*N*C` bytes for rows, scratch and export. This is a
@@ -121,6 +125,9 @@ observers are trusted code receiving live arrays and must neither mutate state
 nor draw RNG. Low-level standalone collectors still work for in-memory analysis,
 but export requires `observe_fit` execution binding; unverified legacy bundles
 are not silently upgraded. New bundles carry schema v2; v1 reads fail explicitly.
+Previously written v2 NumPy/Numba bundles with the original source-file inventory
+remain readable. Cython v2 bundles require fingerprints for its pyx source and
+the shared buffer helper, and include `cython_rng` among the state hashes.
 
 ### Native observation mechanism and timing
 
@@ -133,15 +140,36 @@ and early-stop/cap collisions. No object mode, loop restart, step replay, privat
 RNG API or extra random draw is used. Native snapshots are processed into the same
 row schema after propagation, with truth only accessible to Python diagnostics.
 
+Cython keeps the public `pcc_propagate` signature/defaults and forwards to one
+shared private implementation. An optional `_TrajectoryBuffer` copies selected
+states inside the same `nogil` loop. Its step kernel, update order, mmpot arithmetic,
+stopping check and fixed seed are unchanged. No Python callbacks run between
+milestones. Both native adapters validate schedules, capacity, dtype, layout,
+freshness and exact live-state dimensions before entering native propagation.
+The Cython implementation also validates buffers independently at its private
+entry point before unchecked copying. Non-diagnostic validation remains unchanged.
+
+The initial Numba boundary regression exposed that its low-level allocator relied
+on the fit helper to validate schedules/count limits. A test failed before the fix.
+Shared validation now rejects malformed schedules, over-limit allocations and
+short supplied buffers before a single step or RNG draw. The ordinary Numba
+propagation kernel is untouched in this continuation.
+
 State hashes cover assignments, dominance, particle positions/strengths/distances
 and raw owndeg before public-fit normalization, using canonical little-endian
 C-order data including dtype and shape. NumPy additionally fingerprints its RNG
 state. Numba explicitly marks RNG fingerprints as not captured; tests establish
 continuation parity through the next ten native draws. No NumPy RNG hash is
 misrepresented as a native RNG hash.
+Cython records the actual uint32 xorshift state at every selected boundary.
+A private test-only probe exports terminal state plus the next ten uint32 draws
+from a COPY of that state. This proves continuation parity without changing the
+live RNG or exposing a new persistent-RNG public API. Public Cython fits still
+initialize once per call and discard their local RNG state when finished.
 
 NumPy rows retain elapsed observation time. Native intermediate elapsed time is
 null: a portable nopython wall clock is unavailable without additional intrinsics.
+The Cython recorder uses this same intermediate-null timing convention.
 The final native row records whole-loop elapsed time. Metadata separates native
 propagation and Python postprocessing, and records whether a new JIT specialization
 compiled during propagation. All timing is excluded from trace determinism claims.
@@ -165,7 +193,7 @@ No checkpoint/restart facility or historical campaign runner is added.
 
 ### Synthetic validation and overhead
 
-Focused tests cover NumPy and Numba observed/unobserved prediction/state/stop
+Focused tests cover all three backends' observed/unobserved prediction/state/stop
 parity, continued native RNG draws, deterministic repeated traces excluding time,
 branching multiclass graphs, multiple seeds, strength/exponent parameters, labeled
 node preservation, valid distances/positions, finite dominance/simplex invariants,
@@ -173,43 +201,92 @@ zero caps, isolated graphs, ties, early-stop/cap collisions, truth independence,
 metadata mismatch, bounded schedules and rechecksummed corrupt output. Small
 unobserved prefix runs are test oracles for native snapshots only, never the
 instrumentation mechanism. Tests assert the native recorder/kernel compile only
-in nopython mode. Existing Cython regressions run; its implementation is unchanged.
+in nopython mode. Cython tests additionally compare terminal RNG state and ten
+copied continuation draws against unobserved propagation, with an independent
+xorshift oracle and prefix snapshot/RNG checks. Exact milestone stops, zero caps,
+one-slot buffers, last-slot final deduplication, byte/count limits, malformed
+schedules and undersized external buffers have explicit tests for both natives.
 
 Optional overhead measurement is independent of ordinary benchmarks:
 
 ```text
-.review-venv/Scripts/python.exe -m experiments.trajectory_overhead --output .cache/trajectory-overhead.json
+.review-venv/Scripts/python.exe -m experiments.trajectory_overhead --output .cache/native-trajectory-overhead.json
 ```
 
 This uses 64 synthetic nodes, 3 classes, 6 particles, degree 4, 20,000 capped steps,
-5 repetitions with seeds 19-23, alternating execution order and excluded JIT warmup.
-Every pair verifies predictions, state, stop metrics and subsequent RNG draws.
+5 repetitions with Numba seeds 19-23 and the fixed Cython seed 123456789,
+alternating execution order and excluded JIT warmup. Any compilation during a
+measured repetition is an error. Every pair verifies predictions, state and stop
+metrics; Numba continuation draws are also checked in the probe. Cython RNG parity
+is tested separately so probing draws are excluded from its timing. Use
+`--backends numba` or `--backends cython` to restrict this optional probe.
 Local Windows/Python 3.13.13, NumPy 2.5.4, Numba 0.68.0 median measurements:
 
-| Mode | Observations | Native loop | Complete fit | Export + read validation |
-| --- | ---: | ---: | ---: | ---: |
-| Ordinary | 0 | 9.91 ms | 10.17 ms | n/a |
-| Sparse | 3 | 12.92 ms | 70.84 ms | 22.19 ms |
-| Dense (every 200) | 101 | 13.11 ms | 81.75 ms | 40.20 ms |
+| Backend / mode | Observations | Native propagation | Complete fit | Snapshot processing | Export + read validation |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Numba ordinary | 0 | 10.08 ms | 10.37 ms | n/a | n/a |
+| Numba sparse | 3 | 12.99 ms | 70.61 ms | 0.53 ms | 21.21 ms |
+| Numba dense (every 200) | 101 | 13.52 ms | 84.13 ms | 12.98 ms | 39.64 ms |
+| Cython ordinary | 0 | 5.99 ms | 6.26 ms | n/a | n/a |
+| Cython sparse | 3 | 6.27 ms | 63.99 ms | 0.53 ms | 21.99 ms |
+| Cython dense (every 200) | 101 | 6.35 ms | 76.00 ms | 13.07 ms | 42.46 ms |
 
-Native overhead was about 30%/32% on this tiny graph; complete diagnostic fit
-ratios were 6.97x/8.04x, with provenance subprocesses included. These small timings
-are descriptive overhead, not general performance claims. Sparse/dense native
-buffers used 10,720/360,384 bytes; estimated peaks were 109,024/2,867,136 bytes;
-example bundles were approximately 11/271 KB. Raw local probe output stays in
-.cache and is not a historical measurement or published artifact.
+Native overhead was about 29%/34% for Numba and 5%/6% for Cython on this tiny
+fixture. These are instrumentation overhead measurements, not general backend
+benchmarks or historical results. The Numba native timer surrounds its compiled
+kernel call, while the Cython native timer surrounds its extension entry point
+including native-entry validation. Ordinary Numba timing includes its wrapper's
+input validation; the diagnostic ledger also measures its buffer/input validation
+separately. This small boundary difference is not interpreted as a speedup.
+Export/read time is additional to complete-fit time. Native and Python snapshot
+postprocessing times are reported separately.
+
+`collector.phase_timings` now contains a per-run timing ledger outside the native
+loop. It measures preflight, source metadata, model initialization, diagnostic
+setup, native buffer validation, propagation, snapshot processing, model
+finalization and a residual; nested source measurements split Git commit/status
+queries, dependency versions, source hashing and platform lookup. It is not part
+of deterministic trace content or the v2 bundle schema. Raw probe output records
+these phases, samples, effective seed policies and the probe source checksum.
+
+The large Numba native/complete-fit gap is attributable to measured provenance
+capture. Across the five sparse repetitions, **mean** complete fit was 71.27 ms:
+12.91 ms native, 56.97 ms source metadata, 0.53 ms snapshot processing and 0.86 ms
+for the other measured phases/residual. Source metadata included 22.76 ms for
+`git rev-parse`, 26.60 ms for `git status`, 5.71 ms reading dependency versions and
+1.89 ms hashing source/protocol files. Thus source capture explains about 98% of
+the time outside native propagation for this fixture. Cython shows the same fixed
+provenance cost. No provenance cache or production performance change is added.
+Means are used for this additive attribution; table medians need not add up.
+Every per-run ledger balances; the largest native-probe residual was 0.101 ms.
+
+Sparse/dense Numba buffers used 10,720/360,384 bytes; Cython used 10,732/360,788
+bytes including RNG snapshots. Example bundles were about 12/271 KB for Numba and
+13/289 KB for Cython (content/timing/source identifiers affect serialized size).
+Raw output stays in .cache and is not a published artifact.
 
 Validation commands (the CI matrix remains Windows/Linux Python 3.10/3.12):
 
 ```text
-.review-venv/Scripts/python.exe -m unittest tests.test_convergence_trajectories tests.test_trajectory_infrastructure tests.test_numba_trajectories tests.test_propagation_metrics tests.test_sequential_safety -v
+.review-venv/Scripts/python.exe -m unittest tests.test_numba_trajectories tests.test_cython_trajectories tests.test_propagation_metrics tests.test_sequential_safety tests.test_convergence_trajectories tests.test_trajectory_infrastructure -v
 .review-venv/Scripts/python.exe -m unittest discover -s tests -v
 ```
 
-Local results: all 29 focused tests passed with all three backends available.
-The full suite completed 175 tests successfully, with two packaging archive checks
+Local results: all 35 focused tests passed with all three backends available.
+The full suite completed 181 tests successfully, with two packaging archive checks
 skipped locally because `PCC_DIST_DIR` was unset; CI supplies built archives.
+The final Cython source was compiled in an isolated wheel using a workspace copy
+after a Windows lock prevented regeneration of the checkout's C file. That exact
+wheel's extension was used for the final tests and timing probe. Installing the
+wheel into a separate target and running `tools/check_installation.py --require-all`
+from outside the checkout passed all three backend smoke tests. Generated C build
+output is excluded from the commit; isolated builds regenerate it from pyx.
 
-Next: review the bounded native interface and validate a separate Cython observer
-before claiming all-backend trajectory parity or requesting a bounded Stage B
-pilot. No historical fits, PR #16/#17 archive changes or releases are included.
+All three backends now pass the small synthetic trajectory gates. Remaining
+limits are full-state snapshot costs, observations missing changes that reverse
+between milestones, native intermediate timestamps unavailable, Numba RNG-state
+fingerprints unavailable, and no historical-data validation in this stage.
+Next: review Stage A evidence and propose a bounded PageBlocks/Spambase Stage B
+pilot with explicit work, milestone/storage and time budgets. No historical pilot
+is executed or authorized by these synthetic results. PR #18 stays draft and
+unmerged; PR #16/#17 archives and Release assets are unchanged.
