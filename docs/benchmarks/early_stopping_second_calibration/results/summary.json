@@ -1,0 +1,13 @@
+{
+  "audit": "passed",
+  "measurements": 48,
+  "warmups": 96,
+  "actual_iterations": 7723492,
+  "cap_hits": 6,
+  "censored": 6,
+  "early_stops": 42,
+  "propagation_s": 438.02710450056475,
+  "fit_s": 438.0472572998842,
+  "outliers_excluded": 0,
+  "archive_tag": "python-early-stopping-benchmarks-2026-10-15-v1"
+}

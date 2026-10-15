@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "published": false,
+  "proposed_tag": "python-early-stopping-benchmarks-2026-10-15-v1",
+  "asset": "pypcc-early-stopping-campaign-v1.zip",
+  "audit": "passed",
+  "members": 96437,
+  "bytes": 335484211,
+  "sha256": "3929218be0066793441bbc48cdb40b83b65a309b402335088f056a1dcd1d89bf",
+  "source_roots": 23,
+  "source_files": 96205,
+  "offline_analysis": "passed",
+  "baseline": {
+    "tag": "python-fixed-benchmarks-2026-10-13",
+    "commit": "b6de3e77dabae61a27d7f177b37e5fc5fa74c240",
+    "url": "https://github.com/fbreve/pypcc/releases/download/python-fixed-benchmarks-2026-10-13/pypcc-fixed-results-windows-20261013.zip",
+    "bytes": 93800528,
+    "sha256": "78d724d1fc8f908f0f1201033a24293edf4223514c203cec079eba90eaaac0bf",
+    "included": "Verbatim measurements and 200 fixture metadata files, verified against published ZIP; no duplicate full PR16 Release."
+  },
+  "bundle": {
+    "local_only": true,
+    "included_in_release": false,
+    "path": ".cache\\pr17-original-20261015.bundle",
+    "bytes": 144153095,
+    "sha256": "1cf1ca3a080b1772ce49e227f1fb67b48e8378ccf9a6f51c1dcdd954ff46caac",
+    "reachable_blobs": 13323,
+    "credential_pattern_candidates": 0,
+    "blobs_with_windows_user_paths": 73,
+    "blobs_with_email_patterns": 2,
+    "limitations": "Pattern scan is not proof of absence of private data. Paths/emails and original repository history are retained only in the local backup. Archive also contains original machine/user paths in scientific provenance; these are disclosed, not redacted."
+  },
+  "additional_planning_files": 8,
+  "asset_local_directory": "complete-v1",
+  "full_final_extraction_verification": "passed"
+}

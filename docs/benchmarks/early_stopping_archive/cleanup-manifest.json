@@ -1,0 +1,11 @@
+{
+  "original_head": "6f995d15a08e975c511b8cbd602ebfbfe339c60d",
+  "merge_base": "ceb7d220156570894fc91d63a214332941168996",
+  "omitted_original_files": 12902,
+  "bytes": 86325355,
+  "path_manifest_sha256": "b02fdcfa5de8f763d9e6db1dc84fae91dcdc06642e3447f577d7f022b7456fbb",
+  "local_manifest": ".cache/pr17-archive-prep/archived-file-removal-manifest.json",
+  "archive_mapping": "Each omitted path exists byte-identically under original/ in the verified ZIP.",
+  "publication": false,
+  "original_branch_rewritten": false
+}

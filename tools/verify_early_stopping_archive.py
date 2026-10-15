@@ -152,6 +152,17 @@ def analyze(extracted):
     require(digest(plan) == '08ee758ffdfc8f11b605c99374955b9d18c087b71ad488cd98aff59a148e7433', 'frozen plan identity')
     original = extracted/'original/docs/benchmarks/early_stopping_full/results'
     expected = read(original/'analysis.json')
+    members=read(extracted/'checksums.json')
+    preserved=read(original/'local_artifact_sha256.json')
+    for name,h in preserved.items():
+        prefix,relative=name.split('/',1)
+        directory=CAMPAIGN if prefix=='campaign' else Path('original/.cache/performance/windows-full-early-stopping-01-remaining-provenance')
+        require(members[(directory/relative).as_posix()]==h, 'original pre-archive byte inventory')
+    inventories=read(extracted/'root-inventories.json')
+    full=inventories['.cache/performance/windows-full-early-stopping-01']
+    for label in ('seed10','seed11','complete'):
+        snapshot=inventories['.cache/performance/windows-full-early-stopping-01-'+label+'-snapshot']
+        require(all(full.get(p)==h for p,h in snapshot.items()), 'snapshot prefix preservation')
     source_root=extracted/'original/.cache/performance/windows-full-early-stopping-01-remaining-provenance/source_files'
     require(all(sha(source_root/name)==h for name,h in plan['identity']['source_hashes'].items()), 'recorded source identity')
     extension=plan['identity']['cython_extension']
