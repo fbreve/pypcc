@@ -80,6 +80,7 @@ class Trajectory:
         self.started, self.finished = time.perf_counter(), False
         self.execution, self.metrics = None, None
         self.phase_timings = {}
+        self.snapshots = None  # strictly opt-in; legacy rows/metadata stay unchanged
 
     def estimated_bytes(self, rows, classes, native_bytes=0):
         # Conservative Python list/dict + scratch accounting, not a process RSS limit.
@@ -133,6 +134,8 @@ class Trajectory:
                    state_hashes=hashes, elapsed_instrumented_s=(elapsed if native else time.perf_counter() - self.started),
                    final=info is not None, stop_reason=None if info is None else info['stop_reason'])
         self.rows.append(row)
+        if self.snapshots is not None:
+            self.snapshots.capture(iteration, dominance, positions, strengths, native=native)
         self.previous, self.previous_assignments = dominance.copy(), assigned.copy()
         self.finished = info is not None
         if info is not None:
@@ -141,7 +144,7 @@ class Trajectory:
 
 def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_checks=False,
                 propagation_seed=None, max_observations=DEFAULT_MAX_OBSERVATIONS,
-                max_bytes=DEFAULT_MAX_BYTES, **fit_parameters):
+                max_bytes=DEFAULT_MAX_BYTES, snapshot_config=None, **fit_parameters):
     """Observe one fit. An explicit seed seeds only the selected backend, once.
 
     With no seed, preserve caller RNG state and record an unknown seed.
@@ -178,6 +181,12 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
     probe = Trajectory(labels, truth=truth, milestones=milestones, include_checks=include_checks,
                        max_observations=max_observations, max_bytes=max_bytes)
     schedule = schedule_for(parameters['max_iter'], probe.milestones, include_checks, max_observations)
+    if snapshot_config is not None:
+        from .mechanistic_snapshots import SnapshotConfig, estimates, check_budget
+        if not isinstance(snapshot_config, SnapshotConfig):
+            raise TypeError('snapshot_config must be SnapshotConfig or None')
+        check_budget(snapshot_config, estimates(labels.size, np.unique(labels[labels != -1]).size,
+                     int(np.count_nonzero(labels != -1)), len(schedule), model.impl))
     from .trajectory_io import source_metadata
     source_start = time.perf_counter()
     profile = dict(preflight_s=source_start - overall_start)
@@ -201,6 +210,10 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
         collector = Trajectory(args[2], truth=mapped_truth, milestones=probe.milestones,
                                include_checks=include_checks, max_observations=max_observations,
                                max_bytes=max_bytes)
+        if snapshot_config is not None:
+            from .mechanistic_snapshots import Snapshots
+            collector.snapshots = Snapshots(snapshot_config, args[2], model.part.homenode,
+                                           model.part.label, schedule, model.impl)
         native_bytes, native_buffer = 0, None
         if model.impl == 'numba':
             from .numba_trajectories import allocate_buffer, propagate_observed, seed_numba
@@ -210,6 +223,8 @@ def observe_fit(model, labels, *, truth=None, milestones=(0, 10000), include_che
             native_buffer, native_bytes = allocate_buffer(args, schedule, collector, cython=True)
         elif collector.estimated_bytes(len(schedule), model.c) > max_bytes:
             raise ValueError('observation storage budget exceeded')
+        if collector.snapshots is not None and native_buffer is not None:
+            collector.snapshots.bind_native(native_buffer)
         if propagation_seed is not None:
             if model.impl == 'numba':
                 seed_numba(propagation_seed)
