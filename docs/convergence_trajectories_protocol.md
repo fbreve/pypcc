@@ -2,6 +2,10 @@
 
 Status: Stage A NumPy, Numba and Cython instrumentation implemented; historical experiments remain pending. No historical measurements are changed.
 
+Stage B runner infrastructure and dry-run preflight are available; real execution
+still requires review of the exact preflight report. See
+[bounded pilot commands and recovery](convergence_pilot.md).
+
 ## Research questions
 
 1. At what iteration does PageBlocks unlabeled accuracy deteriorate relative to the fixed 10,000-iteration baseline, and how do class assignments and dominance margins evolve?
