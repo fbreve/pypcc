@@ -35,7 +35,75 @@ cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize
         total_max += row_max
     return total_max / n_nodes
 
-cpdef pcc_propagate(
+cdef class _TrajectoryBuffer:
+    """Private, preallocated diagnostic state. All copies run with the GIL released."""
+    cdef np.int64_t[:] schedule, iterations, cursor
+    cdef double[:, :, :] dom, own
+    cdef np.int64_t[:, :] pos
+    cdef double[:, :] strength
+    cdef unsigned char[:, :, :] dist
+    cdef np.uint32_t[:] rng
+    cdef bint failed
+
+    def __init__(self, state):
+        if not isinstance(state, tuple) or len(state) != 9:
+            raise ValueError('invalid Cython observation buffers')
+        self.schedule, self.iterations = state[0], state[1]
+        self.dom, self.pos, self.strength = state[2], state[3], state[4]
+        self.dist, self.own, self.cursor, self.rng = state[5], state[6], state[7], state[8]
+        self.failed = False
+
+    cdef void validate(self, int cap, Py_ssize_t n, Py_ssize_t c, Py_ssize_t p) except *:
+        cdef Py_ssize_t s = self.schedule.shape[0], i
+        if (s == 0 or self.iterations.shape[0] != s or self.rng.shape[0] != s or
+                self.dom.shape[0] != s or self.dom.shape[1] != n or self.dom.shape[2] != c or
+                self.own.shape[0] != s or self.own.shape[1] != n or self.own.shape[2] != c or
+                self.pos.shape[0] != s or self.pos.shape[1] != p or
+                self.strength.shape[0] != s or self.strength.shape[1] != p or
+                self.dist.shape[0] != s or self.dist.shape[1] != n or self.dist.shape[2] != p or
+                self.cursor.shape[0] != 2):
+            raise ValueError('Cython observation buffer capacity/shape mismatch')
+        if self.cursor[0] != 0 or self.cursor[1] != 0 or self.failed:
+            raise ValueError('Cython observation buffers must be fresh')
+        for i in range(s):
+            if self.schedule[i] < 0 or self.schedule[i] > cap:
+                raise ValueError('Cython observation milestone outside cap')
+            if i > 0 and self.schedule[i] <= self.schedule[i - 1]:
+                raise ValueError('Cython observation milestones must increase')
+        if self.schedule[s - 1] != cap:
+            raise ValueError('Cython observation schedule must reserve the final slot')
+
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
+    cdef void capture(self, Py_ssize_t iteration, double[:, :] dominance,
+                      np.int64_t[:] positions, double[:] strengths,
+                      unsigned char[:, :] distances, double[:, :] owndeg,
+                      unsigned int rng_state, bint final) noexcept nogil:
+        cdef Py_ssize_t used = self.cursor[0], upcoming = self.cursor[1], i, j
+        if used > 0 and self.iterations[used - 1] == iteration:
+            return
+        if not final and (upcoming >= self.schedule.shape[0] or self.schedule[upcoming] != iteration):
+            return
+        if used >= self.iterations.shape[0]:
+            self.failed = True
+            return
+        self.iterations[used] = iteration
+        self.rng[used] = rng_state
+        for i in range(self.dom.shape[1]):
+            for j in range(self.dom.shape[2]):
+                self.dom[used, i, j] = dominance[i, j]
+                self.own[used, i, j] = owndeg[i, j]
+            for j in range(positions.shape[0]):
+                self.dist[used, i, j] = distances[i, j]
+        for i in range(positions.shape[0]):
+            self.pos[used, i] = positions[i]
+            self.strength[used, i] = strengths[i]
+        self.cursor[0] += 1
+        if upcoming < self.schedule.shape[0] and self.schedule[upcoming] == iteration:
+            self.cursor[1] += 1
+
+
+cpdef _pcc_propagate_impl(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
     np.int64_t[:]    labels,
@@ -62,20 +130,34 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    _TrajectoryBuffer _observations = None,
+    np.uint32_t[:]   _rng_probe = None
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
+    cdef unsigned int probe_state
     
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
         part_strength, dist_table, dominance, owndeg)
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
+    if _observations is not None:
+        if (dominance.shape[0] != n_nodes or dominance.shape[1] != c or
+                owndeg.shape[0] != n_nodes or owndeg.shape[1] != c or
+                dist_table.shape[0] != n_nodes or dist_table.shape[1] != part_curnode.shape[0]):
+            raise ValueError('Cython diagnostics require exact live state dimensions')
+        _observations.validate(max_iter, n_nodes, c, part_curnode.shape[0])
+    if _rng_probe is not None:
+        validate_vector('_rng_probe', _rng_probe, 11)
 
     with nogil:
+        if _observations is not None:
+            _observations.capture(0, dominance, part_curnode, part_strength,
+                                  dist_table, owndeg, rng_state, False)
         for it in range(max_iter):
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
@@ -92,8 +174,61 @@ cpdef pcc_propagate(
                     if stop_cnt > stop_max:
                         break
 
+            if _observations is not None:
+                _observations.capture(it + 1, dominance, part_curnode, part_strength,
+                                      dist_table, owndeg, rng_state, False)
+
+        if _observations is not None:
+            _observations.capture(it + 1, dominance, part_curnode, part_strength,
+                                  dist_table, owndeg, rng_state, True)
+        if _rng_probe is not None:
+            # Test-only continuation probe from a COPY of the terminal RNG state.
+            # Normal calls neither export state nor draw these extra samples.
+            _rng_probe[0] = rng_state
+            probe_state = rng_state
+            for i in range(1, 11):
+                _rng_probe[i] = xorshift32(&probe_state)
+
+    if _observations is not None and _observations.failed:
+        raise ValueError('Cython observation buffer exhausted')
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
+
+
+cpdef pcc_propagate(
+    np.int64_t[:, :] neib_list,
+    np.int64_t[:] neib_qt,
+    np.int64_t[:] labels,
+    double p_grd,
+    double delta_v,
+    np.int64_t c,
+    double[:] zerovec,
+    np.int64_t[:] part_curnode,
+    np.int64_t[:] part_label,
+    double[:] part_strength,
+    unsigned char[:, :] dist_table,
+    double[:, :] dominance,
+    double[:, :] owndeg,
+    double deltap,
+    double dexp,
+    double[:] dom_row,
+    double[:] reduc,
+    double[:] dom_list,
+    double[:] dist_list,
+    double[:] prob,
+    double[:] slices,
+    double[:] dist_weights,
+    int max_iter,
+    int early_stop,
+    int es_chk,
+    int stop_max,
+    bint return_info=False
+):
+    """Original entry point and defaults; native diagnostics remain private/opt-in."""
+    return _pcc_propagate_impl(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+        part_curnode, part_label, part_strength, dist_table, dominance, owndeg, deltap,
+        dexp, dom_row, reduc, dom_list, dist_list, prob, slices, dist_weights,
+        max_iter, early_stop, es_chk, stop_max, return_info)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
