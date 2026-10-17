@@ -110,9 +110,9 @@ class CausalSelectionTests(unittest.TestCase):
         spec=a.specification();spec['parameters']=dict(spec['parameters'],max_iter=3);spec['milestones']=[0,1,3]
         spec['tasks']=[dict(task_id=f't{i:04d}',dataset='toy',block=0,arm='compact',slate_id='toy',selected=selected,
             backend=b,dataset_annotation='toy:compact') for i,b in enumerate(a.b.BACKENDS)]
-        self.enterContext(patch.object(a,'specification',return_value=spec))
-        self.enterContext(patch.object(a,'candidate_registry',return_value=known))
-        self.enterContext(patch.object(a,'verify_sources',return_value={}))
+        for target,value in [('specification',spec),('candidate_registry',known),('verify_sources',{})]:
+            patcher=patch.object(a,target,return_value=value)
+            patcher.start();self.addCleanup(patcher.stop)
         resources=[dict(task_id=t['task_id'],**a.estimates(36,2,6,3,t['backend'])) for t in spec['tasks']]
         report=dict(scientific_sha256=a.SCIENCE_SHA,catalog_sha256=a.science()['catalog_sha256'],specification=spec,
             identity=a.identity(),references={},fixtures=dict(toy=dict(file='toy.npz',sha256=a.hashlib.sha256((pre/'fixtures'/'toy.npz').read_bytes()).hexdigest(),
