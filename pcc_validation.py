@@ -1,5 +1,29 @@
 """Shape checks performed before entering unchecked sequential kernels."""
 import numpy as np
+from decimal import Decimal
+
+
+def validate_finite(name, value):
+    """Reject nonfinite numeric values without coercing integer/string inputs.
+
+    Object arrays retain their existing conversion rules, including numeric
+    strings. Check floating/complex objects and Decimal before integer casts.
+    This does not impose ranges, shapes or a new label vocabulary.
+    """
+    values = np.asarray(value)
+    if values.dtype.kind in 'fc':
+        if not np.all(np.isfinite(values)):
+            raise ValueError(f"{name} must contain only finite numeric values")
+    elif values.dtype.kind == 'O':
+        for item in values.flat:
+            if isinstance(item, Decimal):
+                finite = item.is_finite()
+            elif isinstance(item, (float, complex, np.inexact)):
+                finite = np.isfinite(item)
+            else:
+                continue
+            if not finite:
+                raise ValueError(f"{name} must contain only finite numeric values")
 
 
 def validate_vector(name, value, length):
