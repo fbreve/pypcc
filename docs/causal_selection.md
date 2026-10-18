@@ -42,6 +42,16 @@ home/class identities and label hashes must match the immutable task exactly.
 The plan binds the science/catalog/preflight SHAs. No schema additions are made
 to the existing NPY/JSON/CSV formats.
 
+Operational task IDs are assigned sequentially **after** the approved per-block
+permutation. Their order satisfies the existing Store contract without changing
+the permutation or dataset/block/arm/backend/slate identity. Status derives its
+total from the validated plan. The original mechanistic status and shared Store
+are unchanged. Previous unused causal preflights retain their old IDs; do not
+open or migrate them with this adapter. A newly reviewed preflight is required.
+The preparation report provides the old-to-new ID mapping. IDs identify ledger
+events and result filenames; snapshot dataset annotations, labels, particle homes
+and scientific catalog hashes do not depend on them.
+
 The old summary `accuracy_unlabeled_retrospective` uses V minus the actual labels;
 it is not the primary causal score. Primary E=V minus **all candidates** is stored
 and hashed in preflight. Use `evaluate` on each snapshot's assignments with this

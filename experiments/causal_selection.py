@@ -191,17 +191,19 @@ def identity():
 def specification(synthetic=False):
     s = science(); spec = b.specification(synthetic, 3)
     spec.update(protocol=KIND, cases=[], snapshot_config=asdict(SnapshotConfig()), synthetic=synthetic)
-    spec['tasks'] = [dict(task_id=f't{3*i+j:04d}', dataset=r['dataset'], block=int(r['block']), arm=r['arm'],
+    spec['tasks'] = [dict(dataset=r['dataset'], block=int(r['block']), arm=r['arm'],
         slate_id=r['slate_id'], selected=list(map(int, r['selected_known_node_ids'].split(';'))), backend=backend,
         dataset_annotation=f"{r['dataset']}:block{r['block']}:{r['arm']}:{r['slate_id']}")
-        for i, r in enumerate(s['catalog']) for j, backend in enumerate(b.BACKENDS)]
+        for r in s['catalog'] for backend in b.BACKENDS]
     ordered = []
     for ds in ('pageblocks', 'spambase'):
         for block in sorted({t['block'] for t in spec['tasks'] if t['dataset'] == ds}):
             group = [t for t in spec['tasks'] if (t['dataset'],t['block']) == (ds,block)]
             rng = np.random.default_rng(np.random.SeedSequence([1 if ds == 'pageblocks' else 2,30000+block]))
             ordered.extend(group[int(i)] for i in rng.permutation(len(group)))
-    spec['tasks'] = ordered
+    # Operational IDs follow execution order; scientific identities stay in the
+    # dataset/block/arm/backend/slate fields, independent of these ledger keys.
+    spec['tasks'] = [dict(task, task_id=f't{i:04d}') for i, task in enumerate(ordered)]
     return spec
 
 
@@ -326,6 +328,12 @@ class CausalPilot(b.Pilot):
         if plan['report'] != report or plan['report_sha256'] != digest(report) or plan['tasks'] != report['specification']['tasks']:
             raise CheckpointError('causal plan differs from preflight')
         return plan, report
+
+    def status(self):
+        state = self.audit()
+        return dict(report_sha256=state['plan']['report_sha256'], complete=len(state['done']),
+            total=len(state['plan']['tasks']), recoverable=state['recoverable'], ambiguous=state['ambiguous'],
+            pending=[t['task_id'] for t in state['plan']['tasks'] if t['task_id'] not in state['done']])
 
     def validate_bundle(self, path, task, report):
         with read_snapshots(path) as bundle:
