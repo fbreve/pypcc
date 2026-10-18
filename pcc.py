@@ -204,6 +204,11 @@ class ParticleCompetitionAndCooperation:
         calls. Existing coercions and finite-value ranges are retained; -1 is
         still the unknown-label sentinel. Nonfinite input raises ValueError.
         The existing missing-graph return is unchanged.
+        With fewer than two known classes, warn and return the original labels
+        object without propagation. The graph and current input/class summary
+        remain available, but previous fit-derived state is cleared: constructor
+        fields are reset to None and lazily created arrays/buffers are removed.
+        Another call with at least two known classes initializes a new fit.
         """
 
         if self.neib_list is None or self.neib_qt is None:
@@ -227,6 +232,16 @@ class ParticleCompetitionAndCooperation:
         self.c = len(self.unique_labels)
         
         if self.c < 2:
+            # Keep the historical no-fit return without exposing a mixture of
+            # the current labels and a previous fit's particles/dominance.
+            for name in ('part', 'node', 'label_to_idx', 'idx_to_label',
+                         'zerovec', 'owndeg', 'p_grd', 'delta_v', 'deltap',
+                         'dexp', 'max_iter', 'early_stop', 'es_chk'):
+                setattr(self, name, None)
+            for name in ('mapped_labels', 'dist_weights', 'buf_dom_row',
+                         'buf_reduc', 'buf_dom_list', 'buf_dist_list',
+                         'buf_prob', 'buf_slices'):
+                self.__dict__.pop(name, None)
             warnings.warn("PCC requires at least 2 labeled classes to run. Returning original labels.")
             return labels
         
