@@ -56,6 +56,7 @@ import warnings
 from dataclasses import dataclass
 from pcc_numpy import pcc_step_numpy
 from pcc_graph import build_knn_graph
+from pcc_validation import validate_finite
 
 try:
     from pcc_numba import pcc_step_numba
@@ -179,6 +180,17 @@ class ParticleCompetitionAndCooperation:
         )
 
     def set_graph(self, neib_list, neib_qt, k_nn=None):
+        """Set dense neighbor lists; active indices/degrees must be finite.
+
+        Entries beyond each node's degree remain unused padding.
+        Existing finite integer-conversion rules are unchanged.
+        """
+        validate_finite("neib_qt", neib_qt)
+        if k_nn is not None:
+            validate_finite("k_nn", k_nn)
+        if neib_list.dtype.kind not in 'iub':
+            for row, degree in zip(neib_list, neib_qt):
+                validate_finite("neib_list", row[:int(degree)])
         self.neib_list = neib_list.astype(np.int64)
         self.neib_qt = neib_qt.astype(np.int64)
         self.k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
@@ -186,10 +198,26 @@ class ParticleCompetitionAndCooperation:
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
                     max_iter=500000, early_stop=True, es_chk=2000):
+        """Classify using finite labels and finite effective fit parameters.
+
+        Validation precedes integer casts, model initialization and backend/RNG
+        calls. Existing coercions and finite-value ranges are retained; -1 is
+        still the unknown-label sentinel. Nonfinite input raises ValueError.
+        The existing missing-graph return is unchanged.
+        """
 
         if self.neib_list is None or self.neib_qt is None:
             print("Error: build or set the graph first.")
             return -1
+
+        validate_finite("labels", labels)
+        p_grd, delta_v, deltap, dexp = map(float, (p_grd, delta_v, deltap, dexp))
+        for name, value in (("p_grd", p_grd), ("delta_v", delta_v),
+                            ("deltap", deltap), ("dexp", dexp),
+                            ("max_iter", max_iter), ("es_chk", es_chk),
+                            ("early_stop", early_stop)):
+            validate_finite(name, value)
+        max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
 
         self.labels = np.ascontiguousarray(labels, dtype=np.int64)
         
@@ -212,13 +240,13 @@ class ParticleCompetitionAndCooperation:
         for lbl, idx in self.label_to_idx.items():
             self.mapped_labels[self.labels == lbl] = idx
 
-        self.p_grd = float(p_grd)
-        self.delta_v = float(delta_v)
-        self.deltap = float(deltap)
-        self.dexp = float(dexp)
-        self.max_iter = int(max_iter)
-        self.early_stop = bool(early_stop)
-        self.es_chk = int(es_chk)
+        self.p_grd = p_grd
+        self.delta_v = delta_v
+        self.deltap = deltap
+        self.dexp = dexp
+        self.max_iter = max_iter
+        self.early_stop = early_stop
+        self.es_chk = es_chk
 
         self.part = self.__genParticles()
         self.node = self.__genNodes()
