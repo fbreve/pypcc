@@ -149,8 +149,10 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     rows = np.concatenate([src, dst])
     cols = np.concatenate([dst, src])
 
-    ones = np.ones(len(rows), dtype=np.int8)
-    adj = csr_matrix((ones, (rows, cols)), shape=(num_nodes, num_nodes), dtype=np.int8)
+    # Edges represent existence, not multiplicity. Boolean duplicate reduction
+    # preserves connectivity without overflowing an integer count.
+    ones = np.ones(len(rows), dtype=np.bool_)
+    adj = csr_matrix((ones, (rows, cols)), shape=(num_nodes, num_nodes), dtype=np.bool_)
     adj.setdiag(0)      # remove self-loops
     adj.eliminate_zeros()
 

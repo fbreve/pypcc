@@ -1,5 +1,29 @@
-"""Shape checks performed before entering unchecked sequential kernels."""
+"""Input checks performed before entering unchecked sequential kernels."""
 import numpy as np
+from decimal import Decimal
+
+
+def validate_finite(name, value):
+    """Reject nonfinite numeric values without coercing integer/string inputs.
+
+    Object arrays retain their existing conversion rules, including numeric
+    strings. Check floating/complex objects and Decimal before integer casts.
+    This does not impose ranges, shapes or a new label vocabulary.
+    """
+    values = np.asarray(value)
+    if values.dtype.kind in 'fc':
+        if not np.all(np.isfinite(values)):
+            raise ValueError(f"{name} must contain only finite numeric values")
+    elif values.dtype.kind == 'O':
+        for item in values.flat:
+            if isinstance(item, Decimal):
+                finite = item.is_finite()
+            elif isinstance(item, (float, complex, np.inexact)):
+                finite = np.isfinite(item)
+            else:
+                continue
+            if not finite:
+                raise ValueError(f"{name} must contain only finite numeric values")
 
 
 def validate_vector(name, value, length):
@@ -31,6 +55,18 @@ def validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
         if (np.ndim(value) != 2 or value.shape[0] < n
                 or value.shape[1] < columns):
             raise ValueError(f"{name} must have at least shape ({n}, {columns})")
+    # Cython supplies a typed memoryview here; asarray exposes its existing
+    # buffer without changing the object ultimately passed to either kernel.
+    distances = np.asarray(dist_table)
+    if distances.dtype.kind not in 'iu':
+        raise ValueError("dist_table must be an integer array with distances in [0, 255]")
+    # Production uint8 tables already guarantee the lookup index range. Retain
+    # compatible wider integer buffers without coercing, copying or scanning
+    # unused padding; only non-uint8 active regions need a range check.
+    if distances.dtype != np.uint8:
+        active_distances = distances[:n, :particles]
+        if np.any(active_distances < 0) or np.any(active_distances > 255):
+            raise ValueError("dist_table distances must be in [0, 255]")
     return max(1, int(degrees.max()))
 
 
