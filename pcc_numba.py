@@ -9,7 +9,8 @@ Created on Fri Jan 16 15:02:02 2026
 import numpy as np
 from numba import njit
 from pcc_metrics import propagation_info
-from pcc_validation import validate_step_inputs, validate_buffers
+from pcc_validation import (validate_step_inputs, validate_buffers,
+                            validate_kernel_scalars, validate_fractional_buffers)
 
 @njit
 def _pcc_step_numba_sequential(neib_list, neib_qt,
@@ -176,6 +177,7 @@ def pcc_step_numba(neib_list, neib_qt,
                    dominance, owndeg, deltap=1.0, dexp=2.0,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
                    dist_weights=None):
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_k = validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
                                  part_curnode, part_label, part_strength,
                                  dist_table, dominance, owndeg)
@@ -205,6 +207,7 @@ def pcc_propagate_numba(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, return_info=False):
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
         part_strength, dist_table, dominance, owndeg)
