@@ -28,7 +28,8 @@ parameters in future versions.
 
 Keep read-only inputs such as graph neighbor arrays, `labels`, and
 `dist_weights` independent of arrays the kernel writes. `zerovec` is a
-legacy input with no active scientific reads in these sequential kernels. A buffer intended
+legacy input with no active scientific reads in these sequential kernels.
+A buffer intended
 to be read-only must not share memory with mutable state or scratch space.
 
 Direct propagation updates mutable particle/node state in place. Scratch
@@ -47,8 +48,8 @@ Overlapping arrays may silently change particle state, dominance, and
 predictions without raising an exception. Not every overlapping pair showed
 a difference in the diagnostic tests: for example, complete `prob`/`slices`
 aliasing did not diverge, while partially overlapping views did in Numba and
-Cython. Such observations are not guarantees for arbitrary layouts or inputs. Behavior can differ between NumPy,
-Numba, and Cython. A call returning normally is not evidence that its result
+Cython. Such observations are not guarantees for arbitrary layouts or inputs.
+Behavior can differ between NumPy, Numba, and Cython. A call returning normally is not evidence that its result
 is valid.
 
 For custom direct-kernel integrations, allocate separate buffers and avoid
@@ -62,5 +63,5 @@ changes to the algorithm. A diagnostic audit found reproducible alias-induced
 state/prediction differences in all three backends using artificially
 overlapping buffers (432 paired control/alias comparisons). Fifteen observed
 ordinary `fit_predict` calls had independent kernel arguments; no public-API
-aliasing path was reproduced. That observation is not a proof that every conceivable
-public-API interaction is alias-free.
+aliasing path was reproduced. That observation is not a proof that every
+conceivable public-API interaction is alias-free.
