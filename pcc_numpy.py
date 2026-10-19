@@ -27,14 +27,14 @@ def pcc_step_numpy(neib_list, neib_qt,
     if update_mode != "sequential":
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
-                             part_curnode, part_label, part_strength,
-                             dist_table, dominance, owndeg)
+                         part_curnode, part_label, part_strength,
+                         dist_table, dominance, owndeg)
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     validate_fractional_buffers(part_strength, dominance, owndeg)
     validate_mutable_arrays(("part_curnode", part_curnode),
-                                ("part_strength", part_strength),
-                                ("dist_table", dist_table),
-                                ("dominance", dominance), ("owndeg", owndeg))
+                            ("part_strength", part_strength),
+                            ("dist_table", dist_table),
+                            ("dominance", dominance), ("owndeg", owndeg))
     return _pcc_step_numpy_sequential_unchecked(
         neib_list, neib_qt, labels, p_grd, delta_v, c,
         part_curnode, part_label, part_strength, dist_table,
