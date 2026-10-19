@@ -19,12 +19,7 @@ def pcc_step_numpy(neib_list, neib_qt,
                    dom_row=None, reduc=None, dom_list=None, dist_list=None, prob=None, slices=None,
                    dist_weights=None, update_mode="sequential"):
     """Run sequential PCC (default) or the experimental synchronous variant."""
-    if update_mode == "synchronous":
-        return _pcc_step_numpy_synchronous(
-            neib_list, neib_qt, labels, p_grd, delta_v, c,
-            part_curnode, part_label, part_strength, dist_table,
-            dominance, owndeg, deltap, dexp, dist_weights)
-    if update_mode != "sequential":
+    if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
                          part_curnode, part_label, part_strength,
@@ -35,6 +30,11 @@ def pcc_step_numpy(neib_list, neib_qt,
                             ("part_strength", part_strength),
                             ("dist_table", dist_table),
                             ("dominance", dominance), ("owndeg", owndeg))
+    if update_mode == "synchronous":
+        return _pcc_step_numpy_synchronous(
+            neib_list, neib_qt, labels, p_grd, delta_v, c,
+            part_curnode, part_label, part_strength, dist_table,
+            dominance, owndeg, deltap, dexp, dist_weights)
     return _pcc_step_numpy_sequential_unchecked(
         neib_list, neib_qt, labels, p_grd, delta_v, c,
         part_curnode, part_label, part_strength, dist_table,
@@ -212,10 +212,9 @@ def pcc_propagate_numpy(neib_list, neib_qt,
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
-    if update_mode == "sequential":
-        validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
-                             part_curnode, part_label, part_strength,
-                             dist_table, dominance, owndeg)
+    validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
+                         part_curnode, part_label, part_strength,
+                         dist_table, dominance, owndeg)
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     validate_fractional_buffers(part_strength, dominance, owndeg)
     validate_mutable_arrays(("part_curnode", part_curnode),
