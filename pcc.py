@@ -173,17 +173,21 @@ class ParticleCompetitionAndCooperation:
         raise RuntimeError("No backend available: cython, numba, or numpy.")
 
     def build_graph(self, data, k_nn=10, n_jobs=None):
-        self.data = data
-        self.k_nn = k_nn
-        self.neib_list, self.neib_qt = build_knn_graph(
+        """Build and install a graph; preparation failures retain instance state."""
+        neib_list, neib_qt = build_knn_graph(
             data, k_nn, n_jobs=n_jobs if n_jobs is not None else self.n_jobs
         )
+        self.data = data
+        self.k_nn = k_nn
+        self.neib_list, self.neib_qt = neib_list, neib_qt
 
     def set_graph(self, neib_list, neib_qt, k_nn=None):
         """Set dense neighbor lists; active indices/degrees must be finite.
 
         Entries beyond each node's degree remain unused padding.
         Existing finite integer-conversion rules are unchanged.
+        Prepare all conversions before committing any instance fields, so a
+        preparation failure leaves the previous graph and fit state intact.
         """
         validate_finite("neib_qt", neib_qt)
         if k_nn is not None:
@@ -191,9 +195,12 @@ class ParticleCompetitionAndCooperation:
         if neib_list.dtype.kind not in 'iub':
             for row, degree in zip(neib_list, neib_qt):
                 validate_finite("neib_list", row[:int(degree)])
-        self.neib_list = neib_list.astype(np.int64)
-        self.neib_qt = neib_qt.astype(np.int64)
-        self.k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
+        new_neib_list = neib_list.astype(np.int64)
+        new_neib_qt = neib_qt.astype(np.int64)
+        new_k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
+        self.neib_list = new_neib_list
+        self.neib_qt = new_neib_qt
+        self.k_nn = new_k_nn
         self.data = None
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
