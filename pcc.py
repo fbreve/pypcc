@@ -208,15 +208,29 @@ class ParticleCompetitionAndCooperation:
         Successful installation invalidates the previous fit, including when
         node count or connectivity is unchanged. Call fit_predict for new results.
         """
+        # Validate the active graph before converting or replacing any state.
+        # Unused neighbor padding is intentionally not inspected.
+        # Preserve the established ndarray-only input contract.
+        if not isinstance(neib_list, np.ndarray) or not isinstance(neib_qt, np.ndarray):
+            raise TypeError("neib_list and neib_qt must be NumPy arrays")
+        if neib_list.ndim != 2:
+            raise ValueError("neib_list must be a 2D matrix")
+        n_nodes, width = neib_list.shape
+        if neib_qt.ndim != 1 or neib_qt.shape[0] != n_nodes:
+            raise ValueError("neib_qt must have one degree per node")
         validate_finite("neib_qt", neib_qt)
         if k_nn is not None:
             validate_finite("k_nn", k_nn)
-        if neib_list.dtype.kind not in 'iub':
-            for row, degree in zip(neib_list, neib_qt):
-                validate_finite("neib_list", row[:int(degree)])
-        new_neib_list = neib_list.astype(np.int64)
         new_neib_qt = neib_qt.astype(np.int64)
-        new_k_nn = int(k_nn) if k_nn is not None else int(neib_qt.max())
+        if np.any(new_neib_qt < 0) or np.any(new_neib_qt > width):
+            raise ValueError("node degrees must fit the neighbor matrix")
+        for row, degree in zip(neib_list, new_neib_qt):
+            validate_finite("neib_list", row[:degree])
+        new_neib_list = neib_list.astype(np.int64)
+        active = np.arange(width)[None, :] < new_neib_qt[:, None]
+        if np.any(new_neib_list[active] < 0) or np.any(new_neib_list[active] >= n_nodes):
+            raise ValueError("active neighbor indices must refer to existing nodes")
+        new_k_nn = int(k_nn) if k_nn is not None else (int(new_neib_qt.max()) if n_nodes else 0)
         self.neib_list = new_neib_list
         self.neib_qt = new_neib_qt
         self.k_nn = new_k_nn
