@@ -205,16 +205,30 @@ class ParticleCompetitionAndCooperation:
         Keep historical truncation of in-range fractional values. Object
         inputs are checked before NumPy can silently wrap oversized integers.
         """
+        array = np.asarray(values)
+        kind = array.dtype.kind
         bounds = np.iinfo(np.int64)
-        for value in np.asarray(values).flat:
-            # Complex-to-integer conversion has separate historical semantics.
+        if kind == "i" or (kind == "u" and array.dtype.itemsize < 8):
+            return  # Already representable by int64.
+        if kind == "u":
+            if np.any(array > bounds.max):
+                raise ValueError(f"{name} contains a value outside the int64 range")
+            return
+        if kind == "f":
+            # The upper bound is exclusive: float(2**63 - 1) rounds to 2**63.
+            if np.any((array < -9223372036854775808.0)
+                      | (array >= 9223372036854775808.0)):
+                raise ValueError(f"{name} contains a value outside the int64 range")
+            return
+        # Object arrays may contain arbitrary-size Python integers. Keep the
+        # scalar fallback only for these and other uncommon dtypes.
+        for value in array.flat:
             if isinstance(value, (complex, np.complexfloating)):
                 continue
             try:
                 integer = int(value)
             except (TypeError, ValueError, OverflowError):
-                # Leave the original cast to report unsupported input types.
-                continue
+                continue  # Let the established NumPy cast report the error.
             if integer < bounds.min or integer > bounds.max:
                 raise ValueError(f"{name} contains a value outside the int64 range")
 
