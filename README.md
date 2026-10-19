@@ -34,6 +34,13 @@ new graph remain available. A preparation failure preserves the previous graph
 and fit unchanged. Previously returned predictions or other objects retained by
 the caller are not modified; they still describe the earlier fit.
 
+## Direct kernel buffer ownership
+
+Direct calls to NumPy, Numba, or Cython propagation functions require
+independent, non-overlapping state and scratch buffers. The low-level input
+validators do not check memory aliasing; overlapping arrays can silently alter
+results. See [direct kernel buffer preconditions](docs/direct_kernel_buffers.md).
+
 ## MATLAB version
 
 You may also check the original MATLAB version:
