@@ -3,7 +3,8 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from pcc_metrics import propagation_info
-from pcc_validation import validate_step_inputs, validate_buffers, validate_vector
+from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
+                            validate_kernel_scalars)
 from libc.stdlib cimport malloc, free
 
 # Fast XORShift RNG (Sequential version)
@@ -69,6 +70,7 @@ cpdef pcc_propagate(
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
     
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
         part_strength, dist_table, dominance, owndeg)
@@ -228,6 +230,7 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
         part_strength, dist_table, dominance, owndeg)

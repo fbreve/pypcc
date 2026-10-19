@@ -79,3 +79,30 @@ def validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                                 ("slices", slices, max_degree),
                                 ("dist_weights", dist_weights, 256)):
         validate_vector(name, value, length)
+
+
+def validate_kernel_scalars(p_grd, delta_v, deltap, dexp):
+    """Reject nonfinite direct-call parameters before any state or RNG change."""
+    for name, value in (("p_grd", p_grd), ("delta_v", delta_v),
+                        ("deltap", deltap), ("dexp", dexp)):
+        validate_finite(name, value)
+
+
+def validate_fractional_buffers(part_strength, dominance, owndeg,
+                                dom_row=None, dom_list=None, dist_list=None,
+                                prob=None, slices=None):
+    """Buffers storing fractional results must not silently truncate them."""
+    for name, value in (("part_strength", part_strength),
+                        ("dominance", dominance), ("owndeg", owndeg),
+                        ("dom_row", dom_row), ("dom_list", dom_list),
+                        ("dist_list", dist_list), ("prob", prob),
+                        ("slices", slices)):
+        if value is not None and np.asarray(value).dtype.kind != "f":
+            raise ValueError(f"{name} must have a floating-point dtype")
+
+
+def validate_mutable_arrays(*named_arrays):
+    """Check writable NumPy buffers before the first particle is updated."""
+    for name, value in named_arrays:
+        if isinstance(value, np.ndarray) and not value.flags.writeable:
+            raise ValueError(f"{name} must be writable")

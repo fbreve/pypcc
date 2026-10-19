@@ -8,6 +8,8 @@ Created on Fri Jan 16 15:01:28 2026
 # pcc_numpy.py
 import numpy as np
 from pcc_metrics import propagation_info
+from pcc_validation import (validate_step_inputs, validate_kernel_scalars,
+                            validate_fractional_buffers, validate_mutable_arrays)
 
 
 def pcc_step_numpy(neib_list, neib_qt,
@@ -24,6 +26,26 @@ def pcc_step_numpy(neib_list, neib_qt,
             dominance, owndeg, deltap, dexp, dist_weights)
     if update_mode != "sequential":
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
+    validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
+                         part_curnode, part_label, part_strength,
+                         dist_table, dominance, owndeg)
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
+    validate_fractional_buffers(part_strength, dominance, owndeg)
+    validate_mutable_arrays(("part_curnode", part_curnode),
+                            ("part_strength", part_strength),
+                            ("dist_table", dist_table),
+                            ("dominance", dominance), ("owndeg", owndeg))
+    return _pcc_step_numpy_sequential_unchecked(
+        neib_list, neib_qt, labels, p_grd, delta_v, c,
+        part_curnode, part_label, part_strength, dist_table,
+        dominance, owndeg, deltap, dexp, dist_weights)
+
+
+def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
+                                         p_grd, delta_v, c, part_curnode,
+                                         part_label, part_strength, dist_table,
+                                         dominance, owndeg, deltap, dexp,
+                                         dist_weights):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
     if dist_weights is None:
@@ -190,17 +212,34 @@ def pcc_propagate_numpy(neib_list, neib_qt,
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
+    if update_mode == "sequential":
+        validate_step_inputs(neib_list, neib_qt, labels, c, zerovec,
+                             part_curnode, part_label, part_strength,
+                             dist_table, dominance, owndeg)
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
+    validate_fractional_buffers(part_strength, dominance, owndeg)
+    validate_mutable_arrays(("part_curnode", part_curnode),
+                                ("part_strength", part_strength),
+                                ("dist_table", dist_table),
+                                ("dominance", dominance), ("owndeg", owndeg))
+
     it = -1
     max_mmpot = 0.0
     stop_cnt = 0
     
     for it in range(max_iter):
-        pcc_step_numpy(neib_list, neib_qt,
-                       labels, p_grd, delta_v, c, zerovec,
-                       part_curnode, part_label, part_strength, dist_table,
-                       dominance, owndeg, deltap, dexp,
-                       dom_row, reduc, dom_list, dist_list, prob, slices,
-                       dist_weights, update_mode=update_mode)
+        if update_mode == "sequential":
+            _pcc_step_numpy_sequential_unchecked(
+                neib_list, neib_qt, labels, p_grd, delta_v, c,
+                part_curnode, part_label, part_strength, dist_table,
+                dominance, owndeg, deltap, dexp, dist_weights)
+        else:
+            pcc_step_numpy(neib_list, neib_qt,
+                           labels, p_grd, delta_v, c, zerovec,
+                           part_curnode, part_label, part_strength, dist_table,
+                           dominance, owndeg, deltap, dexp,
+                           dom_row, reduc, dom_list, dist_list, prob, slices,
+                           dist_weights, update_mode=update_mode)
         
         if early_stop and it % 10 == 0:
             mmpot = np.mean(np.max(dominance, axis=1))
