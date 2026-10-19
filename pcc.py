@@ -210,8 +210,9 @@ class ParticleCompetitionAndCooperation:
         """
         # Validate the active graph before converting or replacing any state.
         # Unused neighbor padding is intentionally not inspected.
-        neib_list = np.asarray(neib_list)
-        neib_qt = np.asarray(neib_qt)
+        # Preserve the established ndarray-only input contract.
+        if not isinstance(neib_list, np.ndarray) or not isinstance(neib_qt, np.ndarray):
+            raise TypeError("neib_list and neib_qt must be NumPy arrays")
         if neib_list.ndim != 2 or neib_list.shape[0] == 0:
             raise ValueError("neib_list must be a nonempty 2D matrix")
         n_nodes, width = neib_list.shape
