@@ -104,10 +104,23 @@ class DirectKernelValidation(unittest.TestCase):
             with self.subTest(kernel=kernel.__name__):
                 case = fixture()
                 case["delta_v"] = np.nan
-                extra = dict(max_iter=2, early_stop=False, es_chk=10,
+                extra = dict(deltap=1.0, dexp=2.0, max_iter=2, early_stop=False, es_chk=10,
                              stop_max=10, **buffers(case))
-                self.check_rejected(kernel, case, extra,
-                                    check_rng=(kernel is pcc_propagate_numpy))
+                if kernel is pcc_propagate_cython:
+                    # Cython's cpdef requires these arguments positionally.
+                    def invoke_cython(**kwargs):
+                        names = ("neib_list", "neib_qt", "labels", "p_grd",
+                                 "delta_v", "c", "zerovec", "part_curnode",
+                                 "part_label", "part_strength", "dist_table",
+                                 "dominance", "owndeg", "deltap", "dexp",
+                                 "dom_row", "reduc", "dom_list", "dist_list",
+                                 "prob", "slices", "dist_weights", "max_iter",
+                                 "early_stop", "es_chk", "stop_max")
+                        return kernel(*(kwargs[name] for name in names))
+                    self.check_rejected(invoke_cython, case, extra)
+                else:
+                    self.check_rejected(kernel, case, extra,
+                                        check_rng=(kernel is pcc_propagate_numpy))
 
 
 if __name__ == "__main__":
