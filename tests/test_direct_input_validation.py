@@ -71,7 +71,7 @@ class DirectKernelValidation(unittest.TestCase):
         case["labels"] = case["labels"][:-1].copy()
         self.check_rejected(pcc_step_numpy, case, check_rng=True)
         self.check_rejected(pcc_propagate_numpy, case,
-                            dict(max_iter=2, early_stop=False, es_chk=10,
+                            dict(deltap=1.0, dexp=2.0, max_iter=2, early_stop=False, es_chk=10,
                                  stop_max=10, **buffers(case)), check_rng=True)
 
     def test_integer_strength_rejected_numpy_numba(self):
