@@ -213,8 +213,8 @@ class ParticleCompetitionAndCooperation:
         # Preserve the established ndarray-only input contract.
         if not isinstance(neib_list, np.ndarray) or not isinstance(neib_qt, np.ndarray):
             raise TypeError("neib_list and neib_qt must be NumPy arrays")
-        if neib_list.ndim != 2 or neib_list.shape[0] == 0:
-            raise ValueError("neib_list must be a nonempty 2D matrix")
+        if neib_list.ndim != 2:
+            raise ValueError("neib_list must be a 2D matrix")
         n_nodes, width = neib_list.shape
         if neib_qt.ndim != 1 or neib_qt.shape[0] != n_nodes:
             raise ValueError("neib_qt must have one degree per node")
@@ -230,7 +230,7 @@ class ParticleCompetitionAndCooperation:
         active = np.arange(width)[None, :] < new_neib_qt[:, None]
         if np.any(new_neib_list[active] < 0) or np.any(new_neib_list[active] >= n_nodes):
             raise ValueError("active neighbor indices must refer to existing nodes")
-        new_k_nn = int(k_nn) if k_nn is not None else int(new_neib_qt.max())
+        new_k_nn = int(k_nn) if k_nn is not None else (int(new_neib_qt.max()) if n_nodes else 0)
         self.neib_list = new_neib_list
         self.neib_qt = new_neib_qt
         self.k_nn = new_k_nn
