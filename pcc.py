@@ -306,6 +306,7 @@ class ParticleCompetitionAndCooperation:
                 f"got shape {label_shape}"
             )
         validate_finite("labels", labels)
+        self._check_int64_conversion_range("labels", labels)
         p_grd, delta_v, deltap, dexp = map(float, (p_grd, delta_v, deltap, dexp))
         for name, value in (("p_grd", p_grd), ("delta_v", delta_v),
                             ("deltap", deltap), ("dexp", dexp),
