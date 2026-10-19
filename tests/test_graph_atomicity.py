@@ -108,9 +108,14 @@ class GraphAtomicityTests(unittest.TestCase):
             self.assertFalse(np.shares_memory(m.neib_list,neighbors));self.assertFalse(np.shares_memory(m.neib_qt,degrees))
             self.assertIsNone(m.data);self.assertEqual(m.k_nn,1)
             self.assertIsNone(m.node);self.assertIsNone(m.part)
-        # Preserve acceptance policy; this PR does not add structural/index validation.
-        m.set_graph(np.array([[9999]],dtype=np.int64),np.array([2,0],dtype=np.int64),k_nn=-2)
-        np.testing.assert_array_equal(m.neib_list,[[9999]]);self.assertEqual(m.k_nn,-2)
+        # Structural/index validation now rejects malformed graphs atomically.
+        before_neighbors, before_degrees, before_k = m.neib_list, m.neib_qt, m.k_nn
+        with self.assertRaises(ValueError):
+            m.set_graph(np.array([[9999]],dtype=np.int64),
+                        np.array([2,0],dtype=np.int64),k_nn=-2)
+        self.assertIs(m.neib_list, before_neighbors)
+        self.assertIs(m.neib_qt, before_degrees)
+        self.assertEqual(m.k_nn, before_k)
 
     def test_real_builder_and_setter_have_same_valid_fit(self):
         helper=label_tests.LabelShapeTests();data=np.array([[0.],[1.],[3.]])
