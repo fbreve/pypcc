@@ -50,6 +50,25 @@ class SetGraphStructuralTests(unittest.TestCase):
             model.set_graph(np.array([["bad"], [0]], dtype=object), np.array([1, 1]))
         self.assertIs(model.neib_list, old)
 
+    def test_out_of_range_values_are_rejected_without_state_changes(self):
+        model = ParticleCompetitionAndCooperation(impl="numpy")
+        model.set_graph(np.array([[1], [0]]), np.array([1, 1]))
+        previous_neighbors, previous_degrees = model.neib_list, model.neib_qt
+        huge = 10 ** 100
+        cases = (
+            (np.array([[huge], [0]], dtype=object), np.array([1, 1])),
+            (np.array([[1], [0]]), np.array([huge, 1], dtype=object)),
+            (np.array([[1e30], [0.0]]), np.array([1, 1])),
+            (np.array([[1], [0]]), np.array([1e30, 1.0])),
+            (np.array([[2**64 - 1], [0]], dtype=np.uint64), np.array([1, 1])),
+        )
+        for neighbors, degrees in cases:
+            with self.subTest(neighbors=neighbors.tolist(), degrees=degrees.tolist()):
+                with self.assertRaises(ValueError):
+                    model.set_graph(neighbors, degrees)
+                self.assertIs(model.neib_list, previous_neighbors)
+                self.assertIs(model.neib_qt, previous_degrees)
+
     def test_empty_graph_supported_and_active_nonfinite_rejected(self):
         model = ParticleCompetitionAndCooperation(impl="numpy")
         model.set_graph(np.empty((0, 1), dtype=np.int64), np.empty(0, dtype=np.int64))
