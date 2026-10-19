@@ -226,8 +226,11 @@ class ParticleCompetitionAndCooperation:
             raise ValueError("node degrees must fit the neighbor matrix")
         for row, degree in zip(neib_list, new_neib_qt):
             validate_finite("neib_list", row[:degree])
-        new_neib_list = neib_list.astype(np.int64)
+        # Convert only active entries: padding may contain NaN, infinity,
+        # strings or arbitrary sentinels and is never read by the kernels.
         active = np.arange(width)[None, :] < new_neib_qt[:, None]
+        new_neib_list = np.zeros((n_nodes, width), dtype=np.int64)
+        new_neib_list[active] = neib_list[active].astype(np.int64)
         if np.any(new_neib_list[active] < 0) or np.any(new_neib_list[active] >= n_nodes):
             raise ValueError("active neighbor indices must refer to existing nodes")
         new_k_nn = int(k_nn) if k_nn is not None else (int(new_neib_qt.max()) if n_nodes else 0)

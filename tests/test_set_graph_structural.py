@@ -35,6 +35,21 @@ class SetGraphStructuralTests(unittest.TestCase):
         np.testing.assert_array_equal(model.neib_qt, [1, 1])
         np.testing.assert_array_equal(model.neib_list[:, 0], [1, 0])
 
+    def test_padding_with_unconvertible_values_is_ignored(self):
+        model = ParticleCompetitionAndCooperation(impl="numpy")
+        neighbors = np.array([[1, "not-an-index"], [0, None]], dtype=object)
+        model.set_graph(neighbors, np.array([1, 1]))
+        np.testing.assert_array_equal(model.neib_list, [[1, 0], [0, 0]])
+        np.testing.assert_array_equal(model.neib_qt, [1, 1])
+
+    def test_active_invalid_object_still_rejected_atomically(self):
+        model = ParticleCompetitionAndCooperation(impl="numpy")
+        model.set_graph(np.array([[1], [0]]), np.array([1, 1]))
+        old = model.neib_list
+        with self.assertRaises((ValueError, TypeError)):
+            model.set_graph(np.array([["bad"], [0]], dtype=object), np.array([1, 1]))
+        self.assertIs(model.neib_list, old)
+
     def test_empty_graph_supported_and_active_nonfinite_rejected(self):
         model = ParticleCompetitionAndCooperation(impl="numpy")
         model.set_graph(np.empty((0, 1), dtype=np.int64), np.empty(0, dtype=np.int64))
