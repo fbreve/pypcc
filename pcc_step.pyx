@@ -230,6 +230,7 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
         part_strength, dist_table, dominance, owndeg)
