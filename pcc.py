@@ -198,6 +198,40 @@ class ParticleCompetitionAndCooperation:
         self.neib_list, self.neib_qt = neib_list, neib_qt
         self._invalidate_fit_state()
 
+    @staticmethod
+    def _check_int64_conversion_range(name, values):
+        """Reject finite numbers that would overflow during int64 conversion.
+
+        Keep historical truncation of in-range fractional values. Object
+        inputs are checked before NumPy can silently wrap oversized integers.
+        """
+        array = np.asarray(values)
+        kind = array.dtype.kind
+        bounds = np.iinfo(np.int64)
+        if kind == "i" or (kind == "u" and array.dtype.itemsize < 8):
+            return  # Already representable by int64.
+        if kind == "u":
+            if np.any(array > bounds.max):
+                raise ValueError(f"{name} contains a value outside the int64 range")
+            return
+        if kind == "f":
+            # The upper bound is exclusive: float(2**63 - 1) rounds to 2**63.
+            if np.any((array < -9223372036854775808.0)
+                      | (array >= 9223372036854775808.0)):
+                raise ValueError(f"{name} contains a value outside the int64 range")
+            return
+        # Object arrays may contain arbitrary-size Python integers. Keep the
+        # scalar fallback only for these and other uncommon dtypes.
+        for value in array.flat:
+            if isinstance(value, (complex, np.complexfloating)):
+                continue
+            try:
+                integer = int(value)
+            except (TypeError, ValueError, OverflowError):
+                continue  # Let the established NumPy cast report the error.
+            if integer < bounds.min or integer > bounds.max:
+                raise ValueError(f"{name} contains a value outside the int64 range")
+
     def set_graph(self, neib_list, neib_qt, k_nn=None):
         """Set dense neighbor lists; active indices/degrees must be finite.
 
@@ -221,6 +255,7 @@ class ParticleCompetitionAndCooperation:
         validate_finite("neib_qt", neib_qt)
         if k_nn is not None:
             validate_finite("k_nn", k_nn)
+        self._check_int64_conversion_range("neib_qt", neib_qt)
         new_neib_qt = neib_qt.astype(np.int64)
         if np.any(new_neib_qt < 0) or np.any(new_neib_qt > width):
             raise ValueError("node degrees must fit the neighbor matrix")
@@ -230,6 +265,7 @@ class ParticleCompetitionAndCooperation:
         # strings or arbitrary sentinels and is never read by the kernels.
         active = np.arange(width)[None, :] < new_neib_qt[:, None]
         new_neib_list = np.zeros((n_nodes, width), dtype=np.int64)
+        self._check_int64_conversion_range("neib_list", neib_list[active])
         new_neib_list[active] = neib_list[active].astype(np.int64)
         if np.any(new_neib_list[active] < 0) or np.any(new_neib_list[active] >= n_nodes):
             raise ValueError("active neighbor indices must refer to existing nodes")
