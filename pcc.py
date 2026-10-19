@@ -204,6 +204,9 @@ class ParticleCompetitionAndCooperation:
         calls. Existing coercions and finite-value ranges are retained; -1 is
         still the unknown-label sentinel. Nonfinite input raises ValueError.
         The existing missing-graph return is unchanged.
+        Labels must be a one-dimensional vector with exactly one entry per
+        graph node. Invalid shapes raise ValueError before conversion or state
+        changes, including on the no-propagation path below.
         With fewer than two known classes, warn and return the original labels
         object without propagation. The graph and current input/class summary
         remain available, but previous fit-derived state is cleared: constructor
@@ -215,6 +218,13 @@ class ParticleCompetitionAndCooperation:
             print("Error: build or set the graph first.")
             return -1
 
+        label_shape = np.shape(labels)
+        if len(label_shape) != 1 or label_shape[0] != self.neib_list.shape[0]:
+            raise ValueError(
+                "labels must be a one-dimensional vector with exactly "
+                f"{self.neib_list.shape[0]} entries (one per graph node); "
+                f"got shape {label_shape}"
+            )
         validate_finite("labels", labels)
         p_grd, delta_v, deltap, dexp = map(float, (p_grd, delta_v, deltap, dexp))
         for name, value in (("p_grd", p_grd), ("delta_v", delta_v),
