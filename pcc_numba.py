@@ -191,6 +191,8 @@ def pcc_step_numba(neib_list, neib_qt,
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
     validate_buffers(c, max_k, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
+    validate_fractional_buffers(part_strength, dominance, owndeg,
+                                dom_row, dom_list, dist_list, prob, slices)
 
     return _pcc_step_numba_sequential(neib_list, neib_qt,
                                        labels, p_grd, delta_v, c, zerovec,
@@ -213,6 +215,8 @@ def pcc_propagate_numba(neib_list, neib_qt,
         part_strength, dist_table, dominance, owndeg)
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
+    validate_fractional_buffers(part_strength, dominance, owndeg,
+                                dom_row, dom_list, dist_list, prob, slices)
     metrics = _pcc_propagate_numba_sequential(
         neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
         part_curnode, part_label, part_strength, dist_table, dominance, owndeg,
