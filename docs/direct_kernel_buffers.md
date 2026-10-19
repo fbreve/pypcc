@@ -17,11 +17,18 @@ different Python identities yet overlap in memory. In particular, do not alias:
 
 - State arrays: `dominance`, `owndeg`, `part_curnode`,
   `part_label`, `part_strength`, and `dist_table`.
-- Scratch arrays where accepted by the selected function: `dom_row`,
-  `reduc`, `dom_list`, `dist_list`, `prob`, and `slices`.
+- Active scratch arrays in Numba: `dom_row`, `dom_list`, `dist_list`,
+  `prob`, and `slices`; in Cython: `prob` and `slices`.
 
-Keep read-only inputs such as graph neighbor arrays, `labels`, `zerovec`,
-and `dist_weights` independent of arrays the kernel writes. A buffer intended
+The NumPy sequential step ignores the six supplied scratch arrays. The
+`reduc` parameter is legacy and is not read or written by any of the three
+sequential kernels in the audited revision. This distinction describes current
+implementation behavior, **not** permission to rely on aliasing of unused
+parameters in future versions.
+
+Keep read-only inputs such as graph neighbor arrays, `labels`, and
+`dist_weights` independent of arrays the kernel writes. `zerovec` is a
+legacy input with no active scientific reads in these sequential kernels. A buffer intended
 to be read-only must not share memory with mutable state or scratch space.
 
 Direct propagation updates mutable particle/node state in place. Scratch
@@ -37,7 +44,10 @@ make it safe to pass overlapping arrays for other parameters.
 Existing input validation checks selected shapes, lengths, numeric values,
 and distance-table ranges. **It does not guarantee non-overlapping memory.**
 Overlapping arrays may silently change particle state, dominance, and
-predictions without raising an exception. Behavior can differ between NumPy,
+predictions without raising an exception. Not every overlapping pair showed
+a difference in the diagnostic tests: for example, complete `prob`/`slices`
+aliasing did not diverge, while partially overlapping views did in Numba and
+Cython. Such observations are not guarantees for arbitrary layouts or inputs. Behavior can differ between NumPy,
 Numba, and Cython. A call returning normally is not evidence that its result
 is valid.
 
@@ -50,6 +60,7 @@ possible overlap when none exists.
 These are **preconditions for direct calls**, not new runtime checks or
 changes to the algorithm. A diagnostic audit found reproducible alias-induced
 state/prediction differences in all three backends using artificially
-overlapping buffers; it did not reproduce an aliasing path through ordinary
-`fit_predict` use. That observation is not a proof that every conceivable
+overlapping buffers (432 paired control/alias comparisons). Fifteen observed
+ordinary `fit_predict` calls had independent kernel arguments; no public-API
+aliasing path was reproduced. That observation is not a proof that every conceivable
 public-API interaction is alias-free.
