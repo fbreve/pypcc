@@ -23,6 +23,17 @@ ParticleCompetitionAndCooperation(impl="numpy")
 according to the implementation you would like to use. 
 **auto** selects the first available backend in the fixed order Cython, Numba, NumPy; it does not benchmark them.
 
+## Graph replacement and fit state
+
+A successful `build_graph` or `set_graph` call invalidates the previous fit,
+even when reinstalling an identical graph or changing only its connectivity.
+Fit-derived fields such as `node`, `part`, labels and mappings become `None`;
+lazily created fit arrays and scratch buffers are removed. Call `fit_predict`
+again to obtain results for the installed graph. Backend configuration and the
+new graph remain available. A preparation failure preserves the previous graph
+and fit unchanged. Previously returned predictions or other objects retained by
+the caller are not modified; they still describe the earlier fit.
+
 You may also check the original MATLAB version:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
 

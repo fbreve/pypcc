@@ -172,14 +172,31 @@ class ParticleCompetitionAndCooperation:
         
         raise RuntimeError("No backend available: cython, numba, or numpy.")
 
+    def _invalidate_fit_state(self):
+        """Drop references to the previous fit without modifying its objects."""
+        for name in ('labels', 'unique_labels', 'c', 'p_grd', 'delta_v',
+                     'deltap', 'dexp', 'max_iter', 'early_stop', 'es_chk',
+                     'part', 'node', 'zerovec', 'owndeg', 'label_to_idx',
+                     'idx_to_label'):
+            setattr(self, name, None)
+        for name in ('mapped_labels', 'dist_weights', 'buf_dom_row',
+                     'buf_reduc', 'buf_dom_list', 'buf_dist_list',
+                     'buf_prob', 'buf_slices'):
+            self.__dict__.pop(name, None)
+
     def build_graph(self, data, k_nn=10, n_jobs=None):
-        """Build and install a graph; preparation failures retain instance state."""
+        """Build/install a graph, invalidating any previous fit on success.
+
+        Even reinstalling an identical graph invalidates fit-derived state.
+        Preparation failures retain the previous graph and fit unchanged.
+        """
         neib_list, neib_qt = build_knn_graph(
             data, k_nn, n_jobs=n_jobs if n_jobs is not None else self.n_jobs
         )
         self.data = data
         self.k_nn = k_nn
         self.neib_list, self.neib_qt = neib_list, neib_qt
+        self._invalidate_fit_state()
 
     def set_graph(self, neib_list, neib_qt, k_nn=None):
         """Set dense neighbor lists; active indices/degrees must be finite.
@@ -188,6 +205,8 @@ class ParticleCompetitionAndCooperation:
         Existing finite integer-conversion rules are unchanged.
         Prepare all conversions before committing any instance fields, so a
         preparation failure leaves the previous graph and fit state intact.
+        Successful installation invalidates the previous fit, including when
+        node count or connectivity is unchanged. Call fit_predict for new results.
         """
         validate_finite("neib_qt", neib_qt)
         if k_nn is not None:
@@ -202,6 +221,7 @@ class ParticleCompetitionAndCooperation:
         self.neib_qt = new_neib_qt
         self.k_nn = new_k_nn
         self.data = None
+        self._invalidate_fit_state()
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
                     max_iter=500000, early_stop=True, es_chk=2000):
