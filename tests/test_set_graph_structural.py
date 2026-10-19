@@ -35,10 +35,11 @@ class SetGraphStructuralTests(unittest.TestCase):
         np.testing.assert_array_equal(model.neib_qt, [1, 1])
         np.testing.assert_array_equal(model.neib_list[:, 0], [1, 0])
 
-    def test_empty_graph_and_active_nonfinite_rejected(self):
+    def test_empty_graph_supported_and_active_nonfinite_rejected(self):
         model = ParticleCompetitionAndCooperation(impl="numpy")
-        with self.assertRaises(ValueError):
-            model.set_graph(np.empty((0, 1), dtype=np.int64), np.empty(0, dtype=np.int64))
+        model.set_graph(np.empty((0, 1), dtype=np.int64), np.empty(0, dtype=np.int64))
+        self.assertEqual(model.k_nn, 0)
+        self.assertEqual(model.neib_qt.size, 0)
         with self.assertRaises(ValueError):
             model.set_graph(np.array([[np.nan], [0.0]]), np.array([1, 1]))
 
