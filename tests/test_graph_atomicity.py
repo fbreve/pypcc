@@ -88,17 +88,17 @@ class GraphAtomicityTests(unittest.TestCase):
     def test_build_success_preserves_ownership_and_job_selection(self):
         data=np.array([[0.],[1.],[2.]])
         for jobs,expected in ((None,2),(1,1)):
-            m=self.model('numpy','fit');old_node,old_part=m.node,m.part
+            m=self.model('numpy','fit')
             neighbors=np.array([[2],[2],[0]]);degrees=np.ones(3,dtype=np.int64)
             with patch('pcc.build_knn_graph',return_value=(neighbors,degrees)) as build:
                 self.assertIsNone(m.build_graph(data,1,n_jobs=jobs))
             self.assertIs(m.data,data);self.assertIs(m.neib_list,neighbors);self.assertIs(m.neib_qt,degrees)
             self.assertEqual(m.k_nn,1);self.assertEqual(m.n_jobs,2)
             self.assertEqual(build.call_args.kwargs,{'n_jobs':expected})
-            self.assertIs(m.node,old_node);self.assertIs(m.part,old_part)
+            self.assertIsNone(m.node);self.assertIsNone(m.part)
 
     def test_set_success_preserves_copies_and_finite_coercions(self):
-        m=self.model('numpy','fit');old_node,old_part=m.node,m.part
+        m=self.model('numpy','fit')
         neighbors=np.array([[2.9],[2.9],[0.9]])
         degrees=np.array([1.9]*3)
         for k in (None,1.9):
@@ -107,7 +107,7 @@ class GraphAtomicityTests(unittest.TestCase):
             np.testing.assert_array_equal(m.neib_qt,degrees.astype(np.int64))
             self.assertFalse(np.shares_memory(m.neib_list,neighbors));self.assertFalse(np.shares_memory(m.neib_qt,degrees))
             self.assertIsNone(m.data);self.assertEqual(m.k_nn,1)
-            self.assertIs(m.node,old_node);self.assertIs(m.part,old_part)
+            self.assertIsNone(m.node);self.assertIsNone(m.part)
         # Preserve acceptance policy; this PR does not add structural/index validation.
         m.set_graph(np.array([[9999]],dtype=np.int64),np.array([2,0],dtype=np.int64),k_nn=-2)
         np.testing.assert_array_equal(m.neib_list,[[9999]]);self.assertEqual(m.k_nn,-2)
