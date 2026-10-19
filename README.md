@@ -34,6 +34,8 @@ new graph remain available. A preparation failure preserves the previous graph
 and fit unchanged. Previously returned predictions or other objects retained by
 the caller are not modified; they still describe the earlier fit.
 
+## MATLAB version
+
 You may also check the original MATLAB version:
 https://github.com/fbreve/Particle-Competition-and-Cooperation
 
