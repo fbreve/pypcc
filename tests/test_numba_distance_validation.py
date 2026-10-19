@@ -33,7 +33,7 @@ class NumbaDistanceValidationTests(unittest.TestCase):
     def test_other_backends_already_reject_original_crash_tables(self):
         import pcc_step
         for value in (-10**12, 10**12):
-            for fn, error in ((pcc_step_numpy, IndexError), (pcc_step.pcc_step, ValueError)):
+            for fn, error in ((pcc_step_numpy, ValueError), (pcc_step.pcc_step, ValueError)):
                 args = state()
                 args[10] = np.full((3, 1), value, dtype=np.int64)
                 with self.subTest(backend=fn.__module__, value=value), self.assertRaises(error):
