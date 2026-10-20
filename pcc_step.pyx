@@ -52,6 +52,12 @@ cdef void _require_finite_vector(str name, double[:] values) except *:
 @cython.wraparound(False)
 cdef void _require_finite_matrix(str name, double[:, :] values) except *:
     cdef Py_ssize_t i, j
+    # NumPy vectorization is generally preferable for large matrices; retain
+    # native scalar scans for small buffers to avoid temporary allocations.
+    if values.shape[0] * values.shape[1] >= 4096:
+        if not np.isfinite(np.asarray(values)).all():
+            raise ValueError(f"{name} must contain only finite numeric values")
+        return
     for i in range(values.shape[0]):
         for j in range(values.shape[1]):
             if not isfinite(values[i, j]):
