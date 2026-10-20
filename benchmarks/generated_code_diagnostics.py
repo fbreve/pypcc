@@ -43,7 +43,7 @@ try:
         # Cython can emit platform-dependent preprocessor directives and paths.
         # Record normalized text hashes as well as raw bytes for comparison.
         normalized_generated = normalized(generated)
-        markers = re.findall(rb'/\\* "pcc_step\\.pyx":(\\d+)', generated)
+        markers = re.findall(rb'/\* "pcc_step\.pyx":(\d+)', generated)
         metadata[variant] = {
             "source_sha256": hashlib.sha256(source).hexdigest(),
             "generated_c_sha256": hashlib.sha256(generated).hexdigest(),
