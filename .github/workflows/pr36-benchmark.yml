@@ -28,7 +28,6 @@ jobs:
             git checkout --detach 10313ab01207d04ccf3b556bd7701d941b87c020
             sed -i "s/values.shape\[0\] \* values.shape\[1\] >= 4096/values.shape[0] * values.shape[1] >= $threshold/" pcc_step.pyx
             ref="threshold-$threshold"
-            git checkout --detach "$ref"
             python setup.py build_ext --inplace
             BENCH_REF="$ref" PYTHONPATH="$PWD" python "$RUNNER_TEMP/pr36_compare.py" > "$RUNNER_TEMP/bench-results/$ref.log"
             cp benchmark-result.json "$RUNNER_TEMP/bench-results/$ref.json"
