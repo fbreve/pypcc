@@ -10,7 +10,8 @@ import numpy as np
 from numba import njit
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers,
-                            validate_kernel_scalars, validate_fractional_buffers)
+                            validate_kernel_scalars, validate_fractional_buffers,
+                            validate_mutable_arrays)
 
 @njit
 def _pcc_step_numba_sequential(neib_list, neib_qt,
@@ -194,6 +195,13 @@ def pcc_step_numba(neib_list, neib_qt,
     validate_fractional_buffers(part_strength, dominance, owndeg,
                                 dom_row, dom_list, dist_list, prob, slices)
 
+    validate_mutable_arrays(
+        ("part_curnode", part_curnode), ("part_strength", part_strength),
+        ("dist_table", dist_table), ("dominance", dominance),
+        ("owndeg", owndeg), ("dom_row", dom_row),
+        ("reduc", reduc), ("dom_list", dom_list),
+        ("dist_list", dist_list), ("prob", prob), ("slices", slices))
+
     return _pcc_step_numba_sequential(neib_list, neib_qt,
                                        labels, p_grd, delta_v, c, zerovec,
                                        part_curnode, part_label, part_strength, dist_table,
@@ -217,6 +225,13 @@ def pcc_propagate_numba(neib_list, neib_qt,
                      prob, slices, dist_weights)
     validate_fractional_buffers(part_strength, dominance, owndeg,
                                 dom_row, dom_list, dist_list, prob, slices)
+    validate_mutable_arrays(
+        ("part_curnode", part_curnode), ("part_strength", part_strength),
+        ("dist_table", dist_table), ("dominance", dominance),
+        ("owndeg", owndeg), ("dom_row", dom_row),
+        ("reduc", reduc), ("dom_list", dom_list),
+        ("dist_list", dist_list), ("prob", prob), ("slices", slices))
+
     metrics = _pcc_propagate_numba_sequential(
         neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
         part_curnode, part_label, part_strength, dist_table, dominance, owndeg,
