@@ -210,11 +210,14 @@ cdef void pcc_step_sequential(
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
                 for i in range(c):
+                    # Explicit saturation avoids a dependent subtraction in
+                    # the fully depleted case while retaining the same reduction.
                     if dominance[next_node, i] < step:
                         reduc_val = dominance[next_node, i]
+                        dominance[next_node, i] = 0.0
                     else:
                         reduc_val = step
-                    dominance[next_node, i] -= reduc_val
+                        dominance[next_node, i] -= step
                     sum_reduc += reduc_val
                     # The row maximum can be tracked during the reduction.
                     # The winning class is increased after the loop.
