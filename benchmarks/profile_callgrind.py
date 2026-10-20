@@ -53,12 +53,15 @@ def function_self_counts(path):
             else:
                 current = token
             in_call = False
-        elif line.startswith(("cfn=", "calls=")):
+        elif line.startswith("calls="):
             in_call = True
         elif line.startswith(("fl=", "fi=", "ob=", "cob=", "cfi=")):
             # Source/object metadata does not change the active function.
             pass
-        elif line and (line[0].isdigit() or line[0] in "+-*") and current is not None and not in_call:
+        elif line and (line[0].isdigit() or line[0] in "+-*") and current is not None:
+            if in_call:
+                in_call = False
+                continue
             values = line.split()
             if len(values) >= 2:
                 try:
