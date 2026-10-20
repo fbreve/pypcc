@@ -29,55 +29,17 @@ finally:
 
 
 
-def function_self_counts(path):
-    """Aggregate exclusive event costs by Callgrind function ID.
-
-    Call records and their cost lines are deliberately excluded: including
-    them would double-count work already attributed to called functions.
-    """
-    events = []
-    names = {}
-    counts = {}
-    current = None
-    in_call = False
+def cython_symbols(path):
+    """List Cython symbols without claiming per-function event costs."""
+    symbols = set()
     for line in path.read_text().splitlines():
-        if line.startswith("events: "):
-            events = line.split()[1:]
-        elif line.startswith("fn="):
+        if line.startswith("fn="):
             token = line[3:].strip()
-            if token.startswith("("):
-                number, _, name = token.partition(")")
-                current = number[1:]
-                if name.strip():
-                    names[current] = name.strip()
-            else:
-                current = token
-            in_call = False
-        elif line.startswith("calls="):
-            in_call = True
-        elif line.startswith(("fl=", "fi=", "ob=", "cob=", "cfi=")):
-            # Source/object metadata does not change the active function.
-            pass
-        elif line and (line[0].isdigit() or line[0] in "+-*") and current is not None:
-            if in_call:
-                in_call = False
-                continue
-            values = line.split()
-            if len(values) >= 2:
-                try:
-                    numbers = [int(x) for x in values[1:] if x.lstrip("+-").isdigit()]
-                    numbers += [0] * (len(events) - len(numbers))
-                except ValueError:
-                    continue
-                dest = counts.setdefault(current, [0] * len(events))
-                for i, value in enumerate(numbers):
-                    dest[i] += value
-    return [
-        {"function": names.get(fid, fid),
-         **dict(zip(events, values))}
-        for fid, values in counts.items()
-        if "pcc_step" in names.get(fid, "").lower()
-    ]
+            name = token.partition(")")[2].strip() if token.startswith("(") else token
+            if "pcc_step" in name.lower():
+                symbols.add(name)
+    return sorted(symbols)
+
 
 summary = {}
 for variant in ("baseline", "fused"):
@@ -85,8 +47,8 @@ for variant in ("baseline", "fused"):
     events = next(line.split()[1:] for line in lines if line.startswith("events: "))
     totals = next(line.split()[1:] for line in lines if line.startswith("summary: "))
     summary[variant] = dict(zip(events, map(int, totals)))
-    summary[variant]["cython_functions"] = function_self_counts(OUT / f"{variant}.callgrind")
-    summary[variant]["attribution_note"] = "Provisional: Callgrind compressed event columns (*) and delta encoding are not fully decoded; do not interpret function counts as exact."
+    summary[variant]["cython_symbols"] = cython_symbols(OUT / f"{variant}.callgrind")
+    summary[variant]["attribution_note"] = "Function-level costs omitted: call arcs contain multiple cost records; whole-process event totals remain comparable."
     annotated = subprocess.run(
         ["callgrind_annotate", "--inclusive=yes", "--threshold=0",
          str(OUT / f"{variant}.callgrind")],
