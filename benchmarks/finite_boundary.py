@@ -8,6 +8,7 @@ SIZES = (128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)
 ROUNDS = 7
 REPEATS = 150
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 SOURCE = (ROOT / "pcc_step.pyx").read_text()
 NEEDLE = "values.shape[0] * values.shape[1] >= 4096"
 assert SOURCE.count(NEEDLE) == 1, "Expected one threshold expression"
@@ -47,7 +48,11 @@ else:
     result={}
     try:
         for threshold in THRESHOLDS:
-            proc=subprocess.run([sys.executable,str(Path(__file__).resolve()),"--worker",str(threshold)],cwd=ROOT,check=True,capture_output=True,text=True)
+            proc=subprocess.run([sys.executable,str(Path(__file__).resolve()),"--worker",str(threshold)],cwd=ROOT,capture_output=True,text=True)
+            if proc.returncode:
+                print(proc.stdout, file=sys.stderr)
+                print(proc.stderr, file=sys.stderr)
+                raise RuntimeError(f"Threshold {threshold} worker failed with exit code {proc.returncode}")
             line=next(x for x in proc.stdout.splitlines() if x.startswith("BENCH_JSON="))
             result[str(threshold)]=json.loads(line.split("=",1)[1])["measurements"]
     finally:
