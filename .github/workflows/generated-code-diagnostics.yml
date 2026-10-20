@@ -1,0 +1,27 @@
+name: Cython generated-code diagnostics
+on:
+  pull_request:
+    paths:
+      - benchmarks/generated_code_diagnostics.py
+      - .github/workflows/generated-code-diagnostics.yml
+  workflow_dispatch:
+jobs:
+  generated-code:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython scipy scikit-learn setuptools wheel
+      - run: python benchmarks/generated_code_diagnostics.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cython-generated-${{ matrix.os }}
+          path: generated-code-diagnostics/
