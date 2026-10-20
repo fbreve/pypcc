@@ -1,4 +1,4 @@
-name: Cython finite preflight comparison
+name: Cython finite preflight three-way comparison
 on:
   workflow_dispatch:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/bench-results"
           cp benchmarks/pr36_compare.py "$RUNNER_TEMP/pr36_compare.py"
-          for ref in 1c2fcc6e84596c1334d6ba4b6b2aac945b75c73b 525fce75d8b475704fcccf6d667d4ae703ae253a; do
+          for ref in 1c2fcc6e84596c1334d6ba4b6b2aac945b75c73b 525fce75d8b475704fcccf6d667d4ae703ae253a 10313ab01207d04ccf3b556bd7701d941b87c020; do
             git checkout --detach "$ref"
             python setup.py build_ext --inplace
             BENCH_REF="$ref" PYTHONPATH="$PWD" python "$RUNNER_TEMP/pr36_compare.py" > "$RUNNER_TEMP/bench-results/$ref.log"
@@ -35,15 +35,22 @@ jobs:
           import json, pathlib
           root=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])/'bench-results'
           files=sorted(root.glob('*.json'))
-          a,b=[json.loads(p.read_text()) for p in files]
+          by_sha={p.stem:json.loads(p.read_text()) for p in files}
+          refs=['1c2fcc6e84596c1334d6ba4b6b2aac945b75c73b','525fce75d8b475704fcccf6d667d4ae703ae253a','10313ab01207d04ccf3b556bd7701d941b87c020']
+          if not all(r in by_sha for r in refs):
+              raise RuntimeError('Missing benchmark results for one or more revisions')
+          base, native, hybrid=[by_sha[r] for r in refs]
           with open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a') as f:
-              f.write('| Scenario | '+a['commit'][:8]+' (ms) | '+b['commit'][:8]+' (ms) | Difference % |\n|---|---:|---:|---:|\n')
-              for x,y in zip(a['results'],b['results']):
-                  delta=(y['median_ms']/x['median_ms']-1)*100
-                  f.write(f"| {x['entry']} n={x['n']} | {x['median_ms']:.3f} | {y['median_ms']:.3f} | {delta:+.2f}% |\n")
+              f.write('| Scenario | PR36 (ms) | PR38 native (ms) | PR39 hybrid (ms) | Hybrid vs PR36 | Hybrid vs PR38 |\\n|---|---:|---:|---:|---:|---:|\\n')
+              for a,b,c in zip(base['results'],native['results'],hybrid['results']):
+                  if (a['entry'],a['n']) != (b['entry'],b['n']) or (a['entry'],a['n']) != (c['entry'],c['n']):
+                      raise RuntimeError('Benchmark scenarios do not match')
+                  d1=(c['median_ms']/a['median_ms']-1)*100
+                  d2=(c['median_ms']/b['median_ms']-1)*100
+                  f.write(f"| {a['entry']} n={a['n']} | {a['median_ms']:.3f} | {b['median_ms']:.3f} | {c['median_ms']:.3f} | {d1:+.2f}% | {d2:+.2f}% |\\n")
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cython-finite-benchmark-results
+          name: cython-hybrid-three-way-results
           path: ${{ runner.temp }}/bench-results/
