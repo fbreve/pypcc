@@ -1,0 +1,48 @@
+name: PR36 Cython validation benchmark
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/pr36-benchmark.yml'
+      - 'benchmarks/pr36_compare.py'
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install 'numpy>=2,<3' 'Cython>=3.2,<4' scipy scikit-learn setuptools wheel
+      - name: Compare revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bench-results"
+          for ref in deb87104ae90dc8d02aeae558dc76798cfcfbd6c 1c2fcc6e84596c1334d6ba4b6b2aac945b75c73b; do
+            git checkout --detach "$ref"
+            python setup.py build_ext --inplace
+            BENCH_REF="$ref" python "$GITHUB_WORKSPACE/benchmarks/pr36_compare.py" > "$RUNNER_TEMP/bench-results/$ref.log"
+            cp benchmark-result.json "$RUNNER_TEMP/bench-results/$ref.json"
+            rm -f pcc_step*.so
+          done
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])/'bench-results'
+          files=sorted(root.glob('*.json'))
+          a,b=[json.loads(p.read_text()) for p in files]
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('| Scenario | '+a['commit'][:8]+' (ms) | '+b['commit'][:8]+' (ms) | Difference % |\n|---|---:|---:|---:|\n')
+              for x,y in zip(a['results'],b['results']):
+                  delta=(y['median_ms']/x['median_ms']-1)*100
+                  f.write(f"| {x['entry']} n={x['n']} | {x['median_ms']:.3f} | {y['median_ms']:.3f} | {delta:+.2f}% |\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr36-benchmark-results
+          path: ${{ runner.temp }}/bench-results/
