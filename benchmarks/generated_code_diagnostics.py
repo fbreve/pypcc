@@ -38,7 +38,16 @@ try:
         source = normalized(source)
         SOURCE.write_bytes(source)
         command([sys.executable, "-m", "cython", "-3", "pcc_step.pyx", "-o", str(OUT / f"pcc_step_{variant}.c")])
-        metadata[variant] = {"source_sha256": hashlib.sha256(source).hexdigest(), "generated_c_sha256": hashlib.sha256((OUT / f"pcc_step_{variant}.c").read_bytes()).hexdigest()}
+        generated = (OUT / f"pcc_step_{variant}.c").read_bytes()
+        # Cython can emit platform-dependent preprocessor directives and paths.
+        # Record normalized text hashes as well as raw bytes for comparison.
+        normalized_generated = normalized(generated)
+        metadata[variant] = {
+            "source_sha256": hashlib.sha256(source).hexdigest(),
+            "generated_c_sha256": hashlib.sha256(generated).hexdigest(),
+            "generated_c_lf_sha256": hashlib.sha256(normalized_generated).hexdigest(),
+            "generated_c_size": len(generated),
+        }
         print(variant, metadata[variant])
         cfile = OUT / ("pcc_step_" + variant + ".c")
         asmfile = OUT / ("pcc_step_" + variant + (".asm" if os.name == "nt" else ".s"))
