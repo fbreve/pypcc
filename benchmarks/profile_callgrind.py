@@ -60,9 +60,9 @@ def function_self_counts(path):
             pass
         elif line and line[0].isdigit() and current is not None and not in_call:
             values = line.split()
-            if len(values) >= len(events) + 1:
+            if len(values) >= 2:
                 try:
-                    numbers = [int(x) for x in values[-len(events):]]
+                    numbers = [int(x) for x in values[1:]]\n                    numbers += [0] * (len(events) - len(numbers))
                 except ValueError:
                     continue
                 dest = counts.setdefault(current, [0] * len(events))
