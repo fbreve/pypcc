@@ -1,0 +1,35 @@
+name: Windows Cython compiler sensitivity
+on:
+  pull_request:
+    paths:
+      - benchmarks/windows_compiler_compare.py
+      - .github/workflows/windows-cython-compiler.yml
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: default
+            cl_flags: ""
+          - config: no-inline
+            cl_flags: "/Ob0"
+    env:
+      CL: ${{ matrix.cl_flags }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython scipy scikit-learn setuptools wheel
+      - run: python benchmarks/windows_compiler_compare.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-compiler-${{ matrix.config }}
+          path: fused-matched-result.json
+          if-no-files-found: warn
