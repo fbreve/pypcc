@@ -4,8 +4,9 @@ cimport numpy as np
 cimport cython
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
-                            validate_kernel_scalars, validate_finite)
+                            validate_kernel_scalars)
 from libc.stdlib cimport malloc, free
+from libc.math cimport isfinite
 
 # Fast XORShift RNG (Sequential version)
 @cython.cdivision(True)
@@ -35,6 +36,26 @@ cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize
                 row_max = dominance[i, j]
         total_max += row_max
     return total_max / n_nodes
+
+
+# Typed-memoryview preflight avoids NumPy reductions and Python allocations.
+# Keep these checks before nogil: an invalid input must never mutate state.
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void _require_finite_vector(str name, double[:] values) except *:
+    cdef Py_ssize_t i
+    for i in range(values.shape[0]):
+        if not isfinite(values[i]):
+            raise ValueError(f"{name} must contain only finite numeric values")
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void _require_finite_matrix(str name, double[:, :] values) except *:
+    cdef Py_ssize_t i, j
+    for i in range(values.shape[0]):
+        for j in range(values.shape[1]):
+            if not isfinite(values[i, j]):
+                raise ValueError(f"{name} must contain only finite numeric values")
 
 cpdef pcc_propagate(
     np.int64_t[:, :] neib_list,
@@ -77,9 +98,9 @@ cpdef pcc_propagate(
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
     # Only inputs read by the kernel need preflight; scratch buffers are overwritten.
-    validate_finite("part_strength", np.asarray(part_strength))
-    validate_finite("dominance", np.asarray(dominance))
-    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
+    _require_finite_vector("part_strength", part_strength)
+    _require_finite_matrix("dominance", dominance)
+    _require_finite_vector("dist_weights", dist_weights[:256])
 
     with nogil:
         for it in range(max_iter):
@@ -249,9 +270,9 @@ cpdef pcc_step(
     
     validate_vector("dist_weights", dist_weights, 256)
     # Only inputs read by the kernel need preflight; scratch buffers are overwritten.
-    validate_finite("part_strength", np.asarray(part_strength))
-    validate_finite("dominance", np.asarray(dominance))
-    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
+    _require_finite_vector("part_strength", part_strength)
+    _require_finite_matrix("dominance", dominance)
+    _require_finite_vector("dist_weights", dist_weights[:256])
 
     with nogil:
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
