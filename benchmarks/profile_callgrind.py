@@ -27,12 +27,61 @@ try:
 finally:
     SOURCE.write_bytes(ORIGINAL)
 
+
+
+def function_self_counts(path):
+    """Aggregate exclusive event costs by Callgrind function ID.
+
+    Call records and their cost lines are deliberately excluded: including
+    them would double-count work already attributed to called functions.
+    """
+    events = []
+    names = {}
+    counts = {}
+    current = None
+    in_call = False
+    for line in path.read_text().splitlines():
+        if line.startswith("events: "):
+            events = line.split()[1:]
+        elif line.startswith("fn="):
+            token = line[3:].strip()
+            if token.startswith("("):
+                number, _, name = token.partition(")")
+                current = number[1:]
+                if name.strip():
+                    names[current] = name.strip()
+            else:
+                current = token
+            in_call = False
+        elif line.startswith(("cfn=", "calls=")):
+            in_call = True
+        elif line.startswith(("fl=", "fi=", "ob=", "cob=", "cfi=")):
+            # Source/object metadata does not change the active function.
+            pass
+        elif line and line[0].isdigit() and current is not None and not in_call:
+            values = line.split()
+            if len(values) >= len(events) + 1:
+                try:
+                    numbers = [int(x) for x in values[-len(events):]]
+                except ValueError:
+                    continue
+                dest = counts.setdefault(current, [0] * len(events))
+                for i, value in enumerate(numbers):
+                    dest[i] += value
+    return [
+        {"function": names.get(fid, fid),
+         **dict(zip(events, values))}
+        for fid, values in counts.items()
+        if "pcc_step" in names.get(fid, "").lower()
+    ]
+
 summary = {}
 for variant in ("baseline", "fused"):
     lines = (OUT / f"{variant}.callgrind").read_text().splitlines()
     events = next(line.split()[1:] for line in lines if line.startswith("events: "))
     totals = next(line.split()[1:] for line in lines if line.startswith("summary: "))
     summary[variant] = dict(zip(events, map(int, totals)))
+    summary[variant]["cython_functions"] = function_self_counts(OUT / f"{variant}.callgrind")
     annotated = subprocess.run(
         ["callgrind_annotate", "--inclusive=yes", "--threshold=0",
          str(OUT / f"{variant}.callgrind")],
