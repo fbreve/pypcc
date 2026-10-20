@@ -20,7 +20,7 @@ cdef inline unsigned int xorshift32(unsigned int *state) noexcept nogil:
 @cython.cdivision(True)
 cdef inline double rand_double(unsigned int *state) noexcept nogil:
     cdef unsigned int x = xorshift32(state)
-    return <double>x / 4294967295.0
+    return <double>x / 4294967296.0
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -160,7 +160,7 @@ cdef void pcc_step_sequential(
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
                 for i in range(k):
-                    if randval <= slices_buf[i]:
+                    if randval < slices_buf[i]:
                         choice = i
                         break
                 next_node = neib_list[curnode, choice]
