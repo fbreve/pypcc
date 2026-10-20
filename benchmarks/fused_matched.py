@@ -3,7 +3,7 @@ import json, os, statistics, subprocess, sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-BASE="perf/cython-hybrid-finite-preflight"
+BASE="10313ab01207d04ccf3b556bd7701d941b87c020"
 VARIANTS=("baseline","fused")
 ORDER=("baseline","fused","fused","baseline")
 SCRIPT=ROOT/"benchmarks"/"kernel_scaling.py"
