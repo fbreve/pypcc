@@ -49,6 +49,8 @@ else:
     try:
         for threshold in THRESHOLDS:
             proc=subprocess.run([sys.executable,str(Path(__file__).resolve()),"--worker",str(threshold)],cwd=ROOT,capture_output=True,text=True)
+            # The worker patches pcc_step.pyx; restore the original before the next worker.
+            (ROOT / "pcc_step.pyx").write_text(SOURCE)
             if proc.returncode:
                 print(proc.stdout, file=sys.stderr)
                 print(proc.stderr, file=sys.stderr)
