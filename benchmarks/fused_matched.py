@@ -14,7 +14,8 @@ def run_variant(variant, iteration):
     else:
         source=ORIGINAL
     (ROOT/"pcc_step.pyx").write_text(source)
-    build=subprocess.run([sys.executable,"setup.py","build_ext","--inplace"],cwd=ROOT,capture_output=True,text=True)
+    build=subprocess.run([sys.executable,"setup.py","build_ext","--inplace","--verbose","--force"],cwd=ROOT,capture_output=True,text=True)
+    print(f"BUILD {variant} {iteration}:", (build.stdout+"\n"+build.stderr)[-3500:], flush=True)
     if build.returncode:
         raise RuntimeError(build.stdout+"\n"+build.stderr)
     proc=subprocess.run([sys.executable,str(SCRIPT)],cwd=ROOT,capture_output=True,text=True)
