@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 print("Python:", sys.version)
 print("Platform:", platform.platform())
 print("CC:", os.environ.get("CC", "(default distutils compiler)"))
+print("CL flags:", repr(os.environ.get("CL")))
+print("CL effective flag verification:", "pending compile output inspection")
 for cmd in (["cl"], ["gcc", "--version"]):
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
