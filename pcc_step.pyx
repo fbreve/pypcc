@@ -218,8 +218,13 @@ cdef void pcc_step_sequential(
                     sum_reduc += reduc_val
                     # The row maximum can be tracked during the reduction.
                     # The winning class is increased after the loop.
-                    if i == 0 or dominance[next_node, i] > max_dom:
-                        max_dom = dominance[next_node, i]
+                    # Track only competing classes; the winner receives the
+                    # accumulated reduction after this loop.
+                    if i != label:
+                        if i == 0 or (label == 0 and i == 1):
+                            max_dom = dominance[next_node, i]
+                        elif dominance[next_node, i] > max_dom:
+                            max_dom = dominance[next_node, i]
                 dominance[next_node, label] += sum_reduc
                 if dominance[next_node, label] > max_dom:
                     max_dom = dominance[next_node, label]
