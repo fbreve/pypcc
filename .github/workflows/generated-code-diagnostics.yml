@@ -20,6 +20,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install numpy cython scipy scikit-learn setuptools wheel
+      - name: Enable MSVC developer command prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
       - run: python benchmarks/generated_code_diagnostics.py
       - uses: actions/upload-artifact@v4
         with:
