@@ -58,11 +58,11 @@ def function_self_counts(path):
         elif line.startswith(("fl=", "fi=", "ob=", "cob=", "cfi=")):
             # Source/object metadata does not change the active function.
             pass
-        elif line and line[0].isdigit() and current is not None and not in_call:
+        elif line and (line[0].isdigit() or line[0] in "+-*") and current is not None and not in_call:
             values = line.split()
             if len(values) >= 2:
                 try:
-                    numbers = [int(x) for x in values[1:]]
+                    numbers = [int(x) for x in values[1:] if x.lstrip("+-").isdigit()]
                     numbers += [0] * (len(events) - len(numbers))
                 except ValueError:
                     continue
@@ -83,6 +83,7 @@ for variant in ("baseline", "fused"):
     totals = next(line.split()[1:] for line in lines if line.startswith("summary: "))
     summary[variant] = dict(zip(events, map(int, totals)))
     summary[variant]["cython_functions"] = function_self_counts(OUT / f"{variant}.callgrind")
+    summary[variant]["attribution_note"] = "Provisional: Callgrind compressed event columns (*) and delta encoding are not fully decoded; do not interpret function counts as exact."
     annotated = subprocess.run(
         ["callgrind_annotate", "--inclusive=yes", "--threshold=0",
          str(OUT / f"{variant}.callgrind")],
