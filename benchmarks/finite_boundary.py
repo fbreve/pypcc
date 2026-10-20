@@ -1,4 +1,4 @@
-"""Interleaved Cython finite-preflight crossover benchmark (diagnostic only)."""
+"""Cross-platform Cython finite-preflight crossover benchmark (diagnostic only)."""
 import json, os, statistics, subprocess, sys, time
 from pathlib import Path
 import numpy as np
@@ -42,8 +42,8 @@ if "--worker" in sys.argv:
     measurements={str(n):[measure(module,n) for _ in range(ROUNDS)] for n in SIZES}
     print("BENCH_JSON="+json.dumps(dict(threshold=threshold,measurements=measurements)))
 else:
-    # Interleave rounds at the process level to reduce thermal/runner drift.
-    # Each subprocess compiles its own variant and restores source in finally.
+    # Each variant is measured in an isolated interpreter, with repeated samples.
+    # Runs are grouped by variant; repeat the workflow to assess runner drift.
     result={}
     try:
         for threshold in THRESHOLDS:
