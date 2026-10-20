@@ -14,6 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = "10313ab01207d04ccf3b556bd7701d941b87c020"
 SOURCE = ROOT / "pcc_step.pyx"
 ORIGINAL = SOURCE.read_bytes()
+
+def normalized(data):
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
 OUT = ROOT / "generated-code-diagnostics"
 OUT.mkdir(exist_ok=True)
 
@@ -23,7 +26,7 @@ def command(args):
         raise RuntimeError(f"{args}: {p.stdout}\n{p.stderr}")
     return p.stdout.strip()
 
-metadata = {"platform": platform.platform(), "python": sys.version}
+metadata = {"platform": platform.platform(), "python": sys.version, "numpy": np.__version__}
 try:
     import Cython
     metadata["cython"] = Cython.__version__
@@ -32,6 +35,7 @@ try:
             source = subprocess.run(["git", "show", f"{BASE}:pcc_step.pyx"], cwd=ROOT, check=True, capture_output=True).stdout
         else:
             source = ORIGINAL
+        source = normalized(source)
         SOURCE.write_bytes(source)
         command([sys.executable, "-m", "cython", "-3", "pcc_step.pyx", "-o", str(OUT / f"pcc_step_{variant}.c")])
         metadata[variant] = {"source_sha256": hashlib.sha256(source).hexdigest(), "generated_c_sha256": hashlib.sha256((OUT / f"pcc_step_{variant}.c").read_bytes()).hexdigest()}
