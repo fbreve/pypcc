@@ -62,7 +62,8 @@ def function_self_counts(path):
             values = line.split()
             if len(values) >= 2:
                 try:
-                    numbers = [int(x) for x in values[1:]]\n                    numbers += [0] * (len(events) - len(numbers))
+                    numbers = [int(x) for x in values[1:]]
+                    numbers += [0] * (len(events) - len(numbers))
                 except ValueError:
                     continue
                 dest = counts.setdefault(current, [0] * len(events))
