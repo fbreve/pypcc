@@ -39,7 +39,9 @@ for variant in ("baseline", "fused"):
         cwd=ROOT, check=True, text=True, capture_output=True)
     (OUT / f"{variant}.annotated.txt").write_text(annotated.stdout)
     kernel_lines = [line for line in annotated.stdout.splitlines()
-                    if "pcc_step_sequential" in line or "pcc_propagate" in line]
+                    if "pcc_step" in line.lower() or "__pyx" in line.lower()]
+    (OUT / f"{variant}.annotation-head.txt").write_text(
+        "\\n".join(annotated.stdout.splitlines()[:120]))
     summary[variant]["kernel_lines"] = kernel_lines[:20]
     print(variant, "kernel attribution", *kernel_lines[:10], sep="\\n")
 print(json.dumps(summary, indent=2))
