@@ -6,6 +6,8 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
+import numpy as np
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +36,19 @@ try:
         command([sys.executable, "-m", "cython", "-3", "pcc_step.pyx", "-o", str(OUT / f"pcc_step_{variant}.c")])
         metadata[variant] = {"source_sha256": hashlib.sha256(source).hexdigest(), "generated_c_sha256": hashlib.sha256((OUT / f"pcc_step_{variant}.c").read_bytes()).hexdigest()}
         print(variant, metadata[variant])
+        cfile = OUT / ("pcc_step_" + variant + ".c")
+        asmfile = OUT / ("pcc_step_" + variant + (".asm" if os.name == "nt" else ".s"))
+        if os.name == "nt":
+            args = ["cl", "/nologo", "/O2", "/c", "/FAcs",
+                    "/Fa" + str(asmfile), "/Fo" + str(OUT / (variant + ".obj")),
+                    "/I" + str(Path(sysconfig.get_paths()["include"])),
+                    "/I" + np.get_include(), str(cfile)]
+        else:
+            args = ["gcc", "-O3", "-S", "-fverbose-asm", "-fPIC",
+                    "-I" + sysconfig.get_paths()["include"],
+                    "-I" + np.get_include(), str(cfile), "-o", str(asmfile)]
+        command(args)
+        metadata[variant]["assembly_file"] = asmfile.name
 finally:
     SOURCE.write_bytes(ORIGINAL)
 (OUT / "metadata.json").write_text(json.dumps(metadata, indent=2))
