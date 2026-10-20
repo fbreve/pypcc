@@ -1,0 +1,27 @@
+name: Cython Callgrind profiling
+on:
+  pull_request:
+    paths:
+      - benchmarks/profile_kernel_workload.py
+      - benchmarks/profile_callgrind.py
+      - .github/workflows/cython-callgrind.yml
+  workflow_dispatch:
+jobs:
+  callgrind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y valgrind
+      - run: python -m pip install numpy==2.2.6 cython==3.0.12 scipy scikit-learn setuptools wheel
+      - run: python benchmarks/profile_callgrind.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: callgrind-profile
+          path: callgrind-results/
