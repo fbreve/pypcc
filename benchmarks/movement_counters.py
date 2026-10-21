@@ -94,6 +94,10 @@ def main():
                 for placement in ("stratified", "random"):
                     for seed in (101, 202, 303, 404, 505):
                         args, scratch, weights = build(degree, fraction, 512, layout, placement, seed)
+                        # Skew dominance to represent an evolved state, rather than
+                        # the uniform initial state where every move is accepted.
+                        rng = np.random.default_rng(seed + 1000)
+                        args[11][:] = rng.dirichlet(np.full(8, 0.35), size=len(args[2]))
                         clone = [np.array(a, copy=True) if isinstance(a, np.ndarray) else a for a in args]
                         counts = trace_one_step(args, weights)
                         pcc_step(*clone, 1.0, 2.0, prob=scratch[4],
@@ -104,6 +108,8 @@ def main():
                                 raise AssertionError(f"Trace mismatch field {index}, degree={degree}, fraction={fraction}, layout={layout}, placement={placement}, seed={seed}")
                         records.append(dict(degree=degree, fraction=fraction, layout=layout,
                                             placement=placement, seed=seed, **counts))
+    if not any(record["rejected"] > 0 for record in records):
+        raise AssertionError("Nonuniform dominance must exercise movement rejection")
     Path("movement-counters-result.json").write_text(json.dumps(records, indent=2))
     print("Validated", len(records), "first-step decision traces against Cython")
     for r in records:
