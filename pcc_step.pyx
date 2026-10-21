@@ -97,9 +97,9 @@ cpdef pcc_propagate(
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
-    cdef unsigned long long counters[8]
+    cdef unsigned long long counters[13]
     cdef Py_ssize_t ci
-    for ci in range(8):
+    for ci in range(13):
         counters[ci] = 0
     
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
@@ -131,7 +131,7 @@ cpdef pcc_propagate(
                         break
 
     if trace_counts is not None:
-        names = ("greedy_attempts", "greedy_selected", "random_selected", "labeled_destinations", "unlabeled_destinations", "accepted", "rejected", "skipped")
+        names = ("greedy_attempts", "greedy_selected", "random_selected", "labeled_destinations", "unlabeled_destinations", "accepted", "rejected", "skipped", "dominance_zero_step", "dominance_zero_cells", "dominance_clipped_cells", "dominance_full_step_cells", "dominance_same_class_cells")
         for ci in range(8):
             trace_counts[names[ci]] = counters[ci]
     if return_info:
@@ -229,7 +229,17 @@ cdef void pcc_step_sequential(
                 counts[4] += 1
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
+                if step == 0.0:
+                    counts[8] += 1
                 for i in range(c):
+                    if i == label:
+                        counts[12] += 1
+                    if dominance[next_node, i] == 0.0:
+                        counts[9] += 1
+                    if dominance[next_node, i] < step:
+                        counts[10] += 1
+                    else:
+                        counts[11] += 1
                     if dominance[next_node, i] < step:
                         reduc_val = dominance[next_node, i]
                     else:
