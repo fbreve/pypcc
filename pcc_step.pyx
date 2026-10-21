@@ -283,6 +283,226 @@ cdef void pcc_step_sequential(
             else:
                 counts[6] += 1
 
+cpdef pcc_propagate(
+    np.int64_t[:, :] neib_list,
+    np.int64_t[:]    neib_qt,
+    np.int64_t[:]    labels,
+    double           p_grd,
+    double           delta_v,
+    np.int64_t       c,
+    double[:]        zerovec,
+    np.int64_t[:]    part_curnode,
+    np.int64_t[:]    part_label,
+    double[:]        part_strength,
+    unsigned char[:, :] dist_table,
+    double[:, :]     dominance,
+    double[:, :]     owndeg,
+    double           deltap,
+    double           dexp,
+    double[:]        dom_row,
+    double[:]        reduc,
+    double[:]        dom_list,
+    double[:]        dist_list,
+    double[:]        prob,
+    double[:]        slices,
+    double[:]        dist_weights,
+    int              max_iter,
+    int              early_stop,
+    int              es_chk,
+    int              stop_max,
+    bint             return_info = False,
+    object           trace_counts = None,
+    bint             fused_max = False
+):
+    cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
+    cdef double mmpot, max_mmpot = 0.0
+    cdef int stop_cnt = 0
+    cdef unsigned int rng_state = 123456789
+    cdef unsigned long long counters[13]
+    cdef Py_ssize_t ci
+    for ci in range(13):
+        counters[ci] = 0
+    
+    validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
+    max_degree = validate_step_inputs(
+        neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
+        part_strength, dist_table, dominance, owndeg)
+    validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
+                     prob, slices, dist_weights)
+    # Only inputs read by the kernel need preflight; scratch buffers are overwritten.
+    _require_finite_vector("part_strength", part_strength)
+    _require_finite_matrix("dominance", dominance)
+    _require_finite_vector("dist_weights", dist_weights[:256])
+
+    with nogil:
+        for it in range(max_iter):
+            pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
+                               part_curnode, part_label, part_strength, dist_table,
+                               dominance, owndeg, deltap, dexp,
+                               dist_weights, prob, slices, &rng_state, &counters[0], False)
+
+            if early_stop != 0 and it % 10 == 0:
+                mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
+                if mmpot > max_mmpot:
+                    max_mmpot = mmpot
+                    stop_cnt = 0
+                else:
+                    stop_cnt += 1
+                    if stop_cnt > stop_max:
+                        break
+
+    if trace_counts is not None:
+        names = ("greedy_attempts", "greedy_selected", "random_selected", "labeled_destinations", "unlabeled_destinations", "accepted", "rejected", "skipped", "dominance_zero_step", "dominance_zero_cells", "dominance_clipped_cells", "dominance_full_step_cells", "dominance_same_class_cells")
+        for ci in range(13):
+            trace_counts[names[ci]] = counters[ci]
+    if return_info:
+        return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef void pcc_step_sequential(
+    np.int64_t[:, :] neib_list,
+    np.int64_t[:]    neib_qt,
+    np.int64_t[:]    labels,
+    double           p_grd,
+    double           delta_v,
+    np.int64_t       c,
+    double[:]        zerovec,
+    np.int64_t[:]    part_curnode,
+    np.int64_t[:]    part_label,
+    double[:]        part_strength,
+    unsigned char[:, :] dist_table,
+    double[:, :]     dominance,
+    double[:, :]     owndeg,
+    double           deltap,
+    double           dexp,
+    double[:]        dist_weights,
+    double[:]        prob_buf,
+    double[:]        slices_buf,
+    unsigned int    *rng_state,
+    unsigned long long *counts,
+    bint fused_max
+) noexcept nogil:
+    cdef Py_ssize_t n_particles = part_curnode.shape[0]
+    cdef Py_ssize_t n_nodes = neib_list.shape[0]
+    cdef Py_ssize_t p_i, curnode, k, i, choice, next_node
+    cdef Py_ssize_t label
+    cdef double randval, step, reduc_val, sum_reduc
+    cdef double prob_sum, max_dom
+    cdef unsigned char cur_d, next_d
+    cdef int greedy
+
+    for p_i in range(n_particles):
+        curnode = part_curnode[p_i]
+        if curnode < 0 or curnode >= n_nodes:
+            counts[7] += 1
+            continue
+
+        k = neib_qt[curnode]
+        if k <= 0:
+            counts[7] += 1
+            continue
+
+        label = part_label[p_i]
+        if label < 0 or label >= c:
+            counts[7] += 1
+            continue
+
+        randval = rand_double(rng_state)
+
+        if randval < p_grd:
+            counts[0] += 1
+            # greedy
+            prob_sum = 0.0
+            for i in range(k):
+                next_node = neib_list[curnode, i]
+                # lookup with bounds check
+                if next_node < 0 or next_node >= n_nodes:
+                    prob_buf[i] = 0.0
+                else:
+                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                prob_sum += prob_buf[i]
+                slices_buf[i] = prob_sum
+
+            if prob_sum > 0.0:
+                randval = rand_double(rng_state) * prob_sum
+                choice = 0
+                for i in range(k):
+                    if randval < slices_buf[i]:
+                        choice = i
+                        break
+                next_node = neib_list[curnode, choice]
+                greedy = 1
+                counts[1] += 1
+            else:
+                next_node = neib_list[curnode, xorshift32(rng_state) % k]
+                greedy = 0
+        else:
+            # random
+            next_node = neib_list[curnode, xorshift32(rng_state) % k]
+            greedy = 0
+
+        if greedy == 0:
+            counts[2] += 1
+        # update
+        if next_node >= 0 and next_node < n_nodes:
+            if labels[next_node] == -1:
+                counts[4] += 1
+                step = part_strength[p_i] * (delta_v / (c - 1))
+                sum_reduc = 0.0
+                if step == 0.0:
+                    counts[8] += 1
+                for i in range(c):
+                    if i == label:
+                        counts[12] += 1
+                    if dominance[next_node, i] == 0.0:
+                        counts[9] += 1
+                    if dominance[next_node, i] < step:
+                        counts[10] += 1
+                    else:
+                        counts[11] += 1
+                    if dominance[next_node, i] < step:
+                        reduc_val = dominance[next_node, i]
+                    else:
+                        reduc_val = step
+                    dominance[next_node, i] -= reduc_val
+                    sum_reduc += reduc_val
+                    if fused_max:
+                        if i == 0 or dominance[next_node, i] > max_dom:
+                            max_dom = dominance[next_node, i]
+                dominance[next_node, label] += sum_reduc
+                if fused_max and dominance[next_node, label] > max_dom:
+                    max_dom = dominance[next_node, label]
+            else:
+                counts[3] += 1
+
+            if deltap == 1.0:
+                part_strength[p_i] = dominance[next_node, label]
+            else:
+                part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
+
+            cur_d = dist_table[curnode, p_i]
+            next_d = dist_table[next_node, p_i]
+            if cur_d < 255:
+                if next_d > <unsigned char>(cur_d + 1):
+                    dist_table[next_node, p_i] = cur_d + 1
+
+            if greedy == 0:
+                owndeg[next_node, label] += part_strength[p_i]
+
+            if not fused_max or labels[next_node] != -1:
+                max_dom = dominance[next_node, 0]
+                for i in range(1, c):
+                    if dominance[next_node, i] > max_dom:
+                        max_dom = dominance[next_node, i]
+
+            if dominance[next_node, label] == max_dom:
+                part_curnode[p_i] = next_node
+                counts[5] += 1
+            else:
+                counts[6] += 1
+
 cpdef pcc_step(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
