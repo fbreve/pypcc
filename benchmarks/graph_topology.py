@@ -73,56 +73,58 @@ def measure(degree, fraction, particles, layout="prefix", placement="prefix", se
         samples.append((time.perf_counter_ns() - start) / 1e6)
     return samples
 
-results = []
-for dimension, degree, fraction, particles in CASES:
-    layout = "prefix"
-    samples = measure(degree, fraction, particles, layout)
-    median = statistics.median(samples)
-    results.append(dict(dimension=dimension, nodes=NODES,
-                        degree=degree, labeled_fraction=fraction, layout=layout, placement="prefix",
-                        particles=particles, median_ms=median,
-                        samples_ms=samples,
-                        ns_per_particle_iteration=median * 1e6 / (particles * ITERATIONS)))
-for degree in (2, 8, 32):
-    for fraction in (0.1, 0.25, 0.5):
-        for layout in ("prefix", "stratified", "random"):
-            samples = measure(degree, fraction, 512, layout)
-            median = statistics.median(samples)
-            results.append(dict(dimension="degree_label_layout", nodes=NODES,
-                                degree=degree, labeled_fraction=fraction,
-                                layout=layout, placement="prefix", particles=512, median_ms=median,
-                                samples_ms=samples,
-                                ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
-for degree in (2, 8, 32):
-    for fraction in (0.1, 0.25, 0.5):
-        for layout in ("prefix", "stratified", "random"):
-            for placement in ("stratified", "random"):
-                samples = measure(degree, fraction, 512, layout, placement)
+if __name__ == '__main__':
+    results = []
+    for dimension, degree, fraction, particles in CASES:
+        layout = "prefix"
+        samples = measure(degree, fraction, particles, layout)
+        median = statistics.median(samples)
+        results.append(dict(dimension=dimension, nodes=NODES,
+                            degree=degree, labeled_fraction=fraction, layout=layout, placement="prefix",
+                            particles=particles, median_ms=median,
+                            samples_ms=samples,
+                            ns_per_particle_iteration=median * 1e6 / (particles * ITERATIONS)))
+    for degree in (2, 8, 32):
+        for fraction in (0.1, 0.25, 0.5):
+            for layout in ("prefix", "stratified", "random"):
+                samples = measure(degree, fraction, 512, layout)
                 median = statistics.median(samples)
-                results.append(dict(dimension="placement_control", nodes=NODES,
+                results.append(dict(dimension="degree_label_layout", nodes=NODES,
                                     degree=degree, labeled_fraction=fraction,
-                                    layout=layout, placement=placement, particles=512,
-                                    median_ms=median, samples_ms=samples,
+                                    layout=layout, placement="prefix", particles=512, median_ms=median,
+                                    samples_ms=samples,
                                     ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
-# Multiple independent layouts: report per-seed medians rather than treating
-# repeated timings of the same layout as independent spatial samples.
-for degree in (8, 32):
-    for fraction in (0.1, 0.25, 0.5):
-        for layout in ("prefix", "random"):
-            for placement in ("stratified", "random"):
-                for seed in (101, 202, 303, 404, 505):
-                    samples = measure(degree, fraction, 512, layout, placement, seed)
+    for degree in (2, 8, 32):
+        for fraction in (0.1, 0.25, 0.5):
+            for layout in ("prefix", "stratified", "random"):
+                for placement in ("stratified", "random"):
+                    samples = measure(degree, fraction, 512, layout, placement)
                     median = statistics.median(samples)
-                    results.append(dict(dimension="multiseed", nodes=NODES,
+                    results.append(dict(dimension="placement_control", nodes=NODES,
                                         degree=degree, labeled_fraction=fraction,
-                                        layout=layout, placement=placement,
-                                        seed=seed, particles=512,
+                                        layout=layout, placement=placement, particles=512,
                                         median_ms=median, samples_ms=samples,
                                         ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
-Path("graph-topology-result.json").write_text(
-    json.dumps(dict(python=sys.version, numpy=np.__version__,
-                    iterations=ITERATIONS, results=results), indent=2))
-print("| Dimension | Degree | Labeled | Particles | Layout | Placement | Seed | Median ms | ns/particle-iteration |")
-print("|---|---:|---:|---:|---|---|---:|---:|---:|")
-for x in results:
-    print(f'| {x["dimension"]} | {x["degree"]} | {x["labeled_fraction"]:.0%} | {x["particles"]} | {x["layout"]} | {x["placement"]} | {x.get("seed", "-")} | {x["median_ms"]:.3f} | {x["ns_per_particle_iteration"]:.1f} |')
+    # Multiple independent layouts: report per-seed medians rather than treating
+    # repeated timings of the same layout as independent spatial samples.
+    for degree in (8, 32):
+        for fraction in (0.1, 0.25, 0.5):
+            for layout in ("prefix", "random"):
+                for placement in ("stratified", "random"):
+                    for seed in (101, 202, 303, 404, 505):
+                        samples = measure(degree, fraction, 512, layout, placement, seed)
+                        median = statistics.median(samples)
+                        results.append(dict(dimension="multiseed", nodes=NODES,
+                                            degree=degree, labeled_fraction=fraction,
+                                            layout=layout, placement=placement,
+                                            seed=seed, particles=512,
+                                            median_ms=median, samples_ms=samples,
+                                            ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
+    Path("graph-topology-result.json").write_text(
+        json.dumps(dict(python=sys.version, numpy=np.__version__,
+                        iterations=ITERATIONS, results=results), indent=2))
+    print("| Dimension | Degree | Labeled | Particles | Layout | Placement | Seed | Median ms | ns/particle-iteration |")
+    print("|---|---:|---:|---:|---|---|---:|---:|---:|")
+    for x in results:
+        print(f'| {x["dimension"]} | {x["degree"]} | {x["labeled_fraction"]:.0%} | {x["particles"]} | {x["layout"]} | {x["placement"]} | {x.get("seed", "-")} | {x["median_ms"]:.3f} | {x["ns_per_particle_iteration"]:.1f} |')
+    
