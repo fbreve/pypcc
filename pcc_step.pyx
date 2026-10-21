@@ -91,7 +91,8 @@ cpdef pcc_propagate(
     int              es_chk,
     int              stop_max,
     bint             return_info = False,
-    object           trace_counts = None
+    object           trace_counts = None,
+    bint             fused_max = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -118,7 +119,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state, &counters[0])
+                               dist_weights, prob, slices, &rng_state, &counters[0], fused_max)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -160,7 +161,8 @@ cdef void pcc_step_sequential(
     double[:]        prob_buf,
     double[:]        slices_buf,
     unsigned int    *rng_state,
-    unsigned long long *counts
+    unsigned long long *counts,
+    bint fused_max
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -246,7 +248,12 @@ cdef void pcc_step_sequential(
                         reduc_val = step
                     dominance[next_node, i] -= reduc_val
                     sum_reduc += reduc_val
+                    if fused_max:
+                        if i == 0 or dominance[next_node, i] > max_dom:
+                            max_dom = dominance[next_node, i]
                 dominance[next_node, label] += sum_reduc
+                if fused_max and dominance[next_node, label] > max_dom:
+                    max_dom = dominance[next_node, label]
             else:
                 counts[3] += 1
 
@@ -264,10 +271,11 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            max_dom = dominance[next_node, 0]
-            for i in range(1, c):
-                if dominance[next_node, i] > max_dom:
-                    max_dom = dominance[next_node, i]
+            if not fused_max or labels[next_node] != -1:
+                max_dom = dominance[next_node, 0]
+                for i in range(1, c):
+                    if dominance[next_node, i] > max_dom:
+                        max_dom = dominance[next_node, i]
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
@@ -323,4 +331,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state, &counters[0])
+                           dist_weights, prob, slices, &rng_state, &counters[0], fused_max)
