@@ -240,11 +240,14 @@ cdef void pcc_step_sequential(
                         counts[10] += 1
                     else:
                         counts[11] += 1
-                    if dominance[next_node, i] < step:
+                    if dominance[next_node, i] == 0.0:
+                        reduc_val = 0.0
+                    elif dominance[next_node, i] < step:
                         reduc_val = dominance[next_node, i]
+                        dominance[next_node, i] -= reduc_val
                     else:
                         reduc_val = step
-                    dominance[next_node, i] -= reduc_val
+                        dominance[next_node, i] -= reduc_val
                     sum_reduc += reduc_val
                 dominance[next_node, label] += sum_reduc
             else:
