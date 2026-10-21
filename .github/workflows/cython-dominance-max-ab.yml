@@ -1,0 +1,27 @@
+name: Cython dominance maximum A/B
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'benchmarks/dominance_max_ab.py'
+      - '.github/workflows/cython-dominance-max-ab.yml'
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython setuptools
+      - run: python setup.py build_ext --inplace
+      - run: python benchmarks/dominance_max_ab.py > dominance-max-results.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dominance-max-${{ matrix.os }}
+          path: dominance-max-results.jsonl
