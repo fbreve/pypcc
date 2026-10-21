@@ -90,12 +90,17 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    object           trace_counts = None
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
+    cdef unsigned long long counters[8]
+    cdef Py_ssize_t ci
+    for ci in range(8):
+        counters[ci] = 0
     
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
@@ -113,7 +118,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state)
+                               dist_weights, prob, slices, &rng_state, &counters[0])
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -125,6 +130,10 @@ cpdef pcc_propagate(
                     if stop_cnt > stop_max:
                         break
 
+    if trace_counts is not None:
+        names = ("greedy_attempts", "greedy_selected", "random_selected", "labeled_destinations", "unlabeled_destinations", "accepted", "rejected", "skipped")
+        for ci in range(8):
+            trace_counts[names[ci]] = counters[ci]
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
 
@@ -150,7 +159,8 @@ cdef void pcc_step_sequential(
     double[:]        dist_weights,
     double[:]        prob_buf,
     double[:]        slices_buf,
-    unsigned int    *rng_state
+    unsigned int    *rng_state,
+    unsigned long long *counts
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -163,18 +173,24 @@ cdef void pcc_step_sequential(
 
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
-        if curnode < 0 or curnode >= n_nodes: continue
+        if curnode < 0 or curnode >= n_nodes:
+            counts[7] += 1
+            continue
 
         k = neib_qt[curnode]
-        if k <= 0: continue
+        if k <= 0:
+            counts[7] += 1
+            continue
 
         label = part_label[p_i]
         if label < 0 or label >= c:
+            counts[7] += 1
             continue
 
         randval = rand_double(rng_state)
 
         if randval < p_grd:
+            counts[0] += 1
             # greedy
             prob_sum = 0.0
             for i in range(k):
@@ -196,6 +212,7 @@ cdef void pcc_step_sequential(
                         break
                 next_node = neib_list[curnode, choice]
                 greedy = 1
+                counts[1] += 1
             else:
                 next_node = neib_list[curnode, xorshift32(rng_state) % k]
                 greedy = 0
@@ -204,9 +221,12 @@ cdef void pcc_step_sequential(
             next_node = neib_list[curnode, xorshift32(rng_state) % k]
             greedy = 0
 
+        if greedy == 0:
+            counts[2] += 1
         # update
         if next_node >= 0 and next_node < n_nodes:
             if labels[next_node] == -1:
+                counts[4] += 1
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
                 for i in range(c):
@@ -217,6 +237,8 @@ cdef void pcc_step_sequential(
                     dominance[next_node, i] -= reduc_val
                     sum_reduc += reduc_val
                 dominance[next_node, label] += sum_reduc
+            else:
+                counts[3] += 1
 
             if deltap == 1.0:
                 part_strength[p_i] = dominance[next_node, label]
@@ -239,6 +261,9 @@ cdef void pcc_step_sequential(
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
+                counts[5] += 1
+            else:
+                counts[6] += 1
 
 cpdef pcc_step(
     np.int64_t[:, :] neib_list,
@@ -261,6 +286,10 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
+    cdef unsigned long long counters[8]
+    cdef Py_ssize_t ci
+    for ci in range(8):
+        counters[ci] = 0
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
@@ -284,4 +313,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state)
+                           dist_weights, prob, slices, &rng_state, &counters[0])
