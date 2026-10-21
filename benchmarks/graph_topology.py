@@ -25,7 +25,7 @@ CASES = (
     + [("layout", 8, 0.25, 512) for _ in range(1)]
 )
 
-def build(degree, fraction, particles, layout="prefix"):
+def build(degree, fraction, particles, layout="prefix", placement="prefix"):
     # Symmetric circulant graph: exactly 'degree' distinct neighbors.
     ids = np.arange(NODES, dtype=np.int64)
     offsets = np.array([v for k in range(1, degree // 2 + 1) for v in (-k, k)])
@@ -42,7 +42,14 @@ def build(degree, fraction, particles, layout="prefix"):
     else:
         raise ValueError(layout)
     labels[selected] = np.arange(count, dtype=np.int64) % CLASSES
-    positions = np.arange(particles, dtype=np.int64) % NODES
+    if placement == "prefix":
+        positions = np.arange(particles, dtype=np.int64) % NODES
+    elif placement == "stratified":
+        positions = np.arange(particles, dtype=np.int64) * NODES // particles
+    elif placement == "random":
+        positions = np.random.default_rng(20261021).choice(NODES, size=particles, replace=False)
+    else:
+        raise ValueError(placement)
     classes = np.arange(particles, dtype=np.int64) % CLASSES
     strength = np.ones(particles, dtype=np.float64)
     distance = np.zeros((NODES, particles), dtype=np.uint8)
@@ -56,10 +63,10 @@ def build(degree, fraction, particles, layout="prefix"):
                np.zeros(degree), np.zeros(degree)]
     return args, scratch, np.ones(257, dtype=np.float64)
 
-def measure(degree, fraction, particles, layout="prefix"):
+def measure(degree, fraction, particles, layout="prefix", placement="prefix"):
     samples = []
     for _ in range(REPEATS):
-        args, scratch, weights = build(degree, fraction, particles, layout)
+        args, scratch, weights = build(degree, fraction, particles, layout, placement)
         start = time.perf_counter_ns()
         pcc_propagate(*args, 1.0, 2.0, *scratch, weights,
                       ITERATIONS, 0, 10, 1)
@@ -72,7 +79,7 @@ for dimension, degree, fraction, particles in CASES:
     samples = measure(degree, fraction, particles, layout)
     median = statistics.median(samples)
     results.append(dict(dimension=dimension, nodes=NODES,
-                        degree=degree, labeled_fraction=fraction, layout=layout,
+                        degree=degree, labeled_fraction=fraction, layout=layout, placement="prefix",
                         particles=particles, median_ms=median,
                         samples_ms=samples,
                         ns_per_particle_iteration=median * 1e6 / (particles * ITERATIONS)))
@@ -83,13 +90,24 @@ for degree in (2, 8, 32):
             median = statistics.median(samples)
             results.append(dict(dimension="degree_label_layout", nodes=NODES,
                                 degree=degree, labeled_fraction=fraction,
-                                layout=layout, particles=512, median_ms=median,
+                                layout=layout, placement="prefix", particles=512, median_ms=median,
                                 samples_ms=samples,
                                 ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
+for degree in (2, 8, 32):
+    for fraction in (0.1, 0.25, 0.5):
+        for layout in ("prefix", "stratified", "random"):
+            for placement in ("stratified", "random"):
+                samples = measure(degree, fraction, 512, layout, placement)
+                median = statistics.median(samples)
+                results.append(dict(dimension="placement_control", nodes=NODES,
+                                    degree=degree, labeled_fraction=fraction,
+                                    layout=layout, placement=placement, particles=512,
+                                    median_ms=median, samples_ms=samples,
+                                    ns_per_particle_iteration=median * 1e6 / (512 * ITERATIONS)))
 Path("graph-topology-result.json").write_text(
     json.dumps(dict(python=sys.version, numpy=np.__version__,
                     iterations=ITERATIONS, results=results), indent=2))
-print("| Dimension | Degree | Labeled | Particles | Layout | Median ms | ns/particle-iteration |")
-print("|---|---:|---:|---:|---|---:|---:|")
+print("| Dimension | Degree | Labeled | Particles | Layout | Placement | Median ms | ns/particle-iteration |")
+print("|---|---:|---:|---:|---|---|---:|---:|")
 for x in results:
-    print(f'| {x["dimension"]} | {x["degree"]} | {x["labeled_fraction"]:.0%} | {x["particles"]} | {x["layout"]} | {x["median_ms"]:.3f} | {x["ns_per_particle_iteration"]:.1f} |')
+    print(f'| {x["dimension"]} | {x["degree"]} | {x["labeled_fraction"]:.0%} | {x["particles"]} | {x["layout"]} | {x["placement"]} | {x["median_ms"]:.3f} | {x["ns_per_particle_iteration"]:.1f} |')
