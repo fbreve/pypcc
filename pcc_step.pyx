@@ -119,7 +119,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state, &counters[0], fused_max)
+                               dist_weights, prob, slices, &rng_state, &counters[0], False)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
