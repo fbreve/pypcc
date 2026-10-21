@@ -118,7 +118,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state, &counters[0])
+                               dist_weights, prob, slices, &rng_state, &counters[0] if trace_counts is not None else NULL)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -174,23 +174,27 @@ cdef void pcc_step_sequential(
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
         if curnode < 0 or curnode >= n_nodes:
-            counts[7] += 1
+            if counts != NULL:
+                counts[7] += 1
             continue
 
         k = neib_qt[curnode]
         if k <= 0:
-            counts[7] += 1
+            if counts != NULL:
+                counts[7] += 1
             continue
 
         label = part_label[p_i]
         if label < 0 or label >= c:
-            counts[7] += 1
+            if counts != NULL:
+                counts[7] += 1
             continue
 
         randval = rand_double(rng_state)
 
         if randval < p_grd:
-            counts[0] += 1
+            if counts != NULL:
+                counts[0] += 1
             # greedy
             prob_sum = 0.0
             for i in range(k):
@@ -212,7 +216,8 @@ cdef void pcc_step_sequential(
                         break
                 next_node = neib_list[curnode, choice]
                 greedy = 1
-                counts[1] += 1
+                if counts != NULL:
+                    counts[1] += 1
             else:
                 next_node = neib_list[curnode, xorshift32(rng_state) % k]
                 greedy = 0
@@ -222,31 +227,39 @@ cdef void pcc_step_sequential(
             greedy = 0
 
         if greedy == 0:
-            counts[2] += 1
+            if counts != NULL:
+                counts[2] += 1
         # update
         if next_node >= 0 and next_node < n_nodes:
             if labels[next_node] == -1:
-                counts[4] += 1
+                if counts != NULL:
+                    counts[4] += 1
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
                 if step == 0.0:
-                    counts[8] += 1
+                    if counts != NULL:
+                        counts[8] += 1
                 for i in range(c):
                     if i == label:
-                        counts[12] += 1
+                        if counts != NULL:
+                            counts[12] += 1
                     if dominance[next_node, i] == 0.0:
-                        counts[9] += 1
+                        if counts != NULL:
+                            counts[9] += 1
                     if dominance[next_node, i] < step:
-                        counts[10] += 1
+                        if counts != NULL:
+                            counts[10] += 1
                         reduc_val = dominance[next_node, i]
                     else:
-                        counts[11] += 1
+                        if counts != NULL:
+                            counts[11] += 1
                         reduc_val = step
                     dominance[next_node, i] -= reduc_val
                     sum_reduc += reduc_val
                 dominance[next_node, label] += sum_reduc
             else:
-                counts[3] += 1
+                if counts != NULL:
+                    counts[3] += 1
 
             if deltap == 1.0:
                 part_strength[p_i] = dominance[next_node, label]
@@ -269,9 +282,11 @@ cdef void pcc_step_sequential(
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
-                counts[5] += 1
+                if counts != NULL:
+                    counts[5] += 1
             else:
-                counts[6] += 1
+                if counts != NULL:
+                    counts[6] += 1
 
 cpdef pcc_step(
     np.int64_t[:, :] neib_list,
