@@ -38,7 +38,7 @@ def main():
                                     if not np.array_equal(a,z,equal_nan=True):
                                         raise AssertionError(f"State divergence: {case}, mode={mode}")
                         medians=[statistics.median(x) for x in samples]
-                        row=dict(degree=degree,fraction=fraction,layout=layout,placement=placement,seed=seed,full_ms=medians[0],for_else_ms=medians[1],while_ms=medians[1],for_else_change_pct=(medians[1]/medians[0]-1)*100,while_change_pct=(medians[2]/medians[0]-1)*100)
+                        row=dict(degree=degree,fraction=fraction,layout=layout,placement=placement,seed=seed,full_ms=medians[0],fused_ms=medians[1],fused_change_pct=(medians[1]/medians[0]-1)*100)
                         print(json.dumps(row),flush=True)
                         results.append(row)
     summary=dict(cases=len(results))
