@@ -92,7 +92,7 @@ cpdef pcc_propagate(
     int              stop_max,
     bint             return_info = False,
     object           trace_counts = None,
-    bint             max_early_reject = True
+    int              max_early_reject = 2
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -162,7 +162,7 @@ cdef void pcc_step_sequential(
     double[:]        slices_buf,
     unsigned int    *rng_state,
     unsigned long long *counts,
-    bint max_early_reject
+    int max_early_reject
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -266,9 +266,18 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            if max_early_reject:
-                # The particle moves iff no other class has strictly greater
-                # dominance. Equality remains accepted (ties).
+            if max_early_reject == 1:
+                # Original for/else short-circuit; accept ties.
+                max_dom = dominance[next_node, label]
+                for i in range(c):
+                    if dominance[next_node, i] > max_dom:
+                        break
+                else:
+                    part_curnode[p_i] = next_node
+                    counts[5] += 1
+                    continue
+                counts[6] += 1
+            elif max_early_reject == 2:
                 max_dom = dominance[next_node, label]
                 i = 0
                 while i < c and dominance[next_node, i] <= max_dom:
@@ -308,7 +317,7 @@ cpdef pcc_step(
     double[:]        prob = None,
     double[:]        slices = None,
     double[:]        dist_weights = None,
-    bint             max_early_reject = True,
+    int              max_early_reject = 2,
 ):
     cdef unsigned int rng_state = 123456789
     cdef unsigned long long counters[13]
