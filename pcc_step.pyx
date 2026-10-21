@@ -132,7 +132,7 @@ cpdef pcc_propagate(
 
     if trace_counts is not None:
         names = ("greedy_attempts", "greedy_selected", "random_selected", "labeled_destinations", "unlabeled_destinations", "accepted", "rejected", "skipped", "dominance_zero_step", "dominance_zero_cells", "dominance_clipped_cells", "dominance_full_step_cells", "dominance_same_class_cells")
-        for ci in range(8):
+        for ci in range(13):
             trace_counts[names[ci]] = counters[ci]
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
@@ -298,7 +298,7 @@ cpdef pcc_step(
     cdef unsigned int rng_state = 123456789
     cdef unsigned long long counters[8]
     cdef Py_ssize_t ci
-    for ci in range(8):
+    for ci in range(13):
         counters[ci] = 0
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
