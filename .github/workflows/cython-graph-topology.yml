@@ -1,0 +1,26 @@
+name: Cython graph topology benchmark
+on:
+  pull_request:
+    paths:
+      - benchmarks/graph_topology.py
+      - .github/workflows/cython-graph-topology.yml
+  workflow_dispatch:
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython scipy scikit-learn setuptools wheel
+      - run: python setup.py build_ext --inplace
+      - run: python benchmarks/graph_topology.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graph-topology-${{ matrix.os }}
+          path: graph-topology-result.json
