@@ -91,7 +91,8 @@ cpdef pcc_propagate(
     int              es_chk,
     int              stop_max,
     bint             return_info = False,
-    object           trace_counts = None
+    object           trace_counts = None,
+    bint             benchmark_force_counters = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -118,7 +119,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state, &counters[0] if trace_counts is not None else NULL)
+                               dist_weights, prob, slices, &rng_state, &counters[0] if trace_counts is not None or benchmark_force_counters else NULL)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
