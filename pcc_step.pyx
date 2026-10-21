@@ -270,14 +270,14 @@ cdef void pcc_step_sequential(
                 # The particle moves iff no other class has strictly greater
                 # dominance. Equality remains accepted (ties).
                 max_dom = dominance[next_node, label]
-                for i in range(c):
-                    if dominance[next_node, i] > max_dom:
-                        break
-                else:
+                i = 0
+                while i < c and dominance[next_node, i] <= max_dom:
+                    i += 1
+                if i == c:
                     part_curnode[p_i] = next_node
                     counts[5] += 1
-                    continue
-                counts[6] += 1
+                else:
+                    counts[6] += 1
             else:
                 max_dom = dominance[next_node, 0]
                 for i in range(1, c):
