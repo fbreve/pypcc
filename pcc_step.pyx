@@ -216,13 +216,7 @@ cdef void pcc_step_sequential(
                         reduc_val = step
                     dominance[next_node, i] -= reduc_val
                     sum_reduc += reduc_val
-                    # The row maximum can be tracked during the reduction.
-                    # The winning class is increased after the loop.
-                    if i == 0 or dominance[next_node, i] > max_dom:
-                        max_dom = dominance[next_node, i]
                 dominance[next_node, label] += sum_reduc
-                if dominance[next_node, label] > max_dom:
-                    max_dom = dominance[next_node, label]
 
             if deltap == 1.0:
                 part_strength[p_i] = dominance[next_node, label]
@@ -238,13 +232,12 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            # Unlabeled rows were already scanned while updating dominance.
-            # Labeled rows were not modified and still require a max scan.
-            if labels[next_node] != -1:
-                max_dom = dominance[next_node, 0]
-                for i in range(1, c):
-                    if dominance[next_node, i] > max_dom:
-                        max_dom = dominance[next_node, i]
+            # Evaluate the winning class first, then compare competitors.
+            # The reduction loop above remains unchanged.
+            max_dom = dominance[next_node, label]
+            for i in range(c):
+                if i != label and dominance[next_node, i] > max_dom:
+                    max_dom = dominance[next_node, i]
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
