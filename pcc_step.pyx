@@ -296,7 +296,7 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
-    cdef unsigned long long counters[8]
+    cdef unsigned long long counters[13]
     cdef Py_ssize_t ci
     for ci in range(13):
         counters[ci] = 0
