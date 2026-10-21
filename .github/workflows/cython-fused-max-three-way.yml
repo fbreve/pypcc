@@ -1,0 +1,27 @@
+name: Cython fused maximum three-way
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'benchmarks/fused_max_three_way.py'
+      - '.github/workflows/cython-fused-max-three-way.yml'
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython setuptools
+      - run: python setup.py build_ext --inplace
+      - run: python benchmarks/fused_max_three_way.py > fused-max-three-way-results.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fused-max-three-way-${{ matrix.os }}
+          path: fused-max-three-way-results.jsonl
