@@ -33,6 +33,10 @@ def main():
                             raise AssertionError(f"Invalid movement count: {counts}")
                         if counts["labeled_destinations"] + counts["unlabeled_destinations"] != counts["accepted"] + counts["rejected"]:
                             raise AssertionError(f"Invalid destination count: {counts}")
+                        if counts["dominance_clipped_cells"] + counts["dominance_full_step_cells"] != counts["unlabeled_destinations"] * 8:
+                            raise AssertionError(f"Invalid dominance work accounting: {counts}")
+                        if counts["dominance_same_class_cells"] != counts["unlabeled_destinations"]:
+                            raise AssertionError(f"Invalid same-class accounting: {counts}")
                         records.append(dict(degree=degree, fraction=fraction, layout=layout, placement=placement, seed=seed, **counts))
     Path("full-trajectory-counters.json").write_text(json.dumps(records, indent=2))
     print(f"Validated {len(records)} complete Cython trajectories")
