@@ -2,6 +2,7 @@ name: Fused kernel matched comparison
 on:
   pull_request:
     paths:
+      - pcc_step.pyx
       - benchmarks/fused_matched.py
       - .github/workflows/fused-matched.yml
   workflow_dispatch:
