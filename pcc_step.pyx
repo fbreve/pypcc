@@ -92,7 +92,7 @@ cpdef pcc_propagate(
     int              stop_max,
     bint             return_info = False,
     object           trace_counts = None,
-    bint             fused_max = False
+    int              fused_max = 0
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -162,7 +162,7 @@ cdef void pcc_step_sequential(
     double[:]        slices_buf,
     unsigned int    *rng_state,
     unsigned long long *counts,
-    bint fused_max
+    int fused_max
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -233,7 +233,7 @@ cdef void pcc_step_sequential(
                 sum_reduc = 0.0
                 if step == 0.0:
                     counts[8] += 1
-                if fused_max:
+                if fused_max == 2:
                     for i in range(c):
                         if i == label:
                             counts[12] += 1
@@ -253,6 +253,28 @@ cdef void pcc_step_sequential(
                             max_dom = dominance[next_node, i]
                     dominance[next_node, label] += sum_reduc
                     if dominance[next_node, label] > max_dom:
+                        max_dom = dominance[next_node, label]
+                elif fused_max == 1:
+                    for i in range(c):
+                        if i == label:
+                            counts[12] += 1
+                        if dominance[next_node, i] == 0.0:
+                            counts[9] += 1
+                        if dominance[next_node, i] < step:
+                            counts[10] += 1
+                        else:
+                            counts[11] += 1
+                        if dominance[next_node, i] < step:
+                            reduc_val = dominance[next_node, i]
+                        else:
+                            reduc_val = step
+                        dominance[next_node, i] -= reduc_val
+                        sum_reduc += reduc_val
+                        if fused_max == 1:
+                            if i == 0 or dominance[next_node, i] > max_dom:
+                                max_dom = dominance[next_node, i]
+                    dominance[next_node, label] += sum_reduc
+                    if fused_max == 1 and dominance[next_node, label] > max_dom:
                         max_dom = dominance[next_node, label]
                 else:
                     for i in range(c):
