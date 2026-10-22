@@ -203,12 +203,18 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
+            # A strictly stronger competing class already prevents movement.
+            # Preserve the original max comparison for ties and NaNs.
+            dom_value = dominance[next_node, label]
             max_dom = dominance[next_node, 0]
-            for i in range(1, c):
-                if dominance[next_node, i] > max_dom:
-                    max_dom = dominance[next_node, i]
+            if not (max_dom > dom_value):
+                for i in range(1, c):
+                    if dominance[next_node, i] > max_dom:
+                        max_dom = dominance[next_node, i]
+                        if max_dom > dom_value:
+                            break
 
-            if dominance[next_node, label] == max_dom:
+            if dom_value == max_dom:
                 part_curnode[p_i] = next_node
 
 cpdef pcc_step(
