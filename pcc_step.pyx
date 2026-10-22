@@ -120,7 +120,8 @@ cdef void pcc_step_sequential(
     double[:]        dist_weights,
     double[:]        prob_buf,
     double[:]        slices_buf,
-    unsigned int    *rng_state
+    unsigned int    *rng_state,
+    bint benchmark_original_max_scan
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
