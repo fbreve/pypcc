@@ -125,7 +125,7 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
     cdef Py_ssize_t p_i, curnode, k, i, choice, next_node
     cdef Py_ssize_t label
-    cdef double randval, step, reduc_val, sum_reduc
+    cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
     cdef unsigned char cur_d, next_d
     cdef int greedy
@@ -180,11 +180,12 @@ cdef void pcc_step_sequential(
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
                 for i in range(c):
-                    if dominance[next_node, i] < step:
-                        reduc_val = dominance[next_node, i]
+                    dom_value = dominance[next_node, i]
+                    if dom_value < step:
+                        reduc_val = dom_value
                     else:
                         reduc_val = step
-                    dominance[next_node, i] -= reduc_val
+                    dominance[next_node, i] = dom_value - reduc_val
                     sum_reduc += reduc_val
                 dominance[next_node, label] += sum_reduc
 
