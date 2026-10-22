@@ -127,6 +127,8 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
+    cdef double* dom_ptr
+    cdef Py_ssize_t dom_stride = dominance.strides[0] // sizeof(double)
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
@@ -152,7 +154,7 @@ cdef void pcc_step_sequential(
                 if next_node < 0 or next_node >= n_nodes:
                     prob_buf[i] = 0.0
                 else:
-                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dom_ptr[label]
                 prob_sum += prob_buf[i]
 
             if prob_sum > 0.0:
@@ -176,23 +178,24 @@ cdef void pcc_step_sequential(
 
         # update
         if next_node >= 0 and next_node < n_nodes:
+            dom_ptr = &dom_ptr[0]
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
                 for i in range(c):
-                    dom_value = dominance[next_node, i]
+                    dom_value = dom_ptr[i]
                     if dom_value < step:
                         reduc_val = dom_value
                     else:
                         reduc_val = step
-                    dominance[next_node, i] = dom_value - reduc_val
+                    dom_ptr[i] = dom_value - reduc_val
                     sum_reduc += reduc_val
-                dominance[next_node, label] += sum_reduc
+                dom_ptr[label] += sum_reduc
 
             if deltap == 1.0:
-                part_strength[p_i] = dominance[next_node, label]
+                part_strength[p_i] = dom_ptr[label]
             else:
-                part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
+                part_strength[p_i] += (dom_ptr[label] - part_strength[p_i]) * deltap
 
             cur_d = dist_table[curnode, p_i]
             next_d = dist_table[next_node, p_i]
@@ -203,12 +206,12 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            max_dom = dominance[next_node, 0]
+            max_dom = dom_ptr[0]
             for i in range(1, c):
-                if dominance[next_node, i] > max_dom:
-                    max_dom = dominance[next_node, i]
+                if dom_ptr[i] > max_dom:
+                    max_dom = dom_ptr[i]
 
-            if dominance[next_node, label] == max_dom:
+            if dom_ptr[label] == max_dom:
                 part_curnode[p_i] = next_node
 
 cpdef pcc_step(
