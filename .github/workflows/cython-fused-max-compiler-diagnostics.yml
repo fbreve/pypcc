@@ -47,11 +47,11 @@ jobs:
         run: |
           $pythonInclude = python -c "import sysconfig; print(sysconfig.get_path('include'))"
           $numpyInclude = python -c "import numpy; print(numpy.get_include())"
-          $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+          $cl = Get-Command cl.exe -ErrorAction Stop
           if ($cl) {
-            & cl.exe /nologo /O2 /c /FAcs /Fa:pcc_step_windows.asm "/I$pythonInclude" "/I$numpyInclude" pcc_step.c 2>&1 | Tee-Object -FilePath compiler-output.txt
-          } else {
-            'cl.exe not on PATH; generated C is still available for inspection' | Tee-Object -FilePath compiler-output.txt
+            & cl.exe /nologo /O2 /c /FAcs /Fapcc_step_windows.asm "/I$pythonInclude" "/I$numpyInclude" pcc_step.c 2>&1 | Tee-Object -FilePath compiler-output.txt
+            if ($LASTEXITCODE -ne 0) { throw 'MSVC compilation failed' }
+            if (-not (Test-Path pcc_step_windows.asm)) { throw 'Missing MSVC assembly' }
           }
       - uses: actions/upload-artifact@v4
         with:
