@@ -1,5 +1,8 @@
 """Deterministic native CPU profiling workload; not a timing benchmark."""
 import argparse
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 from pcc_step import pcc_propagate
 
