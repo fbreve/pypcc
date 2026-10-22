@@ -1,0 +1,33 @@
+name: Cython native instruction profile
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  callgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned build dependencies and profiler
+        run: |
+          python -m pip install numpy==2.2.6 Cython==3.0.12 setuptools==75.8.0
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+      - name: Compile with native debug symbols
+        env:
+          CFLAGS: -g -O2 -fno-omit-frame-pointer
+        run: python setup.py build_ext --inplace
+      - name: Collect instruction profile in Cython kernel
+        run: |
+          valgrind --tool=callgrind --collect-atstart=no '--toggle-collect=*pcc_step_sequential*' --callgrind-out-file=callgrind.out python benchmarks/profile_cython_kernel.py
+          callgrind_annotate --inclusive=yes --threshold=0 callgrind.out > callgrind-report.txt
+          head -n 120 callgrind-report.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cython-callgrind-profile
+          path: |
+            callgrind.out
+            callgrind-report.txt
