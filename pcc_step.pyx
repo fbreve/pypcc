@@ -182,17 +182,28 @@ cdef void pcc_step_sequential(
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
-                for i in range(c):
-                    dom_value = dominance[next_node, i]
-                    if dom_value < step:
-                        reduc_val = dom_value
-                    else:
-                        reduc_val = step
-                    dom_value = dom_value - reduc_val
-                    dominance[next_node, i] = dom_value
-                    sum_reduc += reduc_val
-                    if not benchmark_original_max_scan and (i == 0 or dom_value > max_dom):
-                        max_dom = dom_value
+                if benchmark_original_max_scan:
+                    for i in range(c):
+                        dom_value = dominance[next_node, i]
+                        if dom_value < step:
+                            reduc_val = dom_value
+                        else:
+                            reduc_val = step
+                        dom_value = dom_value - reduc_val
+                        dominance[next_node, i] = dom_value
+                        sum_reduc += reduc_val
+                else:
+                    for i in range(c):
+                        dom_value = dominance[next_node, i]
+                        if dom_value < step:
+                            reduc_val = dom_value
+                        else:
+                            reduc_val = step
+                        dom_value = dom_value - reduc_val
+                        dominance[next_node, i] = dom_value
+                        sum_reduc += reduc_val
+                        if i == 0 or dom_value > max_dom:
+                            max_dom = dom_value
                 dominance[next_node, label] += sum_reduc
                 if not benchmark_original_max_scan and sum_reduc >= 0.0:
                     dom_value = dominance[next_node, label]
