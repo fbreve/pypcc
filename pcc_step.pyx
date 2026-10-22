@@ -63,7 +63,8 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    bint             benchmark_force_distance_read = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -82,7 +83,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state)
+                               dist_weights, prob, slices, &rng_state, benchmark_force_distance_read)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -119,7 +120,8 @@ cdef void pcc_step_sequential(
     double[:]        dist_weights,
     double[:]        prob_buf,
     double[:]        slices_buf,
-    unsigned int    *rng_state
+    unsigned int    *rng_state,
+    bint benchmark_force_distance_read
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -194,8 +196,11 @@ cdef void pcc_step_sequential(
                 part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
 
             cur_d = dist_table[curnode, p_i]
-            if cur_d < 255:
+            if benchmark_force_distance_read:
                 next_d = dist_table[next_node, p_i]
+            if cur_d < 255:
+                if not benchmark_force_distance_read:
+                    next_d = dist_table[next_node, p_i]
                 if next_d > <unsigned char>(cur_d + 1):
                     dist_table[next_node, p_i] = cur_d + 1
 
@@ -250,4 +255,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state)
+                           dist_weights, prob, slices, &rng_state, False)
