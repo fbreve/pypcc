@@ -17,6 +17,7 @@ parser.add_argument("--source", required=True)
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 sys.path.insert(0, str(Path(args.source).resolve()))
+sys.path.insert(0, str(Path(args.source).resolve() / "benchmarks"))
 
 from graph_topology import build
 from pcc_step import pcc_propagate
