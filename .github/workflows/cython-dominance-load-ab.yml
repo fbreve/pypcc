@@ -13,6 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        trial: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,5 +25,5 @@ jobs:
       - run: python -c "from pathlib import Path; print(next(x for x in Path('dominance-load-results.jsonl').read_text().splitlines() if x.startswith('SUMMARY ')))"
       - uses: actions/upload-artifact@v4
         with:
-          name: dominance-load-${{ matrix.os }}
+          name: dominance-load-${{ matrix.os }}-trial-${{ matrix.trial }}
           path: dominance-load-results.jsonl
