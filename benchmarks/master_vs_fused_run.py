@@ -23,7 +23,7 @@ from graph_topology import build
 from pcc_step import pcc_propagate
 
 rows = []
-for degree in (2, 8, 32):
+for degree in (1, 2, 8, 32):
     for fraction in (0.0, 0.1, 0.25, 0.5, 0.75):
         for seed in (101, 202, 303, 404, 505):
             samples = []
