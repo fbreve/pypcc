@@ -26,9 +26,9 @@ CASES = (
 )
 
 def build(degree, fraction, particles, layout="prefix", placement="prefix", seed=20261021):
-    # Symmetric circulant graph: exactly 'degree' distinct neighbors.
+    # Circulant graph: exactly degree distinct neighbors (degree 1 uses a directed ring).
     ids = np.arange(NODES, dtype=np.int64)
-    offsets = np.array([v for k in range(1, degree // 2 + 1) for v in (-k, k)])
+    offsets = np.array([v for k in range(1, degree // 2 + 1) for v in (-k, k)] + ([degree // 2 + 1] if degree % 2 else []), dtype=np.int64)
     neighbors = (ids[:, None] + offsets[None, :]) % NODES
     degrees = np.full(NODES, degree, dtype=np.int64)
     labels = np.full(NODES, -1, dtype=np.int64)
