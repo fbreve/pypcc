@@ -4,7 +4,7 @@ cimport numpy as np
 cimport cython
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
-                            validate_kernel_scalars)
+                            validate_kernel_scalars, validate_finite)
 from libc.stdlib cimport malloc, free
 
 # Fast XORShift RNG (Sequential version)
@@ -76,6 +76,10 @@ cpdef pcc_propagate(
         part_strength, dist_table, dominance, owndeg)
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
+    # Only inputs read by the kernel need preflight; scratch buffers are overwritten.
+    validate_finite("part_strength", np.asarray(part_strength))
+    validate_finite("dominance", np.asarray(dominance))
+    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
 
     with nogil:
         for it in range(max_iter):
@@ -246,6 +250,10 @@ cpdef pcc_step(
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
     
     validate_vector("dist_weights", dist_weights, 256)
+    # Only inputs read by the kernel need preflight; scratch buffers are overwritten.
+    validate_finite("part_strength", np.asarray(part_strength))
+    validate_finite("dominance", np.asarray(dominance))
+    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
 
     with nogil:
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
