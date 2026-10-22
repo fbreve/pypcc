@@ -128,7 +128,7 @@ cdef void pcc_step_sequential(
     cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
     cdef unsigned char cur_d, next_d
-    cdef int greedy
+    cdef int greedy, fused_max
 
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
@@ -175,6 +175,7 @@ cdef void pcc_step_sequential(
             greedy = 0
 
         # update
+        fused_max = 0
         if next_node >= 0 and next_node < n_nodes:
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
@@ -185,9 +186,17 @@ cdef void pcc_step_sequential(
                         reduc_val = dom_value
                     else:
                         reduc_val = step
-                    dominance[next_node, i] = dom_value - reduc_val
+                    dom_value = dom_value - reduc_val
+                    dominance[next_node, i] = dom_value
                     sum_reduc += reduc_val
+                    if i == 0 or dom_value > max_dom:
+                        max_dom = dom_value
                 dominance[next_node, label] += sum_reduc
+                if sum_reduc >= 0.0:
+                    dom_value = dominance[next_node, label]
+                    if dom_value > max_dom:
+                        max_dom = dom_value
+                    fused_max = 1
 
             if deltap == 1.0:
                 part_strength[p_i] = dominance[next_node, label]
@@ -203,10 +212,11 @@ cdef void pcc_step_sequential(
             if greedy == 0:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            max_dom = dominance[next_node, 0]
-            for i in range(1, c):
-                if dominance[next_node, i] > max_dom:
-                    max_dom = dominance[next_node, i]
+            if not fused_max:
+                max_dom = dominance[next_node, 0]
+                for i in range(1, c):
+                    if dominance[next_node, i] > max_dom:
+                        max_dom = dominance[next_node, i]
 
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
