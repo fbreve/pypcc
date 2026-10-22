@@ -154,16 +154,51 @@ cdef void pcc_step_sequential(
                 else:
                     prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
+                if k >= 8:
+                    slices_buf[i] = prob_sum
 
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
-                prob_sum = 0.0
-                for i in range(k):
-                    prob_sum += prob_buf[i]
-                    if randval < prob_sum:
-                        choice = i
-                        break
+                if k >= 8:
+                    # Prefix sums are computed in the original summation order.
+                    # Binary search requires nondecreasing cumulative weights.
+                    if slices_buf[0] >= 0.0:
+                        i = 1
+                        while i < k and slices_buf[i] >= slices_buf[i - 1]:
+                            i += 1
+                        if i == k:
+                            choice = k
+                            i = 0
+                            while i < choice:
+                                next_node = (i + choice) // 2
+                                if randval < slices_buf[next_node]:
+                                    choice = next_node
+                                else:
+                                    i = next_node + 1
+                            if choice == k:
+                                choice = 0
+                        else:
+                            prob_sum = 0.0
+                            for i in range(k):
+                                prob_sum += prob_buf[i]
+                                if randval < prob_sum:
+                                    choice = i
+                                    break
+                    else:
+                        prob_sum = 0.0
+                        for i in range(k):
+                            prob_sum += prob_buf[i]
+                            if randval < prob_sum:
+                                choice = i
+                                break
+                else:
+                    prob_sum = 0.0
+                    for i in range(k):
+                        prob_sum += prob_buf[i]
+                        if randval < prob_sum:
+                            choice = i
+                            break
                 next_node = neib_list[curnode, choice]
                 greedy = 1
             else:
