@@ -1,0 +1,29 @@
+name: Cython greedy cumulative selection repeatability
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/greedy_cumsum_ab.py'
+      - 'benchmarks/greedy_cumsum_repeatability.py'
+      - '.github/workflows/cython-greedy-repeatability.yml'
+      - 'pcc_step.pyx'
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        trial: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython setuptools
+      - run: python setup.py build_ext --inplace
+      - run: python benchmarks/greedy_cumsum_repeatability.py ${{ matrix.trial }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: greedy-repeat-${{ matrix.os }}-${{ matrix.trial }}
+          path: greedy-repeat-${{ matrix.trial }}.jsonl
