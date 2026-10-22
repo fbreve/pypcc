@@ -154,13 +154,14 @@ cdef void pcc_step_sequential(
                 else:
                     prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
-                slices_buf[i] = prob_sum
 
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
+                prob_sum = 0.0
                 for i in range(k):
-                    if randval < slices_buf[i]:
+                    prob_sum += prob_buf[i]
+                    if randval < prob_sum:
                         choice = i
                         break
                 next_node = neib_list[curnode, choice]
