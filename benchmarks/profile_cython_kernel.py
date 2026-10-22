@@ -1,5 +1,7 @@
 """Deterministic native CPU profiling workload; not a timing benchmark."""
 import argparse
+import os
+import subprocess
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -27,8 +29,12 @@ distance = np.zeros((n, q), dtype=np.uint8)
 dominance = np.full((n, c), 1.0 / c, dtype=np.float64)
 ownership = np.zeros((n, c), dtype=np.float64)
 scratch = [np.zeros(c), np.zeros(c), np.zeros(d), np.zeros(d), np.zeros(d), np.zeros(d)]
+if os.environ.get('PCC_CALLGRIND_ISOLATE') == '1':
+    subprocess.run(['callgrind_control', '-i', 'on', str(os.getpid())], check=True)
 pcc_propagate(neighbors, degree, labels, 0.5, 0.1, c, np.zeros(c),
               positions, classes, strength, distance, dominance, ownership,
               1.0, 2.0, *scratch, np.ones(257, dtype=np.float64),
               a.iterations, 0, 10, 1)
+if os.environ.get("PCC_CALLGRIND_ISOLATE") == "1":
+    subprocess.run(["callgrind_control", "-i", "off", str(os.getpid())], check=True)
 print("PROFILE_DONE", n, q, d, a.iterations, float(dominance.sum()), int(positions.sum()))
