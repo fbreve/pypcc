@@ -1,0 +1,52 @@
+name: Pinned master versus fused benchmark
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        trial: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: experiment
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          path: baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.2.6 Cython==3.0.12 setuptools==75.8.0
+      - run: python setup.py build_ext --inplace
+        working-directory: baseline
+      - run: python setup.py build_ext --inplace
+        working-directory: experiment
+      - run: python experiment/benchmarks/master_vs_fused_run.py --source baseline --output baseline.json
+      - run: python experiment/benchmarks/master_vs_fused_run.py --source experiment --output experiment.json
+      - name: Compare
+        shell: python
+        run: |
+          import json, statistics
+          from pathlib import Path
+          a=json.loads(Path('baseline.json').read_text())
+          b=json.loads(Path('experiment.json').read_text())
+          assert len(a)==len(b)==75
+          changes=[]
+          for x,y in zip(a,b):
+              key=lambda z:(z['degree'],z['fraction'],z['seed'])
+              assert key(x)==key(y)
+              assert x['state']==y['state'], f"State mismatch: {key(x)}"
+              changes.append((y['median_ms']/x['median_ms']-1)*100)
+          print('SUMMARY', json.dumps({'cases':len(changes),'median_change_pct':statistics.median(changes),'mean_change_pct':statistics.mean(changes),'faster_cases':sum(z<0 for z in changes)}))
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: master-vs-fused-${{ matrix.os }}-trial-${{ matrix.trial }}
+          path: |
+            baseline.json
+            experiment.json
