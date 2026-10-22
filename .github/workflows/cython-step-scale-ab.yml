@@ -1,0 +1,28 @@
+name: Cython step scale A/B
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'benchmarks/step_scale_ab.py'
+      - '.github/workflows/cython-step-scale-ab.yml'
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy cython setuptools
+      - run: python setup.py build_ext --inplace
+      - run: python benchmarks/step_scale_ab.py > step-scale-results.jsonl
+      - run: python -c "from pathlib import Path; print(next(x for x in Path('step-scale-results.jsonl').read_text().splitlines() if x.startswith('SUMMARY ')))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: step-scale-${{ matrix.os }}
+          path: step-scale-results.jsonl
