@@ -21,7 +21,8 @@ jobs:
         run: python setup.py build_ext --inplace
       - name: Collect instruction profile in Cython kernel
         run: |
-          valgrind --tool=callgrind --collect-atstart=no '--toggle-collect=*pcc_step_sequential*' --callgrind-out-file=callgrind.out python benchmarks/profile_cython_kernel.py
+          valgrind --tool=callgrind --collect-atstart=yes --callgrind-out-file=callgrind.out python benchmarks/profile_cython_kernel.py
+          python -c "from pathlib import Path; import re; t=Path('callgrind.out').read_text(); m=re.search(r'(?m)^summary:\\s*(\\d+)', t); assert m and int(m.group(1)) > 0, 'Callgrind collected zero instructions'; print('COLLECTED_INSTRUCTIONS', m.group(1))"
           callgrind_annotate --inclusive=yes --threshold=0 callgrind.out > callgrind-report.txt
           head -n 120 callgrind-report.txt
       - uses: actions/upload-artifact@v4
