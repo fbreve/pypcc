@@ -154,7 +154,7 @@ cdef void pcc_step_sequential(
                 if next_node < 0 or next_node >= n_nodes:
                     prob_buf[i] = 0.0
                 else:
-                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dom_ptr[label * dom_col_stride]
+                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
 
             if prob_sum > 0.0:
@@ -178,7 +178,7 @@ cdef void pcc_step_sequential(
 
         # update
         if next_node >= 0 and next_node < n_nodes:
-            dom_ptr = &dom_ptr[0]
+            dom_ptr = &dominance[next_node, 0]
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
