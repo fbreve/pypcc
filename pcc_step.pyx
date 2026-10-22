@@ -127,6 +127,8 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
+    cdef Py_ssize_t neighbor_stride = neib_list.strides[1] // sizeof(np.int64_t)
+    cdef np.int64_t* neighbors
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
@@ -144,10 +146,11 @@ cdef void pcc_step_sequential(
         randval = rand_double(rng_state)
 
         if randval < p_grd:
+            neighbors = &neib_list[curnode, 0]
             # greedy
             prob_sum = 0.0
             for i in range(k):
-                next_node = neib_list[curnode, i]
+                next_node = neighbors[i * neighbor_stride]
                 # lookup with bounds check
                 if next_node < 0 or next_node >= n_nodes:
                     prob_buf[i] = 0.0
@@ -164,7 +167,7 @@ cdef void pcc_step_sequential(
                     if randval < prob_sum:
                         choice = i
                         break
-                next_node = neib_list[curnode, choice]
+                next_node = neighbors[choice * neighbor_stride]
                 greedy = 1
             else:
                 next_node = neib_list[curnode, xorshift32(rng_state) % k]
