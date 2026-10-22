@@ -144,12 +144,16 @@ def _pcc_propagate_numba_sequential(neib_list, neib_qt,
                         dominance, owndeg, deltap, dexp,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
-                        max_iter, early_stop, es_chk, stop_max, return_info=False):
+                        max_iter, early_stop, es_chk, stop_max, return_info=False,
+                        recorder=None, recorder_state=None):
     
     it = -1
     n_nodes = neib_list.shape[0]
     max_mmpot = 0.0
     stop_cnt = 0
+    if recorder is not None:
+        recorder(0, dominance, part_curnode, part_strength, dist_table, owndeg,
+                 False, recorder_state)
     
     for it in range(max_iter):
         _pcc_step_numba_sequential(neib_list, neib_qt,
@@ -169,6 +173,13 @@ def _pcc_propagate_numba_sequential(neib_list, neib_qt,
                 if stop_cnt > stop_max:
                     break
 
+        if recorder is not None:
+            recorder(it + 1, dominance, part_curnode, part_strength, dist_table,
+                     owndeg, False, recorder_state)
+
+    if recorder is not None:
+        recorder(it + 1, dominance, part_curnode, part_strength, dist_table,
+                 owndeg, True, recorder_state)
     if return_info:
         return it + 1, stop_cnt
 
