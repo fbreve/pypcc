@@ -63,7 +63,8 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    bint             benchmark_original_dom_load = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -82,7 +83,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state)
+                               dist_weights, prob, slices, &rng_state, benchmark_original_dom_load)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -119,7 +120,8 @@ cdef void pcc_step_sequential(
     double[:]        dist_weights,
     double[:]        prob_buf,
     double[:]        slices_buf,
-    unsigned int    *rng_state
+    unsigned int    *rng_state,
+    bint benchmark_original_dom_load
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -179,14 +181,23 @@ cdef void pcc_step_sequential(
             if labels[next_node] == -1:
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
-                for i in range(c):
-                    dom_value = dominance[next_node, i]
-                    if dom_value < step:
-                        reduc_val = dom_value
-                    else:
-                        reduc_val = step
-                    dominance[next_node, i] = dom_value - reduc_val
-                    sum_reduc += reduc_val
+                if benchmark_original_dom_load:
+                    for i in range(c):
+                        if dominance[next_node, i] < step:
+                            reduc_val = dominance[next_node, i]
+                        else:
+                            reduc_val = step
+                        dominance[next_node, i] -= reduc_val
+                        sum_reduc += reduc_val
+                else:
+                    for i in range(c):
+                        dom_value = dominance[next_node, i]
+                        if dom_value < step:
+                            reduc_val = dom_value
+                        else:
+                            reduc_val = step
+                        dominance[next_node, i] = dom_value - reduc_val
+                        sum_reduc += reduc_val
                 dominance[next_node, label] += sum_reduc
 
             if deltap == 1.0:
@@ -251,4 +262,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state)
+                           dist_weights, prob, slices, &rng_state, False)
