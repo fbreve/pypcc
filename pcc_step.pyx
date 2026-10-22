@@ -194,8 +194,8 @@ cdef void pcc_step_sequential(
                 part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
 
             cur_d = dist_table[curnode, p_i]
-            next_d = dist_table[next_node, p_i]
             if cur_d < 255:
+                next_d = dist_table[next_node, p_i]
                 if next_d > <unsigned char>(cur_d + 1):
                     dist_table[next_node, p_i] = cur_d + 1
 
