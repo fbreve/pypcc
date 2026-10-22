@@ -127,7 +127,7 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
-    cdef double delta_scale = delta_v / (c - 1)
+    cdef double delta_scale = delta_v / (c - 1) if c > 1 else 0.0
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
