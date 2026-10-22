@@ -144,31 +144,45 @@ cdef void pcc_step_sequential(
         randval = rand_double(rng_state)
 
         if randval < p_grd:
-            # greedy
-            prob_sum = 0.0
-            for i in range(k):
-                next_node = neib_list[curnode, i]
-                # lookup with bounds check
+            # A single neighbor needs no probability buffer or roulette scan.
+            # Preserve RNG consumption and greedy/unguided classification.
+            if k == 1:
+                next_node = neib_list[curnode, 0]
                 if next_node < 0 or next_node >= n_nodes:
-                    prob_buf[i] = 0.0
+                    prob_sum = 0.0
                 else:
-                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
-                prob_sum += prob_buf[i]
-
-            if prob_sum > 0.0:
-                randval = rand_double(rng_state) * prob_sum
-                choice = 0
+                    prob_sum = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                if prob_sum > 0.0:
+                    rand_double(rng_state)
+                    greedy = 1
+                else:
+                    xorshift32(rng_state)
+                    greedy = 0
+            else:
                 prob_sum = 0.0
                 for i in range(k):
+                    next_node = neib_list[curnode, i]
+                    # lookup with bounds check
+                    if next_node < 0 or next_node >= n_nodes:
+                        prob_buf[i] = 0.0
+                    else:
+                        prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                     prob_sum += prob_buf[i]
-                    if randval < prob_sum:
-                        choice = i
-                        break
-                next_node = neib_list[curnode, choice]
-                greedy = 1
-            else:
-                next_node = neib_list[curnode, xorshift32(rng_state) % k]
-                greedy = 0
+
+                if prob_sum > 0.0:
+                    randval = rand_double(rng_state) * prob_sum
+                    choice = 0
+                    prob_sum = 0.0
+                    for i in range(k):
+                        prob_sum += prob_buf[i]
+                        if randval < prob_sum:
+                            choice = i
+                            break
+                    next_node = neib_list[curnode, choice]
+                    greedy = 1
+                else:
+                    next_node = neib_list[curnode, xorshift32(rng_state) % k]
+                    greedy = 0
         else:
             # random
             next_node = neib_list[curnode, xorshift32(rng_state) % k]
