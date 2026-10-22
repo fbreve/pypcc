@@ -91,7 +91,8 @@ cpdef pcc_propagate(
     int              es_chk,
     int              stop_max,
     bint             return_info = False,
-    object           trace_counts = None
+    object           trace_counts = None,
+    bint             greedy_cumsum_on_demand = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -118,7 +119,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state, &counters[0])
+                               dist_weights, prob, slices, &rng_state, &counters[0], greedy_cumsum_on_demand)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -160,7 +161,8 @@ cdef void pcc_step_sequential(
     double[:]        prob_buf,
     double[:]        slices_buf,
     unsigned int    *rng_state,
-    unsigned long long *counts
+    unsigned long long *counts,
+    bint greedy_cumsum_on_demand
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -201,16 +203,24 @@ cdef void pcc_step_sequential(
                 else:
                     prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
+                if not greedy_cumsum_on_demand:
+                    slices_buf[i] = prob_sum
 
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
-                prob_sum = 0.0
-                for i in range(k):
-                    prob_sum += prob_buf[i]
-                    if randval < prob_sum:
-                        choice = i
-                        break
+                if greedy_cumsum_on_demand:
+                    prob_sum = 0.0
+                    for i in range(k):
+                        prob_sum += prob_buf[i]
+                        if randval < prob_sum:
+                            choice = i
+                            break
+                else:
+                    for i in range(k):
+                        if randval < slices_buf[i]:
+                            choice = i
+                            break
                 next_node = neib_list[curnode, choice]
                 greedy = 1
                 counts[1] += 1
@@ -324,4 +334,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state, &counters[0])
+                           dist_weights, prob, slices, &rng_state, &counters[0], False)
