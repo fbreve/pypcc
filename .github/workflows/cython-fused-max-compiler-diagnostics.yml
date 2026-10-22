@@ -36,6 +36,11 @@ jobs:
           gcc -O3 -fopt-info-vec-all=vectorization.txt -S -fverbose-asm $(python3-config --includes) -I"$(python -c 'import numpy; print(numpy.get_include())')" pcc_step.c -o pcc_step_linux.s 2>compiler-stderr.txt || true
           test -s pcc_step_linux.s
           grep -E 'optimized:|missed:' vectorization.txt | head -100 || true
+      - name: Initialize MSVC developer environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
       - name: Windows compiler optimization diagnostics
         if: runner.os == 'Windows'
         shell: pwsh
