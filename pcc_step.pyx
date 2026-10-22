@@ -63,7 +63,8 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    bint             benchmark_original_max_scan = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -82,7 +83,7 @@ cpdef pcc_propagate(
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state)
+                               dist_weights, prob, slices, &rng_state, benchmark_original_max_scan)
 
             if early_stop != 0 and it % 10 == 0:
                 mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
@@ -189,10 +190,10 @@ cdef void pcc_step_sequential(
                     dom_value = dom_value - reduc_val
                     dominance[next_node, i] = dom_value
                     sum_reduc += reduc_val
-                    if i == 0 or dom_value > max_dom:
+                    if not benchmark_original_max_scan and (i == 0 or dom_value > max_dom):
                         max_dom = dom_value
                 dominance[next_node, label] += sum_reduc
-                if sum_reduc >= 0.0:
+                if not benchmark_original_max_scan and sum_reduc >= 0.0:
                     dom_value = dominance[next_node, label]
                     if dom_value > max_dom:
                         max_dom = dom_value
@@ -261,4 +262,4 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state)
+                           dist_weights, prob, slices, &rng_state, False)
