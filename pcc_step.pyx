@@ -127,6 +127,7 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
     cdef double prob_sum, max_dom
+    cdef double delta_scale = delta_v / (c - 1)
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
@@ -177,7 +178,7 @@ cdef void pcc_step_sequential(
         # update
         if next_node >= 0 and next_node < n_nodes:
             if labels[next_node] == -1:
-                step = part_strength[p_i] * (delta_v / (c - 1))
+                step = part_strength[p_i] * delta_scale
                 sum_reduc = 0.0
                 for i in range(c):
                     dom_value = dominance[next_node, i]
