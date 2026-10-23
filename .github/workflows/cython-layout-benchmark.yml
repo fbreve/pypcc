@@ -1,0 +1,23 @@
+name: Cython memory-layout benchmark
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/benchmark_cython_layouts.py'
+      - '.github/workflows/cython-layout-benchmark.yml'
+  workflow_dispatch:
+jobs:
+  layouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned build dependencies
+        run: python -m pip install numpy==2.2.6 Cython==3.0.12 setuptools==75.8.0
+      - name: Build native extension
+        run: python setup.py build_ext --inplace
+      - name: Compare layouts and verify exact final states
+        run: |
+          python benchmarks/benchmark_cython_layouts.py --iterations 1000 --repeats 7
