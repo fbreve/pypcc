@@ -126,7 +126,7 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t p_i, curnode, k, i, choice, next_node
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
-    cdef double prob_sum, max_dom
+    cdef double prob_sum, max_dom, weight
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
@@ -150,10 +150,11 @@ cdef void pcc_step_sequential(
                 next_node = neib_list[curnode, i]
                 # lookup with bounds check
                 if next_node < 0 or next_node >= n_nodes:
-                    prob_buf[i] = 0.0
+                    weight = 0.0
                 else:
-                    prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
-                prob_sum += prob_buf[i]
+                    weight = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
+                prob_buf[i] = weight
+                prob_sum += weight
 
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
