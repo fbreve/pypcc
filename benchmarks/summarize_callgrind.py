@@ -16,7 +16,7 @@ names = {}
 for raw in lines:
     line = raw.strip()
     if line.startswith(("fn=", "cfn=")):
-        match = re.fullmatch(r"(?:c?fn)=\\((\\d+)\\)\\s+(.+)", line)
+        match = re.fullmatch(r"(?:c?fn)=\((\d+)\)\s+(.+)", line)
         if match:
             names[match.group(1)] = match.group(2)
 counts = defaultdict(int)
