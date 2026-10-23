@@ -30,6 +30,8 @@ jobs:
           python -c "from pathlib import Path; p=Path('callgrind.out'); t=p.read_text(); totals=[x.split(':',1)[1].strip() for x in t.splitlines() if x.startswith('totals:')]; assert len(totals)==1 and int(totals[0])>0; assert 'summary: 0' in t; Path('callgrind-annotate.out').write_text(t.replace('summary: 0', 'summary: '+totals[0], 1))"
           callgrind_annotate --inclusive=yes --threshold=0 callgrind-annotate.out > callgrind-report.txt
           head -n 120 callgrind-report.txt
+          python benchmarks/summarize_callgrind.py callgrind-annotate.out > callgrind-functions.txt
+          head -n 65 callgrind-functions.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -38,4 +40,5 @@ jobs:
             callgrind.out
             callgrind-annotate.out
             callgrind-report.txt
+            callgrind-functions.txt
             callgrind-run.log
