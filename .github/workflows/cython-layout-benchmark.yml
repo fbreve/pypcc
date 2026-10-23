@@ -20,4 +20,6 @@ jobs:
         run: python setup.py build_ext --inplace
       - name: Compare layouts and verify exact final states
         run: |
-          python benchmarks/benchmark_cython_layouts.py --iterations 1000 --repeats 7
+          for target in all neighbors distance dominance ownership; do
+            python benchmarks/benchmark_cython_layouts.py --target "$target" --iterations 1000 --repeats 7
+          done

@@ -1,6 +1,12 @@
 name: Cython native instruction profile
 on:
   pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'setup.py'
+      - 'benchmarks/profile_cython_kernel.py'
+      - 'benchmarks/summarize_callgrind.py'
+      - '.github/workflows/cython-callgrind-profile.yml'
   workflow_dispatch:
 jobs:
   callgrind:
