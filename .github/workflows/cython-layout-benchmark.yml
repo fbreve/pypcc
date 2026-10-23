@@ -23,3 +23,8 @@ jobs:
           for target in all neighbors distance dominance ownership; do
             python benchmarks/benchmark_cython_layouts.py --target "$target" --iterations 1000 --repeats 7
           done
+          for spec in "512 128 1000" "2048 512 500" "8192 2048 200"; do
+            set -- $spec
+            python benchmarks/benchmark_cython_layouts.py --target distance --nodes "$1" --particles "$2" --iterations "$3" --repeats 7
+            python benchmarks/benchmark_cython_layouts.py --target distance --nodes "$1" --particles "$2" --iterations "$3" --repeats 7 --include-conversion
+          done
