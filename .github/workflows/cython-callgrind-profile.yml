@@ -23,7 +23,7 @@ jobs:
       - name: Collect instruction profile in Cython kernel
         run: |
           PCC_CALLGRIND_ISOLATE=1 valgrind --tool=callgrind --instr-atstart=no --collect-atstart=yes --callgrind-out-file=callgrind.out python benchmarks/profile_cython_kernel.py
-          python -c "from pathlib import Path; import re; t=Path('callgrind.out').read_text(); m=re.search(r'(?m)^summary:\\s*(\\d+)', t); assert m and int(m.group(1)) > 0, 'Callgrind collected zero instructions'; print('COLLECTED_INSTRUCTIONS', m.group(1))"
+          python -c "from pathlib import Path; t=Path('callgrind.out').read_text(); v=[int(x.split(':',1)[1].strip().split()[0]) for x in t.splitlines() if x.startswith('summary:')]; assert v and max(v)>0, 'Callgrind collected zero instructions'; print('COLLECTED_INSTRUCTIONS', max(v))"
           callgrind_annotate --inclusive=yes --threshold=0 callgrind.out > callgrind-report.txt
           head -n 120 callgrind-report.txt
       - uses: actions/upload-artifact@v4
