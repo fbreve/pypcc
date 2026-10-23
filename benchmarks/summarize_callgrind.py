@@ -10,7 +10,15 @@ if len(sys.argv) != 2:
 lines = Path(sys.argv[1]).read_text().splitlines()
 events = None
 expected = None
+# Resolve compressed function IDs before counting: their definitions may occur
+# after the first cost record that references them.
 names = {}
+for raw in lines:
+    line = raw.strip()
+    if line.startswith(("fn=", "cfn=")):
+        match = re.fullmatch(r"(?:c?fn)=\\((\\d+)\\)\\s+(.+)", line)
+        if match:
+            names[match.group(1)] = match.group(2)
 counts = defaultdict(int)
 current = None
 pending_call_cost = False
@@ -32,9 +40,7 @@ for raw in lines:
         match = re.fullmatch(r"\((\d+)\)(?:\s+(.*))?", value)
         if match:
             key, name = match.groups()
-            if name:
-                names[key] = name
-            current = names.get(key, f"fn-id:{key}")
+            current = names.get(key, name or f"fn-id:{key}")
         else:
             current = value
         pending_call_cost = False
