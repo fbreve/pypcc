@@ -25,7 +25,10 @@ jobs:
           set -o pipefail
           PCC_CALLGRIND_ISOLATE=1 valgrind --tool=callgrind --instr-atstart=no --collect-atstart=yes --callgrind-out-file=callgrind.out python benchmarks/profile_cython_kernel.py 2>&1 | tee callgrind-run.log
           python -c "from pathlib import Path; import re; log=Path('callgrind-run.log').read_text(); counts=re.findall('Collected *: *([0-9]+)', log); assert counts and int(counts[-1])>0, 'Empty instruction profile'; print('COLLECTED_INSTRUCTIONS', counts[-1])"
-          callgrind_annotate --inclusive=yes --threshold=0 callgrind.out > callgrind-report.txt
+          # Callgrind can write summary: 0 when instrumentation is stopped before exit.
+          # Normalize the annotation copy using its recorded totals, preserving the raw profile.
+          python -c "from pathlib import Path; p=Path('callgrind.out'); t=p.read_text(); totals=[x.split(':',1)[1].strip() for x in t.splitlines() if x.startswith('totals:')]; assert len(totals)==1 and int(totals[0])>0; assert 'summary: 0' in t; Path('callgrind-annotate.out').write_text(t.replace('summary: 0', 'summary: '+totals[0], 1))"
+          callgrind_annotate --inclusive=yes --threshold=0 callgrind-annotate.out > callgrind-report.txt
           head -n 120 callgrind-report.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -33,5 +36,6 @@ jobs:
           name: cython-callgrind-profile
           path: |
             callgrind.out
+            callgrind-annotate.out
             callgrind-report.txt
             callgrind-run.log
