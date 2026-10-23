@@ -27,20 +27,21 @@ def layout(array, kind):
     return view
 
 
-def run(kind, n, q, d, iterations):
+def run(kind, n, q, d, iterations, target="all"):
     c = 8
     idx = np.arange(n, dtype=np.int64)
     offsets = np.array([v for j in range(1, d // 2 + 1) for v in (-j, j)], dtype=np.int64)
-    neighbors = layout((idx[:, None] + offsets) % n, kind)
+    chosen = lambda name: kind if target in ("all", name) else "C"
+    neighbors = layout((idx[:, None] + offsets) % n, chosen("neighbors"))
     degree = np.full(n, d, dtype=np.int64)
     labels = np.full(n, -1, dtype=np.int64)
     labels[::4] = np.arange(len(labels[::4])) % c
     positions = np.arange(q, dtype=np.int64) % n
     classes = np.arange(q, dtype=np.int64) % c
     strength = np.ones(q, dtype=np.float64)
-    distance = layout(np.zeros((n, q), dtype=np.uint8), kind)
-    dominance = layout(np.full((n, c), 1.0 / c), kind)
-    ownership = layout(np.zeros((n, c)), kind)
+    distance = layout(np.zeros((n, q), dtype=np.uint8), chosen("distance"))
+    dominance = layout(np.full((n, c), 1.0 / c), chosen("dominance"))
+    ownership = layout(np.zeros((n, c)), chosen("ownership"))
     scratch = [np.zeros(c), np.zeros(c), np.zeros(d), np.zeros(d),
                np.zeros(d), np.zeros(d)]
     start = perf_counter()
@@ -61,6 +62,7 @@ def main():
     p.add_argument("--degree", type=int, default=16)
     p.add_argument("--iterations", type=int, default=1000)
     p.add_argument("--repeats", type=int, default=7)
+    p.add_argument("--target", choices=("all", "neighbors", "distance", "dominance", "ownership"), default="all")
     a = p.parse_args()
     if not (a.nodes > a.degree > 0 and a.degree % 2 == 0
             and a.particles > 0 and a.iterations > 0 and a.repeats > 0):
@@ -72,12 +74,13 @@ def main():
         # Rotate order to reduce systematic warm-up / frequency bias.
         kinds = ("C", "F", "strided")
         for kind in kinds[repeat % 3:] + kinds[:repeat % 3]:
-            elapsed, state = run(kind, a.nodes, a.particles, a.degree, a.iterations)
+            elapsed, state = run(kind, a.nodes, a.particles, a.degree, a.iterations, a.target)
             if reference is None:
                 reference = state
             elif not all(np.array_equal(x, y) for x, y in zip(reference, state)):
                 raise AssertionError(f"State mismatch for {kind}, repeat {repeat}")
             samples[kind].append(elapsed)
+    print(f"TARGET {a.target}")
     for kind in ("C", "F", "strided"):
         print(f"{kind:8s} median_s={statistics.median(samples[kind]):.6f} "
               f"min_s={min(samples[kind]):.6f} repeats={a.repeats}")
