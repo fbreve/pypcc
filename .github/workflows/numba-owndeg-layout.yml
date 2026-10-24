@@ -1,0 +1,25 @@
+name: Numba ownership layout experiment
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/benchmark_numba_owndeg_layout.py'
+      - '.github/workflows/numba-owndeg-layout.yml'
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Compare ownership layouts
+        run: |
+          for nodes in 512 2048 8192; do
+            for classes in 4 8 16 32; do
+              python benchmarks/benchmark_numba_owndeg_layout.py --nodes "$nodes" --classes "$classes" --iterations 500 --repeats 7
+            done
+          done
