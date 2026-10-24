@@ -51,10 +51,10 @@ def fit(order, n, classes, iterations):
     prediction = model.fit_predict(labels, max_iter=iterations, early_stop=False)
     elapsed = perf_counter() - start
     state = (prediction.copy(), model.part.curnode.copy(), model.part.strength.copy(),
-             model.part.dist_table.copy(), model.node.owndeg.copy(),
+             model.part.dist_table.copy(), model.node.dominance.copy(),
              model.owndeg.copy())
     assert (model.owndeg.flags.c_contiguous if order == "C"
-            else model.node.owndeg.flags.f_contiguous)
+            else model.owndeg.flags.f_contiguous)
     return elapsed, state
 
 
