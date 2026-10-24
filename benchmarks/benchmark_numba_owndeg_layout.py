@@ -73,7 +73,14 @@ def main():
         for order in (("C", "F") if rep % 2 == 0 else ("F", "C")):
             elapsed, state = fit(order, a.nodes, a.classes, a.iterations)
             if baseline is not None:
-                assert all(np.array_equal(x, y) for x, y in zip(baseline, state)), (a.nodes, a.classes, rep)
+                names = ("prediction", "particle_nodes", "strength", "distance", "dominance", "owndeg")
+                mismatches = []
+                for name, left, right in zip(names, baseline, state):
+                    if not np.array_equal(left, right):
+                        count = int(np.count_nonzero(left != right))
+                        max_diff = float(np.max(np.abs(left.astype(np.float64) - right.astype(np.float64))))
+                        mismatches.append(f"{name}: count={count} max_abs={max_diff:.9g}")
+                assert not mismatches, (a.nodes, a.classes, rep, "; ".join(mismatches))
             baseline = state
             samples[order].append(elapsed)
     print(f"NODES {a.nodes} CLASSES {a.classes} ITERATIONS {a.iterations}", flush=True)
