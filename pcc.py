@@ -454,7 +454,7 @@ class ParticleCompetitionAndCooperation:
         # Numba benefits from contiguous class rows when there are many classes.
         # Preserve the historical F layout for other backends and smaller cases.
         backend = self._get_backend_fn()
-        use_c_order = (self.c >= 16 and backend.__name__ == 'pcc_propagate_numba')
+        use_c_order = (self.c >= 8 and backend.__name__ == 'pcc_propagate_numba')
         dominance = np.full(
             shape=(n_nodes, self.c),
             fill_value=1.0 / self.c,

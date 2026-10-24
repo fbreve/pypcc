@@ -5,11 +5,16 @@ from pcc import ParticleCompetitionAndCooperation as PCC
 
 
 CASES = [
-    ("numba", 8, False),
+    ("numba", 4, False),
+    ("numba", 7, False),
+    ("numba", 8, True),
+    ("numba", 12, True),
     ("numba", 16, True),
     ("numba", 32, True),
+    ("numpy", 8, False),
     ("numpy", 16, False),
     ("numpy", 32, False),
+    ("cython", 8, False),
     ("cython", 16, False),
     ("cython", 32, False),
 ]
