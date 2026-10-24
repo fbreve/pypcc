@@ -1,10 +1,10 @@
 """Regression checks for backend-specific dominance allocation."""
 import numpy as np
-import pytest
+import unittest
 from pcc import ParticleCompetitionAndCooperation as PCC
 
 
-@pytest.mark.parametrize("impl,classes,expect_c", [
+CASES = [
     ("numba", 8, False),
     ("numba", 16, True),
     ("numba", 32, True),
@@ -12,8 +12,17 @@ from pcc import ParticleCompetitionAndCooperation as PCC
     ("numpy", 32, False),
     ("cython", 16, False),
     ("cython", 32, False),
-])
-def test_dominance_order(impl, classes, expect_c):
+]
+
+
+class DominanceLayoutPolicyTests(unittest.TestCase):
+    def test_dominance_order(self):
+        for impl, classes, expect_c in CASES:
+            with self.subTest(impl=impl, classes=classes):
+                check_order(impl, classes, expect_c)
+
+
+def check_order(impl, classes, expect_c):
     n = max(128, classes * 4)
     model = PCC(impl=impl)
     offsets = np.array([-2, -1, 1, 2], dtype=np.int64)
