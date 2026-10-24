@@ -27,8 +27,15 @@ class COrderPCC(ParticleCompetitionAndCooperation):
         return nodes
 
 
+class FOrderPCC(ParticleCompetitionAndCooperation):
+    def _ParticleCompetitionAndCooperation__genNodes(self):
+        nodes = super()._ParticleCompetitionAndCooperation__genNodes()
+        nodes.dominance = np.asfortranarray(nodes.dominance)
+        return nodes
+
+
 def fit(order, n, classes, iterations):
-    model_type = COrderPCC if order == "C" else ParticleCompetitionAndCooperation
+    model_type = COrderPCC if order == "C" else FOrderPCC
     model = model_type(impl="numba")
     offsets = np.array([-2, -1, 1, 2], dtype=np.int64)
     neighbors = (np.arange(n, dtype=np.int64)[:, None] + offsets) % n
