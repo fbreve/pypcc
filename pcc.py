@@ -451,12 +451,12 @@ class ParticleCompetitionAndCooperation:
         n_nodes = self.neib_list.shape[0]
         labeled_idx = self.mapped_labels != -1
 
-        # order='F' ensures columns (classes) are contiguous
+        # Experimental: contiguous class rows for sequential kernels.
         dominance = np.full(
             shape=(n_nodes, self.c),
             fill_value=1.0 / self.c,
             dtype=np.float64,
-            order='F',
+            order='C',
         )
         # mapped_labels are used here
         dominance[labeled_idx] = 0.0
