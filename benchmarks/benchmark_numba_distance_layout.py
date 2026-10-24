@@ -29,9 +29,9 @@ class COrderPCC(ParticleCompetitionAndCooperation):
 
 class FOrderPCC(ParticleCompetitionAndCooperation):
     def _ParticleCompetitionAndCooperation__genParticles(self):
-        nodes = super()._ParticleCompetitionAndCooperation__genParticles()
+        particles = super()._ParticleCompetitionAndCooperation__genParticles()
         particles.dist_table = np.asfortranarray(particles.dist_table)
-        return nodes
+        return particles
 
 
 def fit(order, n, classes, iterations):
