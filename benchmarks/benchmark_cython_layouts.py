@@ -27,7 +27,7 @@ def layout(array, kind):
     return view
 
 
-def run(kind, n, q, d, iterations, target="all"):
+def run(kind, n, q, d, iterations, target="all", include_conversion=False):
     c = 8
     idx = np.arange(n, dtype=np.int64)
     offsets = np.array([v for j in range(1, d // 2 + 1) for v in (-j, j)], dtype=np.int64)
@@ -39,12 +39,14 @@ def run(kind, n, q, d, iterations, target="all"):
     positions = np.arange(q, dtype=np.int64) % n
     classes = np.arange(q, dtype=np.int64) % c
     strength = np.ones(q, dtype=np.float64)
-    distance = layout(np.zeros((n, q), dtype=np.uint8), chosen("distance"))
+    distance = np.zeros((n, q), dtype=np.uint8) if include_conversion else layout(np.zeros((n, q), dtype=np.uint8), chosen("distance"))
     dominance = layout(np.full((n, c), 1.0 / c), chosen("dominance"))
     ownership = layout(np.zeros((n, c)), chosen("ownership"))
     scratch = [np.zeros(c), np.zeros(c), np.zeros(d), np.zeros(d),
                np.zeros(d), np.zeros(d)]
     start = perf_counter()
+    if include_conversion:
+        distance = layout(distance, kind)
     pcc_propagate(neighbors, degree, labels, 0.5, 0.1, c, np.zeros(c),
                   positions, classes, strength, distance, dominance, ownership,
                   1.0, 2.0, *scratch, np.ones(257), iterations, 0, 10, 1)
@@ -62,11 +64,15 @@ def main():
     p.add_argument("--degree", type=int, default=16)
     p.add_argument("--iterations", type=int, default=1000)
     p.add_argument("--repeats", type=int, default=7)
+    p.add_argument("--include-conversion", action="store_true", help="Include a C-to-layout distance-table copy in timed region; requires --target distance")
     p.add_argument("--target", choices=("all", "neighbors", "distance", "dominance", "ownership"), default="all")
     a = p.parse_args()
     if not (a.nodes > a.degree > 0 and a.degree % 2 == 0
             and a.particles > 0 and a.iterations > 0 and a.repeats > 0):
         p.error("Require nodes > even positive degree, and positive other parameters")
+
+    if a.include_conversion and a.target != "distance":
+        p.error("--include-conversion requires --target distance")
 
     samples = {kind: [] for kind in ("C", "F", "strided")}
     for repeat in range(a.repeats):
@@ -74,13 +80,13 @@ def main():
         # Rotate order to reduce systematic warm-up / frequency bias.
         kinds = ("C", "F", "strided")
         for kind in kinds[repeat % 3:] + kinds[:repeat % 3]:
-            elapsed, state = run(kind, a.nodes, a.particles, a.degree, a.iterations, a.target)
+            elapsed, state = run(kind, a.nodes, a.particles, a.degree, a.iterations, a.target, a.include_conversion)
             if reference is None:
                 reference = state
             elif not all(np.array_equal(x, y) for x, y in zip(reference, state)):
                 raise AssertionError(f"State mismatch for {kind}, repeat {repeat}")
             samples[kind].append(elapsed)
-    print(f"TARGET {a.target}")
+    print(f"TARGET {a.target} INCLUDE_CONVERSION {a.include_conversion} NODES {a.nodes} PARTICLES {a.particles} ITERATIONS {a.iterations}")
     for kind in ("C", "F", "strided"):
         print(f"{kind:8s} median_s={statistics.median(samples[kind]):.6f} "
               f"min_s={min(samples[kind]):.6f} repeats={a.repeats}")
