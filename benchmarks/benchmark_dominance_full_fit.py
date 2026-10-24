@@ -1,8 +1,11 @@
 """Full-fit comparison of C and Fortran dominance allocations (experimental)."""
 import argparse
 import statistics
+import sys
+from pathlib import Path
 from time import perf_counter
 import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pcc import ParticleCompetitionAndCooperation as PCC
 
 original = PCC._ParticleCompetitionAndCooperation__genNodes
