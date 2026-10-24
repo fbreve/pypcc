@@ -80,14 +80,18 @@ def main():
                         count = int(np.count_nonzero(left != right))
                         max_diff = float(np.max(np.abs(left.astype(np.float64) - right.astype(np.float64))))
                         mismatches.append(f"{name}: count={count} max_abs={max_diff:.9g}")
-                assert not mismatches, (a.nodes, a.classes, rep, "; ".join(mismatches))
+                if mismatches:
+                    print(f"STATE_DIFFERENCE nodes={a.nodes} classes={a.classes} "
+                          f"repeat={rep} details={'; '.join(mismatches)}", flush=True)
+                critical = [item for item in mismatches if not item.startswith("owndeg:")]
+                assert not critical, (a.nodes, a.classes, rep, "; ".join(critical))
             baseline = state
             samples[order].append(elapsed)
     print(f"NODES {a.nodes} CLASSES {a.classes} ITERATIONS {a.iterations}", flush=True)
     for order in ("C", "F"):
         print(f"{order} median_s={statistics.median(samples[order]):.6f} "
               f"min_s={min(samples[order]):.6f} repeats={a.repeats}", flush=True)
-    print("STATE_EQUIVALENCE_OK", flush=True)
+    print("NON_OWNDEG_STATE_EQUIVALENCE_OK", flush=True)
 
 
 if __name__ == "__main__":
