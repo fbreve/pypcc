@@ -7,6 +7,11 @@ from time import perf_counter
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pcc import ParticleCompetitionAndCooperation as PCC
+from numba import njit
+
+@njit
+def seed_numba(seed):
+    np.random.seed(seed)
 
 original = PCC._ParticleCompetitionAndCooperation__genNodes
 
@@ -25,6 +30,8 @@ def execute(backend, order, nodes, iterations):
         model = PCC(impl=backend)
         model.set_graph(graph, degrees, k_nn=4)
         np.random.seed(12345)
+        if backend == "numba":
+            seed_numba(12345)
         start = perf_counter()
         result = model.fit_predict(labels, max_iter=iterations, early_stop=False)
         elapsed = perf_counter() - start
