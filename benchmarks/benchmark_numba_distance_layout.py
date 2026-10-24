@@ -21,16 +21,16 @@ def seed_numba(seed):
 
 
 class COrderPCC(ParticleCompetitionAndCooperation):
-    def _ParticleCompetitionAndCooperation__genNodes(self):
-        nodes = super()._ParticleCompetitionAndCooperation__genNodes()
-        nodes.dist_table = np.ascontiguousarray(nodes.dist_table)
-        return nodes
+    def _ParticleCompetitionAndCooperation__genParticles(self):
+        particles = super()._ParticleCompetitionAndCooperation__genParticles()
+        particles.dist_table = np.ascontiguousarray(particles.dist_table)
+        return particles
 
 
 class FOrderPCC(ParticleCompetitionAndCooperation):
-    def _ParticleCompetitionAndCooperation__genNodes(self):
-        nodes = super()._ParticleCompetitionAndCooperation__genNodes()
-        nodes.dist_table = np.asfortranarray(nodes.dist_table)
+    def _ParticleCompetitionAndCooperation__genParticles(self):
+        nodes = super()._ParticleCompetitionAndCooperation__genParticles()
+        particles.dist_table = np.asfortranarray(particles.dist_table)
         return nodes
 
 
