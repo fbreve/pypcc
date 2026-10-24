@@ -451,12 +451,15 @@ class ParticleCompetitionAndCooperation:
         n_nodes = self.neib_list.shape[0]
         labeled_idx = self.mapped_labels != -1
 
-        # order='F' ensures columns (classes) are contiguous
+        # Numba benefits from contiguous class rows when there are many classes.
+        # Preserve the historical F layout for other backends and smaller cases.
+        backend = self._get_backend_fn()
+        use_c_order = (self.c >= 16 and backend.__name__ == 'pcc_propagate_numba')
         dominance = np.full(
             shape=(n_nodes, self.c),
             fill_value=1.0 / self.c,
             dtype=np.float64,
-            order='F',
+            order='C' if use_c_order else 'F',
         )
         # mapped_labels are used here
         dominance[labeled_idx] = 0.0
