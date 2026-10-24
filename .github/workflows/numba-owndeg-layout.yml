@@ -22,3 +22,4 @@ jobs:
             for classes in 4 8 16 32; do
               python benchmarks/benchmark_numba_owndeg_layout.py --nodes "$nodes" --classes "$classes" --iterations 500 --repeats 7
             done
+          done
