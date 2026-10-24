@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'benchmarks/benchmark_numba_dominance_layout.py'
+      - 'pcc.py'
+      - 'tests/test_dominance_layout_policy.py'
       - '.github/workflows/numba-dominance-layout.yml'
   workflow_dispatch:
 jobs:
@@ -19,7 +21,7 @@ jobs:
       - name: Compare C and F dominance across class counts and sizes
         run: |
           for nodes in 512 2048 8192; do
-            for classes in 2 8 32; do
+            for classes in 8 16 32; do
               python benchmarks/benchmark_numba_dominance_layout.py --nodes "$nodes" --classes "$classes" --iterations 500 --repeats 7
             done
           done
