@@ -14,11 +14,11 @@ on:
       candidate:
         description: 'Candidate git ref (default current branch)'
         required: false
-        default: 'bench/numba-cross-revision-equivalence'
+        default: 'master'
 jobs:
   compare:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,24 +38,35 @@ jobs:
           from pathlib import Path
 
           script = Path("benchmarks/benchmark_numba_revision.py").read_bytes()
-          refs = [os.environ["BASELINE"], os.environ["CANDIDATE"]]
+          baseline, candidate = os.environ["BASELINE"], os.environ["CANDIDATE"]
           subprocess.run(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], check=True)
-          refs = [subprocess.check_output(["git", "rev-parse", "--verify", "origin/" + ref if ref == "master" or ref == os.environ["CANDIDATE"] else ref], text=True).strip() for ref in refs]
+          def resolve(ref):
+              remote = "origin/" + ref
+              try:
+                  return subprocess.check_output(["git", "rev-parse", "--verify", remote], text=True, stderr=subprocess.DEVNULL).strip()
+              except subprocess.CalledProcessError:
+                  return subprocess.check_output(["git", "rev-parse", "--verify", ref], text=True).strip()
+          refs = [resolve(baseline), resolve(candidate)]
           for nodes in (512, 2048, 8192):
               for classes in (4, 8, 16, 32):
-                  results = {}
-                  # Alternate execution order to mitigate drift. Each invocation warms up.
-                  for ref in (refs if (nodes + classes) % 3 else refs[::-1]):
+                  results = {ref: [] for ref in refs}
+                  fingerprints = {ref: set() for ref in refs}
+                  # ABBA / BAAB across four batches, interleaving revision
+                  # measurements instead of running all repeats consecutively.
+                  order = (refs + refs[::-1]) if (nodes + classes) % 3 else (refs[::-1] + refs)
+                  for ref in order:
                       Path("benchmarks/benchmark_numba_revision.py").unlink(missing_ok=True)
                       subprocess.run(["git", "checkout", "--detach", ref], check=True, stdout=subprocess.DEVNULL)
                       Path("benchmarks/benchmark_numba_revision.py").write_bytes(script)
                       proc = subprocess.run([sys.executable, "benchmarks/benchmark_numba_revision.py",
-                          "--nodes", str(nodes), "--classes", str(classes), "--repeats", "7"],
+                          "--nodes", str(nodes), "--classes", str(classes), "--repeats", "4"],
                           check=True, capture_output=True, text=True)
-                      results[ref] = json.loads(proc.stdout.strip().splitlines()[-1])
-                  a, b = (results[x] for x in refs)
-                  if a["sha256"] != b["sha256"]:
-                      raise AssertionError(f"STATE MISMATCH {nodes}/{classes}: {a['sha256']} != {b['sha256']}")
-                  ta, tb = statistics.median(a["times_s"]), statistics.median(b["times_s"])
+                      sample = json.loads(proc.stdout.strip().splitlines()[-1])
+                      results[ref].extend(sample["times_s"])
+                      fingerprints[ref].add(sample["sha256"])
+                  a_ref, b_ref = refs
+                  if len(fingerprints[a_ref]) != 1 or len(fingerprints[b_ref]) != 1 or fingerprints[a_ref] != fingerprints[b_ref]:
+                      raise AssertionError(f"STATE MISMATCH {nodes}/{classes}: {fingerprints[a_ref]} != {fingerprints[b_ref]}")
+                  ta, tb = statistics.median(results[a_ref]), statistics.median(results[b_ref])
                   print(f"{nodes}/{classes}: baseline={ta:.6f}s candidate={tb:.6f}s change={(tb/ta-1)*100:+.2f}% STATE_EQUIVALENCE_OK", flush=True)
           PY
