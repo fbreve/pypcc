@@ -54,12 +54,11 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                 else:
                     dist_list[i] = dist_weights[255]
             
-            for i in range(k):
-                prob[i] = dom_list[i] * dist_list[i]
-            
             total = 0.0
             for i in range(k):
-                total += prob[i]
+                weighted = dom_list[i] * dist_list[i]
+                prob[i] = weighted
+                total += weighted
                 slices[i] = total
 
             if total > 0.0:
