@@ -40,7 +40,8 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
         use_greedy = np.random.random() < p_grd
         
         if use_greedy:
-            # greedy
+            # greedy: compute weights and prefix sums in one neighbor scan
+            total = 0.0
             for i in range(k):
                 next_node = neighbors[i]
                 if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
@@ -53,9 +54,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                     dist_list[i] = dist_weights[d_idx]
                 else:
                     dist_list[i] = dist_weights[255]
-            
-            total = 0.0
-            for i in range(k):
+
                 weighted = dom_list[i] * dist_list[i]
                 prob[i] = weighted
                 total += weighted
