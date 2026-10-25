@@ -1,0 +1,60 @@
+name: Numba cross-revision comparison
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/benchmark_numba_revision.py'
+      - '.github/workflows/numba-cross-revision.yml'
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: 'Baseline git ref (default master)'
+        required: false
+        default: 'master'
+      candidate:
+        description: 'Candidate git ref (default current branch)'
+        required: false
+        default: 'bench/numba-cross-revision-equivalence'
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Compare revisions and final states
+        env:
+          BASELINE: ${{ inputs.baseline || 'master' }}
+          CANDIDATE: ${{ inputs.candidate || 'bench/numba-cross-revision-equivalence' }}
+        run: |
+          python - <<'PY'
+          import json, os, statistics, subprocess, sys
+          from pathlib import Path
+
+          script = Path("benchmarks/benchmark_numba_revision.py").read_bytes()
+          refs = [os.environ["BASELINE"], os.environ["CANDIDATE"]]
+          subprocess.run(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], check=True)
+          refs = [subprocess.check_output(["git", "rev-parse", "--verify", "origin/" + ref if ref in ("master", "bench/numba-cross-revision-equivalence") else ref], text=True).strip() for ref in refs]
+          for nodes in (512, 2048, 8192):
+              for classes in (4, 8, 16, 32):
+                  results = {}
+                  # Alternate execution order to mitigate drift. Each invocation warms up.
+                  for ref in (refs if (nodes + classes) % 3 else refs[::-1]):
+                      Path("benchmarks/benchmark_numba_revision.py").unlink(missing_ok=True)
+                      subprocess.run(["git", "checkout", "--detach", ref], check=True, stdout=subprocess.DEVNULL)
+                      Path("benchmarks/benchmark_numba_revision.py").write_bytes(script)
+                      proc = subprocess.run([sys.executable, "benchmarks/benchmark_numba_revision.py",
+                          "--nodes", str(nodes), "--classes", str(classes), "--repeats", "7"],
+                          check=True, capture_output=True, text=True)
+                      results[ref] = json.loads(proc.stdout.strip().splitlines()[-1])
+                  a, b = (results[x] for x in refs)
+                  if a["sha256"] != b["sha256"]:
+                      raise AssertionError(f"STATE MISMATCH {nodes}/{classes}: {a['sha256']} != {b['sha256']}")
+                  ta, tb = statistics.median(a["times_s"]), statistics.median(b["times_s"])
+                  print(f"{nodes}/{classes}: baseline={ta:.6f}s candidate={tb:.6f}s change={(tb/ta-1)*100:+.2f}% STATE_EQUIVALENCE_OK", flush=True)
+          PY
