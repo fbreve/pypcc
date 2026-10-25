@@ -43,15 +43,12 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             # greedy
             for i in range(k):
                 next_node = neighbors[i]
-                if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
-                    dom_list[i] = dominance[next_node, label]
-                else:
-                    dom_list[i] = 0.0
-                
                 if next_node >= 0 and next_node < n_nodes:
+                    dom_list[i] = dominance[next_node, label]
                     d_idx = dist_table[next_node, p_i]
                     dist_list[i] = dist_weights[d_idx]
                 else:
+                    dom_list[i] = 0.0
                     dist_list[i] = dist_weights[255]
             
             total = 0.0
