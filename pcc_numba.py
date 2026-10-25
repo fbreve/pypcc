@@ -40,24 +40,24 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
         use_greedy = np.random.random() < p_grd
         
         if use_greedy:
-            # greedy
+            # greedy: retain two passes, but use only one scratch array.
             for i in range(k):
                 next_node = neighbors[i]
                 if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
-                    dom_list[i] = dominance[next_node, label]
+                    dom = dominance[next_node, label]
                 else:
-                    dom_list[i] = 0.0
-                
+                    dom = 0.0
+
                 if next_node >= 0 and next_node < n_nodes:
                     d_idx = dist_table[next_node, p_i]
-                    dist_list[i] = dist_weights[d_idx]
+                    weight = dist_weights[d_idx]
                 else:
-                    dist_list[i] = dist_weights[255]
-            
+                    weight = dist_weights[255]
+                prob[i] = dom * weight
+
             total = 0.0
             for i in range(k):
-                weighted = dom_list[i] * dist_list[i]
-                total += weighted
+                total += prob[i]
                 slices[i] = total
 
             if total > 0.0:
