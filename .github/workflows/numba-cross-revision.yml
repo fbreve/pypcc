@@ -48,7 +48,7 @@ jobs:
                   return subprocess.check_output(["git", "rev-parse", "--verify", ref], text=True).strip()
           refs = [resolve(baseline), resolve(candidate)]
           for nodes in (512, 2048, 8192):
-              for classes in (4, 8, 16, 32):
+              for classes in (4, 8, 16, 24, 32, 48, 64):
                   results = {ref: [] for ref in refs}
                   fingerprints = {ref: set() for ref in refs}
                   # ABBA / BAAB across four batches, interleaving revision
