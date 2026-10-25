@@ -57,7 +57,6 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             total = 0.0
             for i in range(k):
                 weighted = dom_list[i] * dist_list[i]
-                prob[i] = weighted
                 total += weighted
                 slices[i] = total
 
