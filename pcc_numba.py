@@ -103,10 +103,10 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                 part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
 
             cur_d = dist_table[curnode, p_i]
-            next_d = dist_table[next_node, p_i]
             if cur_d < 255:
-                if next_d > cur_d + 1:
-                    dist_table[next_node, p_i] = cur_d + 1
+                candidate_d = cur_d + 1
+                if dist_table[next_node, p_i] > candidate_d:
+                    dist_table[next_node, p_i] = candidate_d
 
             if not greedy:
                 owndeg[next_node, label] += part_strength[p_i]
