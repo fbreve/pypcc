@@ -1,0 +1,31 @@
+name: Numba guard experiment benchmark
+on:
+  pull_request:
+    paths:
+      - 'pcc_numba.py'
+      - '.github/workflows/numba-guard-benchmark.yml'
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Compare baseline and candidate in separate processes
+        run: |
+          for revision in HEAD^ HEAD; do
+            git checkout --detach "$revision"
+            echo "REVISION=$revision"
+            for nodes in 512 2048 8192; do
+              for classes in 4 8 16 32; do
+                python benchmarks/benchmark_numba_dominance_layout.py --nodes "$nodes" --classes "$classes" --iterations 500 --repeats 7
+              done
+            done
+          done
