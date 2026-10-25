@@ -45,6 +45,7 @@ jobs:
                   results = {}
                   # Alternate execution order to mitigate drift. Each invocation warms up.
                   for ref in (refs if (nodes + classes) % 3 else refs[::-1]):
+                      Path("benchmarks/benchmark_numba_revision.py").unlink(missing_ok=True)
                       subprocess.run(["git", "checkout", "--detach", ref], check=True, stdout=subprocess.DEVNULL)
                       Path("benchmarks/benchmark_numba_revision.py").write_bytes(script)
                       proc = subprocess.run([sys.executable, "benchmarks/benchmark_numba_revision.py",
