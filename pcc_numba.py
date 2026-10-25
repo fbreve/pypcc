@@ -111,12 +111,16 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             if not greedy:
                 owndeg[next_node, label] += part_strength[p_i]
 
-            max_dom = dominance[next_node, 0]
-            for i in range(1, c):
-                if dominance[next_node, i] > max_dom:
-                    max_dom = dominance[next_node, i]
+            # Determine whether the particle's class is maximal without
+            # scanning the full row to compute a maximum value.
+            label_dom = dominance[next_node, label]
+            is_max = True
+            for i in range(c):
+                if dominance[next_node, i] > label_dom:
+                    is_max = False
+                    break
 
-            if dominance[next_node, label] == max_dom:
+            if is_max:
                 part_curnode[p_i] = next_node
 
 @njit
