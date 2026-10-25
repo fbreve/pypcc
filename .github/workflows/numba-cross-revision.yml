@@ -1,5 +1,9 @@
 name: Numba cross-revision comparison
 on:
+  pull_request:
+    paths:
+      - 'benchmarks/benchmark_numba_revision.py'
+      - '.github/workflows/numba-cross-revision.yml'
   workflow_dispatch:
     inputs:
       baseline:
