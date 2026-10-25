@@ -2,6 +2,7 @@ name: Numba cross-revision comparison
 on:
   pull_request:
     paths:
+      - 'pcc_numba.py'
       - 'benchmarks/benchmark_numba_revision.py'
       - '.github/workflows/numba-cross-revision.yml'
   workflow_dispatch:
@@ -30,7 +31,7 @@ jobs:
       - name: Compare revisions and final states
         env:
           BASELINE: ${{ inputs.baseline || 'master' }}
-          CANDIDATE: ${{ inputs.candidate || 'bench/numba-cross-revision-equivalence' }}
+          CANDIDATE: ${{ inputs.candidate || github.head_ref || github.ref_name }}
         run: |
           python - <<'PY'
           import json, os, statistics, subprocess, sys
@@ -39,7 +40,7 @@ jobs:
           script = Path("benchmarks/benchmark_numba_revision.py").read_bytes()
           refs = [os.environ["BASELINE"], os.environ["CANDIDATE"]]
           subprocess.run(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], check=True)
-          refs = [subprocess.check_output(["git", "rev-parse", "--verify", "origin/" + ref if ref in ("master", "bench/numba-cross-revision-equivalence") else ref], text=True).strip() for ref in refs]
+          refs = [subprocess.check_output(["git", "rev-parse", "--verify", "origin/" + ref if ref == "master" or ref == os.environ["CANDIDATE"] else ref], text=True).strip() for ref in refs]
           for nodes in (512, 2048, 8192):
               for classes in (4, 8, 16, 32):
                   results = {}
