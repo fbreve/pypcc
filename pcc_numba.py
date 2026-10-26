@@ -18,7 +18,8 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               prob, slices, dist_weights):
+                               dom_row, reduc, dom_list, dist_list, prob, slices,
+                               dist_weights):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
 
@@ -150,7 +151,8 @@ def _pcc_propagate_numba_sequential(neib_list, neib_qt,
                                    labels, p_grd, delta_v, c, zerovec,
                                    part_curnode, part_label, part_strength, dist_table,
                                    dominance, owndeg, deltap, dexp,
-                                   prob, slices, dist_weights)
+                                   dom_row, reduc, dom_list, dist_list, prob, slices,
+                                   dist_weights)
         
         if early_stop and it % 10 == 0:
             mmpot = _pcc_calc_mmpot_sequential(dominance, n_nodes, c)
@@ -199,7 +201,8 @@ def pcc_step_numba(neib_list, neib_qt,
                                        labels, p_grd, delta_v, c, zerovec,
                                        part_curnode, part_label, part_strength, dist_table,
                                        dominance, owndeg, deltap, dexp,
-                                       prob, slices, dist_weights)
+                                       dom_row, reduc, dom_list, dist_list, prob, slices,
+                                       dist_weights)
 
 
 def pcc_propagate_numba(neib_list, neib_qt,
