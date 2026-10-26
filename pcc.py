@@ -315,6 +315,10 @@ class ParticleCompetitionAndCooperation:
             validate_finite(name, value)
         max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
 
+        # Resolve backend availability before replacing a previous fitted state.
+        # Backend resolution can raise (e.g. invalidated runtime imports).
+        self._get_backend_fn()
+
         self.labels = np.ascontiguousarray(labels, dtype=np.int64)
         
         # Internal label mapping: maps original labels to 0..c-1
