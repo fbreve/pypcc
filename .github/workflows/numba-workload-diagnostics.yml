@@ -1,0 +1,26 @@
+name: Numba workload diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/profile_numba_workloads.py'
+      - '.github/workflows/numba-workload-diagnostics.yml'
+  workflow_dispatch:
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Run controlled workload contrasts
+        run: |
+          python benchmarks/profile_numba_workloads.py --nodes 512 --classes 8 --iterations 500 --repeats 7
+          python benchmarks/profile_numba_workloads.py --nodes 2048 --classes 16 --iterations 500 --repeats 7
+          python benchmarks/profile_numba_workloads.py --nodes 8192 --classes 32 --iterations 500 --repeats 7
