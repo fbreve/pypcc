@@ -316,14 +316,17 @@ class ParticleCompetitionAndCooperation:
         max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
 
         # Resolve backend availability before replacing a previous fitted state.
-        # Backend resolution can raise (e.g. invalidated runtime imports).
-        self._get_backend_fn()
+        # Preserve the no-propagation path when fewer than two classes are known.
+        prepared_labels = np.ascontiguousarray(labels, dtype=np.int64)
+        prepared_classes = np.unique(prepared_labels)
+        prepared_classes = prepared_classes[prepared_classes != -1]
+        if len(prepared_classes) >= 2:
+            self._get_backend_fn()
 
-        self.labels = np.ascontiguousarray(labels, dtype=np.int64)
+        self.labels = prepared_labels
         
         # Internal label mapping: maps original labels to 0..c-1
-        self.unique_labels = np.unique(self.labels)
-        self.unique_labels = self.unique_labels[self.unique_labels != -1]
+        self.unique_labels = prepared_classes
         self.c = len(self.unique_labels)
         
         if self.c < 2:
