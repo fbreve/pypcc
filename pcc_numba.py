@@ -94,12 +94,15 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                     dominance[next_node, i] = current - reduc_val
                     sum_reduc += reduc_val
 
-                dominance[next_node, label] += sum_reduc
-                
-            if deltap == 1.0:
-                part_strength[p_i] = dominance[next_node, label]
+                updated_label_dom = dominance[next_node, label] + sum_reduc
+                dominance[next_node, label] = updated_label_dom
             else:
-                part_strength[p_i] += (dominance[next_node, label] - part_strength[p_i]) * deltap
+                updated_label_dom = dominance[next_node, label]
+
+            if deltap == 1.0:
+                part_strength[p_i] = updated_label_dom
+            else:
+                part_strength[p_i] += (updated_label_dom - part_strength[p_i]) * deltap
 
             cur_d = dist_table[curnode, p_i]
             next_d = dist_table[next_node, p_i]
