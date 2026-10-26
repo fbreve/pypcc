@@ -85,16 +85,17 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                 # Update the destination row in place; no scratch-row copy.
                 step = part_strength[p_i] * (delta_v / (c - 1))
                 sum_reduc = 0.0
+                destination = dominance[next_node]
                 for i in range(c):
-                    current = dominance[next_node, i]
+                    current = destination[i]
                     if current < step:
                         reduc_val = current
                     else:
                         reduc_val = step
-                    dominance[next_node, i] = current - reduc_val
+                    destination[i] = current - reduc_val
                     sum_reduc += reduc_val
 
-                dominance[next_node, label] += sum_reduc
+                destination[label] += sum_reduc
                 
             if deltap == 1.0:
                 part_strength[p_i] = dominance[next_node, label]
