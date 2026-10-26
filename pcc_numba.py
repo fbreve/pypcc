@@ -22,6 +22,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                                dist_weights):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
+    dominance_scale = delta_v / (c - 1)
 
     for p_i in range(n_particles):
         curnode = part_curnode[p_i]
@@ -83,7 +84,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
         if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:
             if labels[next_node] == -1:
                 # Update the destination row in place; no scratch-row copy.
-                step = part_strength[p_i] * (delta_v / (c - 1))
+                step = part_strength[p_i] * dominance_scale
                 sum_reduc = 0.0
                 for i in range(c):
                     current = dominance[next_node, i]
