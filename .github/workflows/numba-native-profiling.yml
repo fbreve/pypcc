@@ -1,0 +1,24 @@
+name: Numba native profiling smoke test
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/profile_numba_native.py'
+      - '.github/workflows/numba-native-profiling.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Smoke test native profiling workload
+        env:
+          NUMBA_ENABLE_PROFILING: '1'
+        run: python benchmarks/profile_numba_native.py --nodes 512 --classes 8 --iterations 50 --seconds 2
