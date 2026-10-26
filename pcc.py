@@ -323,59 +323,68 @@ class ParticleCompetitionAndCooperation:
         if len(prepared_classes) >= 2:
             self._get_backend_fn()
 
-        self.labels = prepared_labels
-        
-        # Internal label mapping: maps original labels to 0..c-1
-        self.unique_labels = prepared_classes
-        self.c = len(self.unique_labels)
-        
-        if self.c < 2:
-            # Keep the historical no-fit return without exposing a mixture of
-            # the current labels and a previous fit's particles/dominance.
-            for name in ('part', 'node', 'label_to_idx', 'idx_to_label',
-                         'zerovec', 'owndeg', 'p_grd', 'delta_v', 'deltap',
-                         'dexp', 'max_iter', 'early_stop', 'es_chk'):
-                setattr(self, name, None)
-            for name in ('mapped_labels', 'dist_weights', 'buf_dom_row',
-                         'buf_reduc', 'buf_dom_list', 'buf_dist_list',
-                         'buf_prob', 'buf_slices'):
-                self.__dict__.pop(name, None)
-            warnings.warn("PCC requires at least 2 labeled classes to run. Returning original labels.")
-            return labels
-        
-        self.label_to_idx = {lbl: i for i, lbl in enumerate(self.unique_labels)}
-        self.idx_to_label = {i: lbl for i, lbl in enumerate(self.unique_labels)}
-        
-        # Create a mapped labels array for internal use
-        # Optimization: Use Fortran order for tables often indexed by [neighbors, column]
-        # This makes the columns contiguous in memory (better cache locality)
-        self.mapped_labels = np.full(self.labels.shape, -1, dtype=np.int64)
-        for lbl, idx in self.label_to_idx.items():
-            self.mapped_labels[self.labels == lbl] = idx
+        # New fit objects are allocated independently of the previous fit.
+        # Retain only references, not copies of large particle/node arrays.
+        previous_state = self.__dict__.copy()
+        try:
+            self.labels = prepared_labels
+            
+            # Internal label mapping: maps original labels to 0..c-1
+            self.unique_labels = prepared_classes
+            self.c = len(self.unique_labels)
+            
+            if self.c < 2:
+                # Keep the historical no-fit return without exposing a mixture of
+                # the current labels and a previous fit's particles/dominance.
+                for name in ('part', 'node', 'label_to_idx', 'idx_to_label',
+                             'zerovec', 'owndeg', 'p_grd', 'delta_v', 'deltap',
+                             'dexp', 'max_iter', 'early_stop', 'es_chk'):
+                    setattr(self, name, None)
+                for name in ('mapped_labels', 'dist_weights', 'buf_dom_row',
+                             'buf_reduc', 'buf_dom_list', 'buf_dist_list',
+                             'buf_prob', 'buf_slices'):
+                    self.__dict__.pop(name, None)
+                warnings.warn("PCC requires at least 2 labeled classes to run. Returning original labels.")
+                return labels
+            
+            self.label_to_idx = {lbl: i for i, lbl in enumerate(self.unique_labels)}
+            self.idx_to_label = {i: lbl for i, lbl in enumerate(self.unique_labels)}
+            
+            # Create a mapped labels array for internal use
+            # Optimization: Use Fortran order for tables often indexed by [neighbors, column]
+            # This makes the columns contiguous in memory (better cache locality)
+            self.mapped_labels = np.full(self.labels.shape, -1, dtype=np.int64)
+            for lbl, idx in self.label_to_idx.items():
+                self.mapped_labels[self.labels == lbl] = idx
 
-        self.p_grd = p_grd
-        self.delta_v = delta_v
-        self.deltap = deltap
-        self.dexp = dexp
-        self.max_iter = max_iter
-        self.early_stop = early_stop
-        self.es_chk = es_chk
+            self.p_grd = p_grd
+            self.delta_v = delta_v
+            self.deltap = deltap
+            self.dexp = dexp
+            self.max_iter = max_iter
+            self.early_stop = early_stop
+            self.es_chk = es_chk
 
-        self.part = self.__genParticles()
-        self.node = self.__genNodes()
+            self.part = self.__genParticles()
+            self.node = self.__genNodes()
 
-        # Pre-calculate distance weights lookup table for 0..255 range
-        # This drastically speeds up the NumPy backend by avoiding power/inversion in loop
-        self.dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** self.dexp
-        # Padding to 257 to handle potential 255+1 edge cases safely
-        
-        self.__labelPropagation()
+            # Pre-calculate distance weights lookup table for 0..255 range
+            # This drastically speeds up the NumPy backend by avoiding power/inversion in loop
+            self.dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** self.dexp
+            # Padding to 257 to handle potential 255+1 edge cases safely
+            
+            self.__labelPropagation()
 
-        # Unmap labels before returning
-        final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
-        for idx, lbl in self.idx_to_label.items():
-            final_labels[self.node.label == idx] = lbl
-        return final_labels
+            # Unmap labels before returning
+            final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
+            for idx, lbl in self.idx_to_label.items():
+                final_labels[self.node.label == idx] = lbl
+            return final_labels
+
+        except Exception:
+            self.__dict__.clear()
+            self.__dict__.update(previous_state)
+            raise
 
     def __labelPropagation(self):
         self.zerovec = np.zeros(self.c, dtype=np.float64)
