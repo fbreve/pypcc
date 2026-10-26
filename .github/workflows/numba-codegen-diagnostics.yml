@@ -1,0 +1,24 @@
+name: Numba code generation diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/inspect_numba_codegen.py'
+      - '.github/workflows/numba-codegen-diagnostics.yml'
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy==2.2.6 numba scipy scikit-learn
+      - name: Inspect compiled kernels
+        run: |
+          python benchmarks/inspect_numba_codegen.py --nodes 512 --classes 8
+          python benchmarks/inspect_numba_codegen.py --nodes 2048 --classes 16
