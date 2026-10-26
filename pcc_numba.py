@@ -63,8 +63,10 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             if total > 0.0:
                 rand_val = np.random.uniform(0.0, total)
                 choice = 0
+                running = 0.0
                 for i in range(k):
-                    if rand_val <= slices[i]:
+                    running += prob[i]
+                    if rand_val <= running:
                         choice = i
                         break
                 next_node = neighbors[choice]
