@@ -6,7 +6,7 @@ of es_chk; stop_max is already computed by the public API.
 import unittest
 import numpy as np
 
-from tests.test_sequential_safety import state, buffers
+from test_sequential_safety import state, buffers
 from pcc_numpy import pcc_propagate_numpy
 
 try:
