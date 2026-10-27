@@ -33,6 +33,34 @@ class OptionalSeedTests(unittest.TestCase):
                 for x, y in zip(a, b):
                     np.testing.assert_array_equal(x, y)
 
+    def test_boundary_seeds_replay_and_distinguish_runs(self):
+        for impl in ("numpy", "numba", "cython"):
+            with self.subTest(impl=impl):
+                if impl == "numba":
+                    try:
+                        import pcc_numba
+                    except ImportError:
+                        continue
+                if impl == "cython":
+                    try:
+                        import pcc_step
+                    except ImportError:
+                        continue
+                for seed in (0, 1, 2**32 - 1):
+                    with self.subTest(impl=impl, seed=seed):
+                        a = self.run_fit(impl, seed)
+                        b = self.run_fit(impl, seed)
+                        for x, y in zip(a, b):
+                            np.testing.assert_array_equal(x, y)
+
+    def test_numpy_seeded_fit_replays_after_intervening_random_draws(self):
+        np.random.seed(100)
+        first = self.run_fit("numpy", 42)
+        np.random.random(200)
+        second = self.run_fit("numpy", 42)
+        for x, y in zip(first, second):
+            np.testing.assert_array_equal(x, y)
+
     def test_invalid_seed_does_not_change_fit(self):
         model = ParticleCompetitionAndCooperation(impl="numpy")
         model.set_graph(
