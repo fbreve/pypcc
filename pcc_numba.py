@@ -14,6 +14,11 @@ from pcc_validation import (validate_step_inputs, validate_buffers,
                             validate_mutable_arrays)
 
 @njit
+def _seed_numba_rng(seed):
+    np.random.seed(seed)
+
+
+@njit
 def _pcc_step_numba_sequential(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
@@ -211,7 +216,7 @@ def pcc_propagate_numba(neib_list, neib_qt,
                         dominance, owndeg, deltap, dexp,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
-                        max_iter, early_stop, es_chk, stop_max, return_info=False):
+                        max_iter, early_stop, es_chk, stop_max, return_info=False, seed=None):
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
@@ -226,6 +231,9 @@ def pcc_propagate_numba(neib_list, neib_qt,
         ("owndeg", owndeg), ("dom_row", dom_row),
         ("reduc", reduc), ("dom_list", dom_list),
         ("dist_list", dist_list), ("prob", prob), ("slices", slices))
+
+    if seed is not None:
+        _seed_numba_rng(seed)
 
     metrics = _pcc_propagate_numba_sequential(
         neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,

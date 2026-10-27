@@ -63,13 +63,18 @@ cpdef pcc_propagate(
     int              early_stop,
     int              es_chk,
     int              stop_max,
-    bint             return_info = False
+    bint             return_info = False,
+    object           seed = None
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
-    
+    if seed is not None:
+        rng_state = <unsigned int>seed
+        if rng_state == 0:
+            rng_state = 123456789  # xorshift32 cannot evolve from zero
+
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
