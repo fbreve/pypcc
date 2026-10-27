@@ -208,7 +208,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
-                        return_info=False):
+                        return_info=False, seed=None):
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
@@ -221,6 +221,9 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                                 ("part_strength", part_strength),
                                 ("dist_table", dist_table),
                                 ("dominance", dominance), ("owndeg", owndeg))
+
+    if seed is not None:
+        np.random.seed(seed)
 
     it = -1
     max_mmpot = 0.0
