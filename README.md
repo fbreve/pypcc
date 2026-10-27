@@ -23,6 +23,40 @@ ParticleCompetitionAndCooperation(impl="numpy")
 according to the implementation you would like to use. 
 **auto** selects the first available backend in the fixed order Cython, Numba, NumPy; it does not benchmark them.
 
+## Randomness and reproducibility
+
+The three propagation backends do **not** share one random-number generator.
+For reproducible experiments, select the backend explicitly instead of using
+`impl="auto"`, which depends on which compiled extensions are installed.
+
+- **NumPy:** the propagation kernel uses NumPy's legacy process-global
+  `np.random` generator. Call `np.random.seed(seed)` immediately before
+  `fit_predict` to replay a run in the same environment. Other code using
+  that global generator can change the sequence.
+- **Numba:** random draws inside JIT-compiled functions use Numba-managed RNG
+  state, which is not initialized by calling `np.random.seed` in ordinary
+  Python code. To seed it for experiments, call a Numba-compiled helper such as
+  `@numba.njit\ndef seed_numba(seed):\n    np.random.seed(seed)` before
+  `fit_predict`. See `tests/test_numba_rng_replay.py` for an executable example.
+- **Cython:** the sequential propagation function initializes its private
+  xorshift32 generator to the fixed value `123456789` on each call.
+  Consequently, repeated identical calls replay independently of the
+  process-global NumPy seed. This is the existing implementation, **not** a
+  user-configurable seed.
+
+A fixed seed does not imply identical results **across** backends: their RNG
+algorithms and random-draw schedules differ. Reproducibility also depends on
+the software versions, graph, labels, fit parameters, update mode, and execution
+environment. The regression tests in `tests/test_numpy_rng_replay.py`,
+`tests/test_numba_rng_replay.py`, and `tests/test_cython_rng_replay.py`
+check same-backend replay, not cross-backend equivalence.
+
+If `fit_predict` raises, the previous fitted model attributes are restored,
+but global or backend-specific RNG state is **not** rolled back. In particular,
+a failed run may consume draws and change the next run. The public API does not
+currently offer a `random_state` parameter; adding one without changing
+historical random sequences would require a separate compatibility design.
+
 ## Graph replacement and fit state
 
 A successful `build_graph` or `set_graph` call invalidates the previous fit,
