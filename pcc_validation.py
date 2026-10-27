@@ -117,3 +117,13 @@ def validate_seed(seed):
             or not 0 <= seed <= 2**32 - 1):
         raise ValueError("seed must be an integer in [0, 2**32 - 1] or None")
     return int(seed)
+
+
+def validate_propagation_controls(max_iter, es_chk, stop_max):
+    """Reject nonintegral iteration controls before kernel or RNG mutation."""
+    for name, value in (("max_iter", max_iter), ("es_chk", es_chk),
+                        ("stop_max", stop_max)):
+        if (isinstance(value, (bool, np.bool_))
+                or not isinstance(value, (int, np.integer))
+                ):
+            raise ValueError(f"{name} must be an integer")

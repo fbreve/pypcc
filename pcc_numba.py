@@ -11,7 +11,7 @@ from numba import njit
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers,
                             validate_kernel_scalars, validate_fractional_buffers,
-                            validate_mutable_arrays, validate_seed)
+                            validate_mutable_arrays, validate_seed, validate_propagation_controls)
 
 @njit
 def _seed_numba_rng(seed):
@@ -232,6 +232,7 @@ def pcc_propagate_numba(neib_list, neib_qt,
         ("reduc", reduc), ("dom_list", dom_list),
         ("dist_list", dist_list), ("prob", prob), ("slices", slices))
 
+    validate_propagation_controls(max_iter, es_chk, stop_max)
     seed = validate_seed(seed)
     if seed is not None:
         _seed_numba_rng(seed)
