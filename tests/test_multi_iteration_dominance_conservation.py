@@ -1,7 +1,6 @@
 """Dominance conservation and cross-backend state parity over many forced moves."""
 import unittest
 import numpy as np
-from test_sequential_safety import buffers
 from pcc_numpy import pcc_propagate_numpy
 
 try:
@@ -40,7 +39,8 @@ class MultiIterationDominanceConservationTests(unittest.TestCase):
         a = [edges, degrees, labels, 0., delta_v, classes, np.zeros(classes),
              positions, np.array([0], dtype=np.int64), strengths, distances,
              dominance, ownership, deltap, 2.]
-        fn(*a, *buffers(a), iterations, False, 2000, 1, seed=17)
+        scratch = [np.empty(classes), np.empty(classes)] + [np.empty(1) for _ in range(4)] + [1. / (np.arange(257) + 1.) ** 2]
+        fn(*a, *scratch, iterations, False, 2000, 1, seed=17)
         np.testing.assert_allclose(dominance.sum(axis=1), initial_sums,
                                    rtol=0, atol=2e-12)
         self.assertTrue(np.isfinite(dominance).all())
