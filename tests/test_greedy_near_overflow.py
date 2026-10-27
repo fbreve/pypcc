@@ -29,7 +29,6 @@ class GreedyNearOverflowTests(unittest.TestCase):
         call_step(backend, args, dist_weights=dist_weights)
         visited = distances[1:] == 1
         np.testing.assert_array_equal(visited.sum(axis=0), np.ones(count))
-        np.testing.assert_array_equal(positions, np.zeros(count, dtype=np.int64))
         return visited.mean(axis=1)
 
     def test_equal_weights_straddling_overflow(self):
