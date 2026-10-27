@@ -377,7 +377,7 @@ class ParticleCompetitionAndCooperation:
             self.dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** self.dexp
             # Padding to 257 to handle potential 255+1 edge cases safely
             
-            self.__labelPropagation()
+            self.__labelPropagation(seed=seed)
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
@@ -390,7 +390,7 @@ class ParticleCompetitionAndCooperation:
             self.__dict__.update(previous_state)
             raise
 
-    def __labelPropagation(self):
+    def __labelPropagation(self, seed=None):
         self.zerovec = np.zeros(self.c, dtype=np.float64)
         
         # Pre-allocate buffers for backends that use them (Cython/Legacy Numba)
