@@ -162,6 +162,16 @@ cdef void pcc_step_sequential(
                     prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
 
+            if prob_sum == float('inf'):
+                max_weight = 0.0
+                for i in range(k):
+                    if prob_buf[i] > max_weight:
+                        max_weight = prob_buf[i]
+                prob_sum = 0.0
+                for i in range(k):
+                    prob_buf[i] /= max_weight
+                    prob_sum += prob_buf[i]
+
             if prob_sum > 0.0:
                 randval = rand_double(rng_state) * prob_sum
                 choice = 0
