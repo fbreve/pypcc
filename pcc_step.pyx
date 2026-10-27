@@ -6,6 +6,7 @@ from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
                             validate_kernel_scalars, validate_seed, validate_propagation_controls)
 from libc.stdlib cimport malloc, free
+from libc.math cimport isinf
 
 # Fast XORShift RNG (Sequential version)
 @cython.cdivision(True)
@@ -133,7 +134,7 @@ cdef void pcc_step_sequential(
     cdef Py_ssize_t p_i, curnode, k, i, choice, next_node
     cdef Py_ssize_t label
     cdef double randval, step, reduc_val, sum_reduc, dom_value
-    cdef double prob_sum, max_dom
+    cdef double prob_sum, max_dom, max_weight
     cdef unsigned char cur_d, next_d
     cdef int greedy
 
@@ -162,7 +163,7 @@ cdef void pcc_step_sequential(
                     prob_buf[i] = dist_weights[dist_table[next_node, p_i]] * dominance[next_node, label]
                 prob_sum += prob_buf[i]
 
-            if prob_sum == float('inf'):
+            if isinf(prob_sum):
                 max_weight = 0.0
                 for i in range(k):
                     if prob_buf[i] > max_weight:
