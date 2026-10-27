@@ -277,7 +277,7 @@ class ParticleCompetitionAndCooperation:
         self._invalidate_fit_state()
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
-                    max_iter=500000, early_stop=True, es_chk=2000):
+                    max_iter=500000, early_stop=True, es_chk=2000, seed=None):
         """Classify using finite labels and finite effective fit parameters.
 
         Validation precedes integer casts, model initialization and backend/RNG
@@ -314,6 +314,10 @@ class ParticleCompetitionAndCooperation:
                             ("early_stop", early_stop)):
             validate_finite(name, value)
         max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
+        if seed is not None:
+            if isinstance(seed, (bool, np.bool_)) or not isinstance(seed, (int, np.integer)) or not 0 <= seed <= 2**32 - 1:
+                raise ValueError("seed must be an integer in [0, 2**32 - 1] or None")
+            seed = int(seed)
 
         # Resolve backend availability before replacing a previous fitted state.
         # Preserve the no-propagation path when fewer than two classes are known.
@@ -427,7 +431,8 @@ class ParticleCompetitionAndCooperation:
             self.buf_dom_row, self.buf_reduc, self.buf_dom_list,
             self.buf_dist_list, self.buf_prob, self.buf_slices,
             self.dist_weights,
-            self.max_iter, self.early_stop, self.es_chk, stop_max
+            self.max_iter, self.early_stop, self.es_chk, stop_max,
+            **({"seed": seed} if seed is not None else {})
         )
 
         unlabeled = node.label == -1
