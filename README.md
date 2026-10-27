@@ -23,6 +23,41 @@ ParticleCompetitionAndCooperation(impl="numpy")
 according to the implementation you would like to use. 
 **auto** selects the first available backend in the fixed order Cython, Numba, NumPy; it does not benchmark them.
 
+## Randomness and reproducibility
+
+Use the optional `seed` keyword in `fit_predict` to reproduce a run with
+the **same backend**:
+
+```python
+model = ParticleCompetitionAndCooperation(impl="numba")
+predictions = model.fit_predict(labels, seed=42)
+```
+
+`seed` accepts an integer from 0 through `2**32 - 1` or `None` (the
+default). With `seed=None`, each backend retains its previous behavior.
+A provided seed is applied before propagation, after input validation.
+Select a backend explicitly for repeatable experiments: `impl="auto"` picks
+the first installed backend in the order Cython, Numba, NumPy.
+
+- **NumPy:** seeds the legacy global `np.random` generator. This also changes
+  the process-global random state seen by other NumPy users.
+- **Numba:** seeds the Numba-managed generator from compiled code; ordinary
+  Python-level `np.random.seed` does not seed this generator.
+- **Cython:** seeds its private xorshift32 generator. With `seed=None`, it
+  retains the historical fixed internal seed `123456789`. Since xorshift32
+  cannot evolve from zero, `seed=0` maps to that nonzero default.
+
+A fixed seed does **not** imply identical results across backends: RNG
+algorithms and draw schedules differ. The software environment, graph, labels,
+fit parameters and update mode also matter. The tests
+`tests/test_optional_seed.py`, `tests/test_numpy_rng_replay.py`,
+`tests/test_numba_rng_replay.py` and `tests/test_cython_rng_replay.py`
+check reproducibility within each backend.
+
+If `fit_predict` raises, prior fitted model attributes are restored but
+global or backend-specific RNG state is **not** rolled back. A failed run may
+consume random draws and affect subsequent unseeded runs.
+
 ## Graph replacement and fit state
 
 A successful `build_graph` or `set_graph` call invalidates the previous fit,
