@@ -106,3 +106,14 @@ def validate_mutable_arrays(*named_arrays):
     for name, value in named_arrays:
         if isinstance(value, np.ndarray) and not value.flags.writeable:
             raise ValueError(f"{name} must be writable")
+
+
+def validate_seed(seed):
+    """Normalize an optional unsigned 32-bit seed without changing RNG state."""
+    if seed is None:
+        return None
+    if (isinstance(seed, (bool, np.bool_))
+            or not isinstance(seed, (int, np.integer))
+            or not 0 <= seed <= 2**32 - 1):
+        raise ValueError("seed must be an integer in [0, 2**32 - 1] or None")
+    return int(seed)
