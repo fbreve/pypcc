@@ -4,7 +4,7 @@ cimport numpy as np
 cimport cython
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
-                            validate_kernel_scalars)
+                            validate_kernel_scalars, validate_seed)
 from libc.stdlib cimport malloc, free
 
 # Fast XORShift RNG (Sequential version)
@@ -70,6 +70,7 @@ cpdef pcc_propagate(
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
+    seed = validate_seed(seed)
     if seed is not None:
         rng_state = <unsigned int>seed
         if rng_state == 0:
