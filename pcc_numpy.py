@@ -71,6 +71,9 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
             targets = neighbors[valid]
             weights[valid] = dominance[targets, cls] * dist_weights[dist_table[targets, p_i]]
             total = float(np.sum(weights))
+            if np.isinf(total):
+                weights /= np.max(weights)
+                total = float(np.sum(weights))
             if total > 0.0:
                 threshold = np.random.random() * total
                 idx = int(np.searchsorted(np.cumsum(weights), threshold, side="right"))

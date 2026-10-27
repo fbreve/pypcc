@@ -65,6 +65,17 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
                 total += prob[i]
                 slices[i] = total
 
+            if np.isinf(total):
+                max_weight = 0.0
+                for i in range(k):
+                    if prob[i] > max_weight:
+                        max_weight = prob[i]
+                total = 0.0
+                for i in range(k):
+                    prob[i] /= max_weight
+                    total += prob[i]
+                    slices[i] = total
+
             if total > 0.0:
                 rand_val = np.random.uniform(0.0, total)
                 choice = 0
