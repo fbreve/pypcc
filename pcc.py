@@ -314,10 +314,7 @@ class ParticleCompetitionAndCooperation:
                             ("early_stop", early_stop)):
             validate_finite(name, value)
         max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
-        if seed is not None:
-            if isinstance(seed, (bool, np.bool_)) or not isinstance(seed, (int, np.integer)) or not 0 <= seed <= 2**32 - 1:
-                raise ValueError("seed must be an integer in [0, 2**32 - 1] or None")
-            seed = int(seed)
+        seed = validate_seed(seed)
 
         # Resolve backend availability before replacing a previous fitted state.
         # Preserve the no-propagation path when fewer than two classes are known.
