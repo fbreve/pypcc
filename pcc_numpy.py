@@ -73,7 +73,7 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
             total = float(np.sum(weights))
             if total > 0.0:
                 threshold = np.random.random() * total
-                idx = int(np.searchsorted(np.cumsum(weights), threshold, side="left"))
+                idx = int(np.searchsorted(np.cumsum(weights), threshold, side="right"))
                 idx = min(idx, degree - 1)
             else:
                 idx = int(np.random.random() * degree)
