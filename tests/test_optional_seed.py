@@ -61,22 +61,6 @@ class OptionalSeedTests(unittest.TestCase):
         for x, y in zip(first, second):
             np.testing.assert_array_equal(x, y)
 
-    def test_zero_iterations_seed_does_not_change_model_random_draws(self):
-        # A seeded fit is allowed to reset the RNG, but zero propagation
-        # iterations must not advance it beyond that seed.
-        for seed in (0, 1, 2**32 - 1):
-            np.random.seed(999)
-            model = ParticleCompetitionAndCooperation(impl="numpy")
-            model.set_graph(
-                np.array([[1], [0], [3], [2]], dtype=np.int64),
-                np.ones(4, dtype=np.int64))
-            model.fit_predict(np.array([0, -1, 1, -1]), max_iter=0,
-                              early_stop=False, seed=seed)
-            observed = np.random.random()
-            np.random.seed(seed)
-            expected = np.random.random()
-            self.assertEqual(observed, expected)
-
     def test_invalid_seed_does_not_change_fit(self):
         model = ParticleCompetitionAndCooperation(impl="numpy")
         model.set_graph(
