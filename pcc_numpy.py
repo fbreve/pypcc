@@ -9,7 +9,7 @@ Created on Fri Jan 16 15:01:28 2026
 import numpy as np
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_kernel_scalars,
-                            validate_fractional_buffers, validate_mutable_arrays)
+                            validate_fractional_buffers, validate_mutable_arrays, validate_seed)
 
 
 def pcc_step_numpy(neib_list, neib_qt,
@@ -222,6 +222,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                                 ("dist_table", dist_table),
                                 ("dominance", dominance), ("owndeg", owndeg))
 
+    seed = validate_seed(seed)
     if seed is not None:
         np.random.seed(seed)
 
