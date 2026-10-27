@@ -56,7 +56,7 @@ import warnings
 from dataclasses import dataclass
 from pcc_numpy import pcc_step_numpy
 from pcc_graph import build_knn_graph
-from pcc_validation import validate_finite
+from pcc_validation import validate_finite, validate_seed
 
 try:
     from pcc_numba import pcc_step_numba
