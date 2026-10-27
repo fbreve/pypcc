@@ -120,10 +120,10 @@ def validate_seed(seed):
 
 
 def validate_propagation_controls(max_iter, es_chk, stop_max):
-    """Reject invalid iteration controls before any kernel or RNG mutation."""
+    """Reject nonintegral iteration controls before kernel or RNG mutation."""
     for name, value in (("max_iter", max_iter), ("es_chk", es_chk),
                         ("stop_max", stop_max)):
         if (isinstance(value, (bool, np.bool_))
                 or not isinstance(value, (int, np.integer))
-                or value < 0):
-            raise ValueError(f"{name} must be a nonnegative integer")
+                ):
+            raise ValueError(f"{name} must be an integer")
