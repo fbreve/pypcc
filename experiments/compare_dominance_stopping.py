@@ -42,7 +42,7 @@ DATASETS = {
 }
 FIELDS = ("dataset", "seed", "criterion", "tolerance", "iterations",
           "stop_reason", "cap_hit", "accuracy", "reference_agreement",
-          "elapsed_seconds", "labeled_count", "unlabeled_count")
+          "elapsed_seconds", "labeled_count", "unlabeled_count", "es_chk")
 
 
 def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
@@ -72,10 +72,10 @@ def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
     return edges, np.full(len(truth), neighbors, dtype=np.int64), labels, truth
 
 
-def run_case(graph, degrees, labels, truth, seed, criterion, cap, tolerance):
+def run_case(graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk=2000):
     model = ExperimentalPCC(criterion, tolerance)
     model.set_graph(graph, degrees)
-    kwargs = dict(max_iter=cap, seed=seed, early_stop=(criterion != "reference"))
+    kwargs = dict(max_iter=cap, seed=seed, es_chk=es_chk,\n                  early_stop=(criterion != "reference"))
     start = time.perf_counter()
     predicted = model.fit_predict(labels.copy(), **kwargs)
     elapsed = time.perf_counter() - start
@@ -84,18 +84,18 @@ def run_case(graph, degrees, labels, truth, seed, criterion, cap, tolerance):
 
 
 def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
-            tolerance=1e-6):
+            tolerance=1e-6, es_chk=2000):
     if cap < 1:
         raise ValueError("cap must be positive")
     graph, degrees, labels, truth = prepare(
         name, seed, neighbors=neighbors, labeled_per_class=labeled_per_class)
     reference, _, _, _ = run_case(graph, degrees, labels, truth, seed,
-                                "reference", cap, tolerance)
+                                "reference", cap, tolerance, es_chk)
     unknown = labels == -1
     rows = []
     for criterion in ("reference", "potential", "dominance_change"):
         predicted, accuracy, elapsed, info = run_case(
-            graph, degrees, labels, truth, seed, criterion, cap, tolerance)
+            graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk)
         rows.append(dict(dataset=name, seed=seed, criterion=criterion,
                          tolerance=tolerance if criterion == "dominance_change" else "",
                          iterations=info["effective_iterations"],
@@ -105,7 +105,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
                              predicted[unknown] == reference[unknown])),
                          elapsed_seconds=elapsed,
                          labeled_count=int((~unknown).sum()),
-                         unlabeled_count=int(unknown.sum())))
+                         unlabeled_count=int(unknown.sum()), es_chk=es_chk))
     return rows
 
 
@@ -118,7 +118,7 @@ def main(argv=None):
     parser.add_argument("--cap", type=int, default=1000)
     parser.add_argument("--neighbors", type=int, default=10)
     parser.add_argument("--labeled-per-class", type=int, default=2)
-    parser.add_argument("--tolerance", type=float, default=1e-6)
+    parser.add_argument("--tolerance", type=float, default=1e-6)\n    parser.add_argument("--es-chk", type=int, default=2000)
     args = parser.parse_args(argv)
     if not np.isfinite(args.tolerance) or args.tolerance < 0:
         parser.error("tolerance must be finite and nonnegative")
@@ -130,7 +130,7 @@ def main(argv=None):
                 for row in compare(name, seed, cap=args.cap,
                                    neighbors=args.neighbors,
                                    labeled_per_class=args.labeled_per_class,
-                                   tolerance=args.tolerance):
+                                   tolerance=args.tolerance, es_chk=args.es_chk):
                     writer.writerow(row)
 
 
