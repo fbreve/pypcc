@@ -36,7 +36,7 @@ class EarlyStopOngoingDominanceTests(unittest.TestCase):
         distances[0, 0] = 0
         distances[1, 1] = 0
         ownership = np.zeros((3, 2), dtype=np.float64)
-        args = [edges, degrees, labels, 0., .2, 2, np.zeros(2),
+        args = [edges, degrees, labels, 0., .001, 2, np.zeros(2),
                 positions, np.array([0, 1], dtype=np.int64), strengths,
                 distances, dominance, ownership, 1., 2.]
         scratch = [np.empty(2), np.empty(2)] + [np.empty(1) for _ in range(4)] + [1. / (np.arange(257) + 1.) ** 2]
