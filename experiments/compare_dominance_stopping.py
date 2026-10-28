@@ -119,7 +119,8 @@ def main(argv=None):
     parser.add_argument("--cap", type=int, default=1000)
     parser.add_argument("--neighbors", type=int, default=10)
     parser.add_argument("--labeled-per-class", type=int, default=2)
-    parser.add_argument("--tolerance", type=float, default=1e-6)\n    parser.add_argument("--es-chk", type=int, default=2000)
+    parser.add_argument("--tolerance", type=float, default=1e-6)
+    parser.add_argument("--es-chk", type=int, default=2000)
     args = parser.parse_args(argv)
     if not np.isfinite(args.tolerance) or args.tolerance < 0:
         parser.error("tolerance must be finite and nonnegative")
