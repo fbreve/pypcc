@@ -1,0 +1,35 @@
+name: Experimental dominance stopping real-data pilot
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/dominance-stopping-pilot.yml'
+  workflow_dispatch:
+
+jobs:
+  real-data-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Run capped real-dataset pilot
+        run: |
+          python -m experiments.compare_dominance_stopping \
+            --output dominance-stopping-pilot.csv \
+            --datasets iris wine breast_cancer \
+            --seeds 11 \
+            --cap 200
+      - name: Upload per-run measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-stopping-pilot
+          path: dominance-stopping-pilot.csv
+          if-no-files-found: warn
