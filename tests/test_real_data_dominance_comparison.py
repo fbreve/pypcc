@@ -28,7 +28,9 @@ class RealDataDominanceComparisonTests(unittest.TestCase):
             self.assertTrue(0 <= row["accuracy"] <= 1)
             self.assertTrue(0 <= row["reference_agreement"] <= 1)
             self.assertEqual(row["unlabeled_count"], 144)
-            self.assertEqual(row["iterations"], "")
+            self.assertGreaterEqual(row["iterations"], 1)
+            self.assertLessEqual(row["iterations"], 2)
+            self.assertIn(row["stop_reason"], ("early_stop", "max_iter"))
 
 
 if __name__ == "__main__":
