@@ -23,7 +23,8 @@ class RealDataDominanceComparisonTests(unittest.TestCase):
     def test_real_data_comparison_smoke(self):
         rows = compare("iris", 11, cap=2, neighbors=3)
         self.assertEqual([r["criterion"] for r in rows],
-                         ["reference", "potential", "dominance_change"])
+                         ["reference", "potential", "dominance_change",
+                          "dominance_relative"])
         for row in rows:
             self.assertTrue(0 <= row["accuracy"] <= 1)
             self.assertTrue(0 <= row["reference_agreement"] <= 1)
