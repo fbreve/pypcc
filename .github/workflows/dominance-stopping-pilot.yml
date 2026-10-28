@@ -24,7 +24,7 @@ jobs:
           for tolerance in 0.05 0.06 0.07; do
             python -m experiments.compare_dominance_stopping \
               --output "dominance-stopping-${tolerance}.csv" \
-              --datasets iris wine breast_cancer \
+              --datasets iris wine breast_cancer digits \
               --seeds 11 23 37 41 53 \
               --cap 10000 \
               --es-chk 50 \
