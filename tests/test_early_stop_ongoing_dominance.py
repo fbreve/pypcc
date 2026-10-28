@@ -1,0 +1,58 @@
+"""Characterize early stopping while class dominance is still changing."""
+import unittest
+import numpy as np
+from pcc_numpy import pcc_propagate_numpy
+
+try:
+    from pcc_numba import pcc_propagate_numba
+except ImportError:
+    pcc_propagate_numba = None
+try:
+    from pcc_step import pcc_propagate
+except ImportError:
+    pcc_propagate = None
+
+
+class EarlyStopOngoingDominanceTests(unittest.TestCase):
+    def backends(self):
+        result = [('numpy', pcc_propagate_numpy)]
+        if pcc_propagate_numba is not None:
+            result.append(('numba', pcc_propagate_numba))
+        if pcc_propagate is not None:
+            result.append(('cython', pcc_propagate))
+        return result
+
+    def run_case(self, fn, early_stop, iterations):
+        # A class-0 particle repeatedly attacks a class-1-dominated node.
+        # The mean maximum dominance initially decreases even as the
+        # destination changes at every step; movement is rejected until
+        # class 0 eventually overtakes class 1.
+        edges = np.array([[1], [0]], dtype=np.int64)
+        degrees = np.ones(2, dtype=np.int64)
+        labels = np.array([0, -1], dtype=np.int64)
+        dominance = np.array([[1., 0.], [.1, .9]], dtype=np.float64)
+        positions = np.array([0], dtype=np.int64)
+        strengths = np.array([1.], dtype=np.float64)
+        distances = np.array([[0], [255]], dtype=np.uint8)
+        ownership = np.zeros((2, 2), dtype=np.float64)
+        args = [edges, degrees, labels, 0., .05, 2, np.zeros(2),
+                positions, np.array([0], dtype=np.int64), strengths,
+                distances, dominance, ownership, 1., 2.]
+        scratch = [np.empty(2), np.empty(2)] + [np.empty(1) for _ in range(4)] + [1. / (np.arange(257) + 1.) ** 2]
+        info = fn(*args, *scratch, iterations, early_stop, 2000, 0,
+                  return_info=True, seed=31)
+        return info, dominance.copy()
+
+    def test_early_stop_does_not_imply_frozen_dominance(self):
+        for backend, fn in self.backends():
+            with self.subTest(backend=backend):
+                info, stopped = self.run_case(fn, True, 100)
+                self.assertEqual(info['stop_reason'], 'early_stop')
+                self.assertEqual(info['effective_iterations'], 11)
+                _, next_step = self.run_case(fn, False, info['effective_iterations'] + 1)
+                self.assertGreater(np.max(np.abs(next_step - stopped)), 1e-10)
+                np.testing.assert_allclose(stopped.sum(axis=1), 1., atol=1e-12)
+
+
+if __name__ == '__main__':
+    unittest.main()
