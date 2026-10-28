@@ -11,7 +11,7 @@ on:
 jobs:
   real-data-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,8 +24,8 @@ jobs:
           python -m experiments.compare_dominance_stopping \
             --output dominance-stopping-pilot.csv \
             --datasets iris wine breast_cancer \
-            --seeds 11 \
-            --cap 200
+            --seeds 11 23 \
+            --cap 10000
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
