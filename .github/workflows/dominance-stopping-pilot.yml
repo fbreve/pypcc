@@ -25,7 +25,8 @@ jobs:
             --output dominance-stopping-pilot.csv \
             --datasets iris wine breast_cancer \
             --seeds 11 23 \
-            --cap 10000
+            --cap 10000 \
+            --es-chk 50
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
