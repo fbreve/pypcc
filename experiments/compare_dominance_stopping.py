@@ -90,13 +90,17 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
         raise ValueError("cap must be positive")
     graph, degrees, labels, truth = prepare(
         name, seed, neighbors=neighbors, labeled_per_class=labeled_per_class)
-    reference, _, _, _ = run_case(graph, degrees, labels, truth, seed,
-                                "reference", cap, tolerance, es_chk)
+    reference, reference_accuracy, reference_elapsed, reference_info = run_case(
+        graph, degrees, labels, truth, seed, "reference", cap, tolerance, es_chk)
     unknown = labels == -1
     rows = []
     for criterion in ("reference", "potential", "dominance_change"):
-        predicted, accuracy, elapsed, info = run_case(
-            graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk)
+        if criterion == "reference":
+            predicted, accuracy, elapsed, info = (
+                reference, reference_accuracy, reference_elapsed, reference_info)
+        else:
+            predicted, accuracy, elapsed, info = run_case(
+                graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk)
         rows.append(dict(dataset=name, seed=seed, criterion=criterion,
                          tolerance=tolerance if criterion == "dominance_change" else "",
                          iterations=info["effective_iterations"],
