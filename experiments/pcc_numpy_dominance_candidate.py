@@ -217,6 +217,8 @@ class RelativeDominanceChangeStopTracker:
         self.stalled_checks = 0
         self._previous = None
         self._baseline = None
+        self.last_change = None
+        self.baseline_change = None
 
     def observe(self, dominance):
         current = np.asarray(dominance)
@@ -225,8 +227,10 @@ class RelativeDominanceChangeStopTracker:
             return False
         change = float(np.max(np.abs(current - self._previous)))
         self._previous = current.copy()
+        self.last_change = change
         if self._baseline is None:
             self._baseline = change
+            self.baseline_change = change
         threshold = self.tolerance * self._baseline
         self.stalled_checks = (self.stalled_checks + 1
                                if change <= threshold else 0)
@@ -265,6 +269,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
     if seed is not None:
         np.random.seed(seed)
 
+    dominance_trace = []
     it = -1
     max_mmpot = 0.0
     stop_cnt = 0
@@ -285,7 +290,10 @@ def pcc_propagate_numpy(neib_list, neib_qt,
         
         if early_stop and it % 10 == 0:
             if tracker is not None:
-                if tracker.observe(dominance):
+                should_stop = tracker.observe(dominance)
+                if getattr(tracker, "last_change", None) is not None:
+                    dominance_trace.append((it + 1, tracker.last_change))
+                if should_stop:
                     stop_cnt = tracker.stalled_checks
                     break
                 stop_cnt = tracker.stalled_checks
@@ -300,4 +308,8 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                     break
 
     if return_info:
-        return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
+        info = propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
+        info["dominance_trace"] = dominance_trace
+        if tracker is not None:
+            info["baseline_change"] = getattr(tracker, "baseline_change", None)
+        return info
