@@ -21,7 +21,7 @@ jobs:
         run: python -m pip install numpy scipy scikit-learn numba
       - name: Run capped real-dataset pilot
         run: |
-          for tolerance in 0.001 0.01 0.1; do
+          for tolerance in 0.02 0.04 0.06 0.08; do
             python -m experiments.compare_dominance_stopping \
               --output "dominance-stopping-${tolerance}.csv" \
               --datasets iris wine breast_cancer \
