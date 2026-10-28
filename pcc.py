@@ -120,6 +120,8 @@ class ParticleCompetitionAndCooperation:
         self.max_iter = None
         self.early_stop = None
         self.es_chk = None
+        self.stop_criterion = "potential"
+        self.dominance_tol = 0.0
         self.part = None
         self.node = None
         self.zerovec = None
@@ -277,7 +279,8 @@ class ParticleCompetitionAndCooperation:
         self._invalidate_fit_state()
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
-                    max_iter=500000, early_stop=True, es_chk=2000, seed=None):
+                    max_iter=500000, early_stop=True, es_chk=2000, seed=None,
+                     stop_criterion="potential", dominance_tol=0.0):
         """Classify using finite labels and finite effective fit parameters.
 
         Validation precedes integer casts, model initialization and backend/RNG
@@ -315,6 +318,13 @@ class ParticleCompetitionAndCooperation:
             validate_finite(name, value)
         max_iter, early_stop, es_chk = int(max_iter), bool(early_stop), int(es_chk)
         seed = validate_seed(seed)
+        if stop_criterion not in ("potential", "dominance_change"):
+            raise ValueError("stop_criterion must be potential or dominance_change")
+        if stop_criterion == "dominance_change":
+            from pcc_metrics import DominanceChangeStopTracker
+            DominanceChangeStopTracker(dominance_tol, 0)
+            if self.impl != "numpy":
+                raise ValueError("experimental dominance_change requires impl='numpy'")
 
         # Resolve backend availability before replacing a previous fitted state.
         # Preserve the no-propagation path when fewer than two classes are known.
@@ -365,6 +375,8 @@ class ParticleCompetitionAndCooperation:
             self.max_iter = max_iter
             self.early_stop = early_stop
             self.es_chk = es_chk
+            self.stop_criterion = stop_criterion
+            self.dominance_tol = dominance_tol
 
             self.part = self.__genParticles()
             self.node = self.__genNodes()
@@ -432,7 +444,10 @@ class ParticleCompetitionAndCooperation:
             self.buf_dist_list, self.buf_prob, self.buf_slices,
             self.dist_weights,
             self.max_iter, self.early_stop, self.es_chk, stop_max,
-            **({"seed": seed} if seed is not None else {})
+            **({"seed": seed} if seed is not None else {}),
+            **({"stop_criterion": self.stop_criterion,
+                "dominance_tol": self.dominance_tol}
+               if self.stop_criterion == "dominance_change" else {})
         )
 
         unlabeled = node.label == -1
