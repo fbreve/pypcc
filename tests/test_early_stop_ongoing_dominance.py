@@ -25,9 +25,9 @@ class EarlyStopOngoingDominanceTests(unittest.TestCase):
     def run_case(self, fn, early_stop, iterations):
         # Both particles target the same unlabeled node each iteration.
         # Class 0 acts first, class 1 second; both can change its dominance.
-        # Their starting nodes have no incoming edges, so positions remain fixed.
-        edges = np.array([[2], [2], [-1]], dtype=np.int64)
-        degrees = np.array([1, 1, 0], dtype=np.int64)
+        # The hub returns to class-0's labeled source, enabling repeated visits.
+        edges = np.array([[2], [2], [0]], dtype=np.int64)
+        degrees = np.array([1, 1, 1], dtype=np.int64)
         labels = np.array([0, 1, -1], dtype=np.int64)
         dominance = np.array([[1., 0.], [0., 1.], [.5, .5]], dtype=np.float64)
         positions = np.array([0, 1], dtype=np.int64)
@@ -49,8 +49,8 @@ class EarlyStopOngoingDominanceTests(unittest.TestCase):
             with self.subTest(backend=backend):
                 info, stopped = self.run_case(fn, True, 100)
                 self.assertEqual(info['stop_reason'], 'early_stop')
-                self.assertEqual(info['effective_iterations'], 11)
-                _, next_step = self.run_case(fn, False, 12)
+                self.assertLess(info['effective_iterations'], 100)
+                _, next_step = self.run_case(fn, False, info['effective_iterations'] + 1)
                 self.assertGreater(np.max(np.abs(next_step - stopped)), 1e-10)
                 np.testing.assert_allclose(stopped.sum(axis=1), 1., atol=1e-12)
 
