@@ -7,7 +7,7 @@ Created on Fri Jan 16 15:01:28 2026
 
 # pcc_numpy.py
 import numpy as np
-from pcc_metrics import propagation_info, DominanceChangeStopTracker
+from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_kernel_scalars,
                             validate_fractional_buffers, validate_mutable_arrays, validate_seed, validate_propagation_controls)
 
@@ -211,11 +211,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
-                        return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0):
-    if stop_criterion not in ("potential", "dominance_change"):
-        raise ValueError("stop_criterion must be potential or dominance_change")
-    tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
-               if stop_criterion == "dominance_change" else None)
+                        return_info=False, seed=None):
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
@@ -253,12 +249,6 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                            dist_weights, update_mode=update_mode)
         
         if early_stop and it % 10 == 0:
-            if tracker is not None:
-                if tracker.observe(dominance):
-                    stop_cnt = tracker.stalled_checks
-                    break
-                stop_cnt = tracker.stalled_checks
-                continue
             mmpot = np.mean(np.max(dominance, axis=1))
             if mmpot > max_mmpot:
                 max_mmpot = mmpot
