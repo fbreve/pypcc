@@ -26,7 +26,8 @@ jobs:
             --datasets iris wine breast_cancer \
             --seeds 11 23 \
             --cap 10000 \
-            --es-chk 50
+            --es-chk 50 \
+            --tolerance 0.0001
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
