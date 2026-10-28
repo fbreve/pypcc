@@ -204,6 +204,35 @@ def _pcc_step_numpy_synchronous(neib_list, neib_qt, labels, p_grd, delta_v, c,
     part_curnode[particles[accepted]] = targets[accepted]
 
 
+class RelativeDominanceChangeStopTracker:
+    """Experimental: compare each change with the first observed change.
+
+    A zero initial change uses an absolute zero threshold, avoiding division
+    by zero and retaining deterministic behavior.
+    """
+
+    def __init__(self, tolerance, stop_max):
+        self.tolerance = float(tolerance)
+        self.stop_max = int(stop_max)
+        self.stalled_checks = 0
+        self._previous = None
+        self._baseline = None
+
+    def observe(self, dominance):
+        current = np.asarray(dominance)
+        if self._previous is None:
+            self._previous = current.copy()
+            return False
+        change = float(np.max(np.abs(current - self._previous)))
+        self._previous = current.copy()
+        if self._baseline is None:
+            self._baseline = change
+        threshold = self.tolerance * self._baseline
+        self.stalled_checks = (self.stalled_checks + 1
+                               if change <= threshold else 0)
+        return self.stalled_checks > self.stop_max
+
+
 def pcc_propagate_numpy(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
                         part_curnode, part_label, part_strength, dist_table,
@@ -212,10 +241,12 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0):
-    if stop_criterion not in ("potential", "dominance_change"):
-        raise ValueError("stop_criterion must be potential or dominance_change")
+    if stop_criterion not in ("potential", "dominance_change", "dominance_relative"):
+        raise ValueError("invalid stop_criterion")
     tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
-               if stop_criterion == "dominance_change" else None)
+               if stop_criterion == "dominance_change" else
+               RelativeDominanceChangeStopTracker(dominance_tol, stop_max)
+               if stop_criterion == "dominance_relative" else None)
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
