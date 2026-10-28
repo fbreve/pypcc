@@ -382,10 +382,14 @@ class ParticleCompetitionAndCooperation:
             self.dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** self.dexp
             # Padding to 257 to handle potential 255+1 edge cases safely
             
-            if seed is None:
-                self.__labelPropagation(stop_criterion=stop_criterion, dominance_tol=dominance_tol)
+            if stop_criterion == "dominance_change":
+                self.__labelPropagation(
+                    **({"seed": seed} if seed is not None else {}),
+                    stop_criterion=stop_criterion, dominance_tol=dominance_tol)
+            elif seed is None:
+                self.__labelPropagation()
             else:
-                self.__labelPropagation(seed=seed, stop_criterion=stop_criterion, dominance_tol=dominance_tol)
+                self.__labelPropagation(seed=seed)
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
