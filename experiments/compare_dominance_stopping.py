@@ -75,7 +75,8 @@ def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
 def run_case(graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk=2000):
     model = ExperimentalPCC(criterion, tolerance)
     model.set_graph(graph, degrees)
-    kwargs = dict(max_iter=cap, seed=seed, es_chk=es_chk,\n                  early_stop=(criterion != "reference"))
+    kwargs = dict(max_iter=cap, seed=seed, es_chk=es_chk,
+                  early_stop=(criterion != "reference"))
     start = time.perf_counter()
     predicted = model.fit_predict(labels.copy(), **kwargs)
     elapsed = time.perf_counter() - start
