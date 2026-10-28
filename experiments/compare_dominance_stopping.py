@@ -12,6 +12,26 @@ from sklearn.datasets import load_iris, load_wine, load_breast_cancer, load_digi
 from sklearn.neighbors import NearestNeighbors
 
 from pcc import ParticleCompetitionAndCooperation
+from experiments.pcc_numpy_dominance_candidate import pcc_propagate_numpy as candidate_propagate
+
+
+class ExperimentalPCC(ParticleCompetitionAndCooperation):
+    """Run candidate backend without modifying production modules or API."""
+
+    def __init__(self, criterion, tolerance):
+        super().__init__(impl="numpy")
+        self._criterion = criterion
+        self._tolerance = tolerance
+        self.propagation_info = None
+
+    def _get_backend_fn(self):
+        def propagate(*args, **kwargs):
+            kwargs.update(return_info=True,
+                          stop_criterion=("dominance_change" if self._criterion == "dominance_change" else "potential"),
+                          dominance_tol=self._tolerance)
+            self.propagation_info = candidate_propagate(*args, **kwargs)
+            return self.propagation_info
+        return propagate
 
 
 DATASETS = {
@@ -53,16 +73,14 @@ def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
 
 
 def run_case(graph, degrees, labels, truth, seed, criterion, cap, tolerance):
-    model = ParticleCompetitionAndCooperation(impl="numpy")
+    model = ExperimentalPCC(criterion, tolerance)
     model.set_graph(graph, degrees)
     kwargs = dict(max_iter=cap, seed=seed, early_stop=(criterion != "reference"))
-    if criterion == "dominance_change":
-        kwargs.update(stop_criterion="dominance_change", dominance_tol=tolerance)
     start = time.perf_counter()
     predicted = model.fit_predict(labels.copy(), **kwargs)
     elapsed = time.perf_counter() - start
     unknown = labels == -1
-    return predicted, float(np.mean(predicted[unknown] == truth[unknown])), elapsed
+    return predicted, float(np.mean(predicted[unknown] == truth[unknown])), elapsed, model.propagation_info
 
 
 def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
@@ -71,19 +89,18 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
         raise ValueError("cap must be positive")
     graph, degrees, labels, truth = prepare(
         name, seed, neighbors=neighbors, labeled_per_class=labeled_per_class)
-    # Public API does not expose iteration counts. Record actual stopping
-    # metadata in a subsequent instrumented protocol, not guessed values.
-    reference, _, _ = run_case(graph, degrees, labels, truth, seed,
+    reference, _, _, _ = run_case(graph, degrees, labels, truth, seed,
                                 "reference", cap, tolerance)
     unknown = labels == -1
     rows = []
     for criterion in ("reference", "potential", "dominance_change"):
-        predicted, accuracy, elapsed = run_case(
+        predicted, accuracy, elapsed, info = run_case(
             graph, degrees, labels, truth, seed, criterion, cap, tolerance)
         rows.append(dict(dataset=name, seed=seed, criterion=criterion,
                          tolerance=tolerance if criterion == "dominance_change" else "",
-                         iterations="", stop_reason="not_exposed",
-                         cap_hit="unknown", accuracy=accuracy,
+                         iterations=info["effective_iterations"],
+                         stop_reason=info.get("stop_reason", "not_exposed"),
+                         cap_hit=info["effective_iterations"] >= cap, accuracy=accuracy,
                          reference_agreement=float(np.mean(
                              predicted[unknown] == reference[unknown])),
                          elapsed_seconds=elapsed,
