@@ -120,8 +120,6 @@ class ParticleCompetitionAndCooperation:
         self.max_iter = None
         self.early_stop = None
         self.es_chk = None
-        self.stop_criterion = "potential"
-        self.dominance_tol = 0.0
         self.part = None
         self.node = None
         self.zerovec = None
@@ -375,8 +373,6 @@ class ParticleCompetitionAndCooperation:
             self.max_iter = max_iter
             self.early_stop = early_stop
             self.es_chk = es_chk
-            self.stop_criterion = stop_criterion
-            self.dominance_tol = dominance_tol
 
             self.part = self.__genParticles()
             self.node = self.__genNodes()
@@ -387,9 +383,9 @@ class ParticleCompetitionAndCooperation:
             # Padding to 257 to handle potential 255+1 edge cases safely
             
             if seed is None:
-                self.__labelPropagation()
+                self.__labelPropagation(stop_criterion=stop_criterion, dominance_tol=dominance_tol)
             else:
-                self.__labelPropagation(seed=seed)
+                self.__labelPropagation(seed=seed, stop_criterion=stop_criterion, dominance_tol=dominance_tol)
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
@@ -402,7 +398,7 @@ class ParticleCompetitionAndCooperation:
             self.__dict__.update(previous_state)
             raise
 
-    def __labelPropagation(self, seed=None):
+    def __labelPropagation(self, seed=None, stop_criterion="potential", dominance_tol=0.0):
         self.zerovec = np.zeros(self.c, dtype=np.float64)
         
         # Pre-allocate buffers for backends that use them (Cython/Legacy Numba)
@@ -445,9 +441,9 @@ class ParticleCompetitionAndCooperation:
             self.dist_weights,
             self.max_iter, self.early_stop, self.es_chk, stop_max,
             **({"seed": seed} if seed is not None else {}),
-            **({"stop_criterion": self.stop_criterion,
-                "dominance_tol": self.dominance_tol}
-               if self.stop_criterion == "dominance_change" else {})
+            **({"stop_criterion": stop_criterion,
+                "dominance_tol": dominance_tol}
+               if stop_criterion == "dominance_change" else {})
         )
 
         unlabeled = node.label == -1
