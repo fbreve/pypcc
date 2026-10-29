@@ -450,7 +450,7 @@ class ParticleCompetitionAndCooperation:
             self.buf_dist_list, self.buf_prob, self.buf_slices,
             self.dist_weights,
             self.max_iter, self.early_stop, self.es_chk, stop_max,
-            return_info=return_info,
+            **({"return_info": True} if return_info else {}),
             **({"seed": seed} if seed is not None else {}),
             **({"stop_criterion": stop_criterion,
                 "dominance_tol": dominance_tol}
