@@ -228,6 +228,34 @@ class PercentileDominanceChangeStopTracker:
         return self.stalled_checks > self.stop_max
 
 
+class HybridDominanceLabelStopTracker:
+    """Require both P95 dominance stability and unchanged unlabeled predictions."""
+
+    def __init__(self, labels, tolerance, stop_max):
+        self.mask = np.asarray(labels) == -1
+        self.tolerance = float(tolerance)
+        self.stop_max = int(stop_max)
+        self.stalled_checks = 0
+        self._previous = None
+        self.last_change = None
+
+    def observe(self, dominance):
+        current = np.asarray(dominance)
+        if self._previous is None:
+            self._previous = current.copy()
+            return False
+        per_node_change = np.max(np.abs(current - self._previous), axis=1)
+        self.last_change = (float(np.percentile(per_node_change, 95))
+                            if per_node_change.size else 0.0)
+        stable_labels = np.array_equal(
+            np.argmax(current[self.mask], axis=1),
+            np.argmax(self._previous[self.mask], axis=1))
+        self._previous = current.copy()
+        stable = self.last_change <= self.tolerance and stable_labels
+        self.stalled_checks = self.stalled_checks + 1 if stable else 0
+        return self.stalled_checks > self.stop_max
+
+
 class RelativeDominanceChangeStopTracker:
     """Experimental: compare each change with the first observed change.
 
@@ -293,7 +321,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0):
-    if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "dominance_p95", "label_change"):
+    if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change"):
         raise ValueError("invalid stop_criterion")
     tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
                if stop_criterion == "dominance_change" else
@@ -301,6 +329,8 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                if stop_criterion == "dominance_relative" else
                PercentileDominanceChangeStopTracker(dominance_tol, stop_max)
                if stop_criterion == "dominance_p95" else
+               HybridDominanceLabelStopTracker(labels, dominance_tol, stop_max)
+               if stop_criterion == "dominance_label_hybrid" else
                LabelChangeStopTracker(labels, dominance_tol, stop_max)
                if stop_criterion == "label_change" else None)
     if update_mode not in ("sequential", "synchronous"):
