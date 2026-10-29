@@ -38,7 +38,7 @@ def summarize(paths, thresholds, required_checks):
     for path in paths:
         with open(path, newline="", encoding="utf-8") as stream:
             for row in csv.DictReader(stream):
-                if row["criterion"] not in ("dominance_change", "dominance_relative"):
+                if row["criterion"] not in ("dominance_change", "dominance_relative", "dominance_p95"):
                     continue
                 trace = json.loads(row["dominance_change_trace"])
                 values = [float(change) for _, change in trace]
