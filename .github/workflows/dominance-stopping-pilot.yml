@@ -6,6 +6,7 @@ on:
       - 'pcc.py'
       - 'tests/test_experimental_public_stop_metrics.py'
       - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/compare_reference_caps.py'
       - 'experiments/analyze_dominance_traces.py'
       - 'experiments/pcc_numpy_dominance_candidate.py'
       - '.github/workflows/dominance-stopping-pilot.yml'
@@ -109,6 +110,21 @@ jobs:
         with:
           name: dominance-label-budget-sensitivity
           path: dominance-label-budget-*.csv
+          if-no-files-found: warn
+      - name: Compare reference trajectory caps
+        run: |
+          python -m experiments.compare_reference_caps \
+            --output reference-cap-sensitivity.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 1000 3000 10000 \
+            --labeled-per-class 2
+      - name: Upload reference cap sensitivity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-cap-sensitivity
+          path: reference-cap-sensitivity.csv
           if-no-files-found: warn
       - name: Upload hybrid stopping comparisons
         if: always()
