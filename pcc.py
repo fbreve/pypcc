@@ -387,8 +387,7 @@ class ParticleCompetitionAndCooperation:
             
             if stop_criterion == "dominance_change":
                 self.__labelPropagation(
-                    return_info=return_info,
-            **({"seed": seed} if seed is not None else {}),
+                    **({"seed": seed} if seed is not None else {}),
                     stop_criterion=stop_criterion, dominance_tol=dominance_tol,
                     return_info=return_info)
             elif seed is None:
