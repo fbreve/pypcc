@@ -278,7 +278,7 @@ class ParticleCompetitionAndCooperation:
 
     def fit_predict(self, labels, p_grd=0.5, delta_v=0.1, deltap=1.0, dexp=2.0,
                     max_iter=500000, early_stop=True, es_chk=2000, seed=None,
-                     stop_criterion="potential", dominance_tol=0.0):
+                     stop_criterion="potential", dominance_tol=0.0, return_info=False):
         """Classify using finite labels and finite effective fit parameters.
 
         Validation precedes integer casts, model initialization and backend/RNG
@@ -294,6 +294,9 @@ class ParticleCompetitionAndCooperation:
         fields are reset to None and lazily created arrays/buffers are removed.
         Another call with at least two known classes initializes a new fit.
         """
+
+        if not isinstance(return_info, (bool, np.bool_)):
+            raise TypeError("return_info must be a boolean")
 
         if self.neib_list is None or self.neib_qt is None:
             print("Error: build or set the graph first.")
@@ -384,17 +387,21 @@ class ParticleCompetitionAndCooperation:
             
             if stop_criterion == "dominance_change":
                 self.__labelPropagation(
-                    **({"seed": seed} if seed is not None else {}),
-                    stop_criterion=stop_criterion, dominance_tol=dominance_tol)
+                    return_info=return_info,
+            **({"seed": seed} if seed is not None else {}),
+                    stop_criterion=stop_criterion, dominance_tol=dominance_tol,
+                    return_info=return_info)
             elif seed is None:
-                self.__labelPropagation()
+                self.__labelPropagation(return_info=return_info)
             else:
-                self.__labelPropagation(seed=seed)
+                self.__labelPropagation(seed=seed, return_info=return_info)
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
             for idx, lbl in self.idx_to_label.items():
                 final_labels[self.node.label == idx] = lbl
+            if return_info:
+                return final_labels, self.propagation_info
             return final_labels
 
         except Exception:
@@ -402,7 +409,7 @@ class ParticleCompetitionAndCooperation:
             self.__dict__.update(previous_state)
             raise
 
-    def __labelPropagation(self, seed=None, stop_criterion="potential", dominance_tol=0.0):
+    def __labelPropagation(self, seed=None, stop_criterion="potential", dominance_tol=0.0, return_info=False):
         self.zerovec = np.zeros(self.c, dtype=np.float64)
         
         # Pre-allocate buffers for backends that use them (Cython/Legacy Numba)
@@ -435,7 +442,7 @@ class ParticleCompetitionAndCooperation:
             from functools import partial
             propagate_fn = partial(propagate_fn, update_mode="synchronous")
         
-        propagate_fn(
+        info = propagate_fn(
             self.neib_list, self.neib_qt,
             self.mapped_labels, self.p_grd, self.delta_v, self.c, self.zerovec,
             part.curnode, part.label, part.strength, part.dist_table,
@@ -449,6 +456,9 @@ class ParticleCompetitionAndCooperation:
                 "dominance_tol": dominance_tol}
                if stop_criterion == "dominance_change" else {})
         )
+
+        if return_info:
+            self.propagation_info = info
 
         unlabeled = node.label == -1
         node.label[unlabeled] = np.argmax(node.dominance[unlabeled, :], axis=1)
