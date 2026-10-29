@@ -44,7 +44,8 @@ DATASETS = {
 FIELDS = ("dataset", "seed", "criterion", "tolerance", "iterations",
           "stop_reason", "cap_hit", "accuracy", "reference_agreement",
           "elapsed_seconds", "labeled_count", "unlabeled_count", "es_chk",
-          "dominance_change_trace", "relative_baseline_change")
+          "dominance_change_trace", "relative_baseline_change",
+          "neighbors", "labeled_per_class", "cap")
 
 
 def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
@@ -113,6 +114,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
                          elapsed_seconds=elapsed,
                          labeled_count=int((~unknown).sum()),
                          unlabeled_count=int(unknown.sum()), es_chk=es_chk,
+                         neighbors=neighbors, labeled_per_class=labeled_per_class, cap=cap,
                          dominance_change_trace=json.dumps(info.get("dominance_trace", [])),
                          relative_baseline_change=info.get("baseline_change")))
     return rows
