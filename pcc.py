@@ -389,11 +389,16 @@ class ParticleCompetitionAndCooperation:
                 self.__labelPropagation(
                     **({"seed": seed} if seed is not None else {}),
                     stop_criterion=stop_criterion, dominance_tol=dominance_tol,
-                    return_info=return_info)
+                    **({"return_info": True} if return_info else {}))
             elif seed is None:
-                self.__labelPropagation(return_info=return_info)
+                if return_info:
+                    self.__labelPropagation(return_info=True)
+                else:
+                    self.__labelPropagation()
+            elif return_info:
+                self.__labelPropagation(seed=seed, return_info=True)
             else:
-                self.__labelPropagation(seed=seed, return_info=return_info)
+                self.__labelPropagation(seed=seed)
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
