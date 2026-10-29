@@ -28,7 +28,7 @@ class ExperimentalPCC(ParticleCompetitionAndCooperation):
     def _get_backend_fn(self):
         def propagate(*args, **kwargs):
             kwargs.update(return_info=True,
-                          stop_criterion=(self._criterion if self._criterion in ("dominance_change", "dominance_relative") else "potential"),
+                          stop_criterion=(self._criterion if self._criterion in ("dominance_change", "dominance_relative", "label_change") else "potential"),
                           dominance_tol=self._tolerance)
             self.propagation_info = candidate_propagate(*args, **kwargs)
             return self.propagation_info
@@ -96,7 +96,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
         graph, degrees, labels, truth, seed, "reference", cap, tolerance, es_chk)
     unknown = labels == -1
     rows = []
-    for criterion in ("reference", "potential", "dominance_change", "dominance_relative"):
+    for criterion in ("reference", "potential", "dominance_change", "dominance_relative", "label_change"):
         if criterion == "reference":
             predicted, accuracy, elapsed, info = (
                 reference, reference_accuracy, reference_elapsed, reference_info)
