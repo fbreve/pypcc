@@ -91,6 +91,25 @@ jobs:
               --es-chk 50 \
               --tolerance "$tolerance"
           done
+      - name: Sensitivity to labeled examples per class
+        run: |
+          for labels in 1 5 10; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-label-budget-${labels}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --labeled-per-class "$labels" \
+              --tolerance 0.001
+          done
+      - name: Upload label budget sensitivity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-label-budget-sensitivity
+          path: dominance-label-budget-*.csv
+          if-no-files-found: warn
       - name: Upload hybrid stopping comparisons
         if: always()
         uses: actions/upload-artifact@v4
