@@ -58,6 +58,24 @@ jobs:
           name: dominance-trace-diagnostics
           path: dominance-trace-diagnostics.txt
           if-no-files-found: warn
+      - name: Run exploratory higher-tolerance stopping comparisons
+        run: |
+          for tolerance in 0.05 0.1; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-stopping-high-${tolerance}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --tolerance "$tolerance"
+          done
+      - name: Upload higher-tolerance comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-stopping-higher-tolerances
+          path: dominance-stopping-high-*.csv
+          if-no-files-found: warn
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
