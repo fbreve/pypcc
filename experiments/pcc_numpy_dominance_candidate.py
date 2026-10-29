@@ -237,6 +237,30 @@ class RelativeDominanceChangeStopTracker:
         return self.stalled_checks > self.stop_max
 
 
+class LabelChangeStopTracker:
+    """Experimental stability of predicted classes on initially unlabeled nodes."""
+
+    def __init__(self, labels, tolerance, stop_max):
+        self.mask = np.asarray(labels) == -1
+        self.tolerance = float(tolerance)
+        self.stop_max = int(stop_max)
+        self.stalled_checks = 0
+        self._previous = None
+        self.last_change = None
+
+    def observe(self, dominance):
+        current = np.argmax(dominance[self.mask], axis=1)
+        if self._previous is None:
+            self._previous = current.copy()
+            return False
+        self.last_change = (float(np.mean(current != self._previous))
+                            if current.size else 0.0)
+        self._previous = current.copy()
+        self.stalled_checks = (self.stalled_checks + 1
+                               if self.last_change <= self.tolerance else 0)
+        return self.stalled_checks > self.stop_max
+
+
 def pcc_propagate_numpy(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
                         part_curnode, part_label, part_strength, dist_table,
@@ -245,12 +269,14 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0):
-    if stop_criterion not in ("potential", "dominance_change", "dominance_relative"):
+    if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "label_change"):
         raise ValueError("invalid stop_criterion")
     tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
                if stop_criterion == "dominance_change" else
                RelativeDominanceChangeStopTracker(dominance_tol, stop_max)
-               if stop_criterion == "dominance_relative" else None)
+               if stop_criterion == "dominance_relative" else
+               LabelChangeStopTracker(labels, dominance_tol, stop_max)
+               if stop_criterion == "label_change" else None)
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
