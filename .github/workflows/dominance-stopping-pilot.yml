@@ -6,6 +6,7 @@ on:
       - 'pcc.py'
       - 'tests/test_experimental_public_stop_metrics.py'
       - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/analyze_dominance_traces.py'
       - 'experiments/pcc_numpy_dominance_candidate.py'
       - '.github/workflows/dominance-stopping-pilot.yml'
   workflow_dispatch:
@@ -45,6 +46,18 @@ jobs:
               --es-chk 50 \
               --tolerance "$tolerance"
           done
+      - name: Analyze dominance oscillations and threshold streaks
+        run: |
+          python -m experiments.analyze_dominance_traces dominance-stopping-*.csv \
+            --thresholds 0.001 0.01 0.05 0.1 > dominance-trace-diagnostics.txt
+          cat dominance-trace-diagnostics.txt
+      - name: Upload convergence diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-trace-diagnostics
+          path: dominance-trace-diagnostics.txt
+          if-no-files-found: warn
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
