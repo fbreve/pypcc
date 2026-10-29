@@ -23,7 +23,17 @@ def longest_streak(values, threshold):
     return longest
 
 
-def summarize(paths, thresholds):
+def first_sustained_check(values, threshold, required_checks):
+    """Return 1-based first check completing a sustained stable interval."""
+    streak = 0
+    for index, value in enumerate(values, 1):
+        streak = streak + 1 if value <= threshold else 0
+        if streak >= required_checks:
+            return index
+    return None
+
+
+def summarize(paths, thresholds, required_checks):
     groups = defaultdict(list)
     for path in paths:
         with open(path, newline="", encoding="utf-8") as stream:
@@ -44,8 +54,13 @@ def summarize(paths, thresholds):
               f"min={min(all_changes):.6g} max={max(all_changes):.6g}")
         for threshold in thresholds:
             streaks = [longest_streak(values, threshold) for values, _ in trials]
+            first = [first_sustained_check(values, threshold, required_checks)
+                     for values, _ in trials]
+            reached = [index for index in first if index is not None]
             print(f"  absolute <= {threshold:g}: "
-                  f"median longest streak={median(streaks):g}, max={max(streaks)}")
+                  f"median longest streak={median(streaks):g}, max={max(streaks)}, "
+                  f"hypothetical stops={len(reached)}/{len(trials)}, "
+                  f"median first check={median(reached) if reached else 'none'}")
         if criterion == "dominance_relative":
             streaks = [longest_streak(values, float(tolerance) * baseline)
                        for values, baseline in trials if baseline is not None]
@@ -59,10 +74,14 @@ def main(argv=None):
     parser.add_argument("csv", nargs="+", help="Pilot CSV output files")
     parser.add_argument("--thresholds", nargs="+", type=float,
                         default=[0.001, 0.01, 0.05, 0.1])
+    parser.add_argument("--required-checks", type=int, default=10,
+                        help="Consecutive stable checks for counterfactual stop")
     args = parser.parse_args(argv)
     if any(not math.isfinite(x) or x < 0 for x in args.thresholds):
         parser.error("thresholds must be finite and nonnegative")
-    summarize(args.csv, args.thresholds)
+    if args.required_checks < 1:
+        parser.error("required-checks must be positive")
+    summarize(args.csv, args.thresholds, args.required_checks)
 
 
 if __name__ == "__main__":
