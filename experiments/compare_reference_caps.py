@@ -5,7 +5,6 @@ The longest cap is a comparison baseline, not a convergence guarantee.
 """
 import argparse
 import csv
-import time
 
 import numpy as np
 
@@ -14,7 +13,8 @@ from experiments.compare_dominance_stopping import DATASETS, prepare, run_case
 
 FIELDS = ("dataset", "seed", "cap", "baseline_cap", "neighbors",
           "labeled_per_class", "accuracy", "agreement_with_longest_cap",
-          "elapsed_seconds", "iterations")
+          "elapsed_seconds", "iterations", "previous_cap",
+          "agreement_with_previous_cap", "changed_since_previous_cap")
 
 
 def compare_caps(name, seed, caps=(1000, 3000, 10000), *,
@@ -32,8 +32,12 @@ def compare_caps(name, seed, caps=(1000, 3000, 10000), *,
         results[cap] = (predicted, accuracy, elapsed, info)
     baseline = results[caps[-1]][0]
     rows = []
-    for cap in caps:
+    for index, cap in enumerate(caps):
         predicted, accuracy, elapsed, info = results[cap]
+        previous_cap = caps[index - 1] if index else None
+        previous = results[previous_cap][0] if previous_cap is not None else None
+        agreement_previous = (float(np.mean(predicted[unknown] == previous[unknown]))
+                              if previous is not None else None)
         rows.append(dict(
             dataset=name, seed=seed, cap=cap, baseline_cap=caps[-1],
             neighbors=neighbors, labeled_per_class=labeled_per_class,
@@ -41,7 +45,12 @@ def compare_caps(name, seed, caps=(1000, 3000, 10000), *,
             agreement_with_longest_cap=float(np.mean(
                 predicted[unknown] == baseline[unknown])),
             elapsed_seconds=elapsed,
-            iterations=info["effective_iterations"]))
+            iterations=info["effective_iterations"],
+            previous_cap=previous_cap,
+            agreement_with_previous_cap=agreement_previous,
+            changed_since_previous_cap=(int(np.count_nonzero(
+                predicted[unknown] != previous[unknown]))
+                if previous is not None else None)))
     return rows
 
 
