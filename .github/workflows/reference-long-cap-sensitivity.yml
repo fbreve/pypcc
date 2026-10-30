@@ -26,7 +26,7 @@ jobs:
             --output reference-long-caps.csv \
             --datasets iris wine breast_cancer digits \
             --seeds 11 23 37 41 53 \
-            --caps 10000 20000 50000 \
+            --caps 10000 20000 30000 40000 50000 \
             --labeled-per-class 2
       - name: Upload long-reference convergence data
         if: always()
