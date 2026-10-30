@@ -111,21 +111,6 @@ jobs:
           name: dominance-label-budget-sensitivity
           path: dominance-label-budget-*.csv
           if-no-files-found: warn
-      - name: Compare reference trajectory caps
-        run: |
-          python -m experiments.compare_reference_caps \
-            --output reference-cap-sensitivity.csv \
-            --datasets iris wine breast_cancer digits \
-            --seeds 11 23 37 41 53 \
-            --caps 1000 3000 10000 \
-            --labeled-per-class 2
-      - name: Upload reference cap sensitivity
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reference-cap-sensitivity
-          path: reference-cap-sensitivity.csv
-          if-no-files-found: warn
       - name: Upload hybrid stopping comparisons
         if: always()
         uses: actions/upload-artifact@v4
@@ -153,4 +138,30 @@ jobs:
         with:
           name: dominance-stopping-pilot
           path: dominance-stopping-*.csv
+          if-no-files-found: warn
+
+  reference-cap-sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare reference trajectory caps
+        run: |
+          python -m experiments.compare_reference_caps \
+            --output reference-cap-sensitivity.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 1000 3000 10000 \
+            --labeled-per-class 2
+      - name: Upload reference cap sensitivity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-cap-sensitivity
+          path: reference-cap-sensitivity.csv
           if-no-files-found: warn
