@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'experiments/analyze_late_prediction_changes.py'
+      - 'experiments/analyze_late_flip_sequences.py'
       - 'experiments/compare_dominance_stopping.py'
       - 'experiments/pcc_numpy_dominance_candidate.py'
       - '.github/workflows/late-prediction-changes.yml'
@@ -27,10 +28,19 @@ jobs:
             --datasets iris wine breast_cancer digits \
             --seeds 11 23 37 41 53 \
             --caps 10000 40000 50000
+      - name: Analyze repeated late prediction changes
+        run: |
+          python -m experiments.analyze_late_flip_sequences \
+            --output late-flip-sequences.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 40000 42000 44000 46000 48000 50000
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: late-prediction-changes
-          path: late-prediction-changes.csv
+          path: |
+            late-prediction-changes.csv
+            late-flip-sequences.csv
           if-no-files-found: error
