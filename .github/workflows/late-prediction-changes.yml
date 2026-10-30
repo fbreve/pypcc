@@ -1,0 +1,36 @@
+name: Experimental PCC late prediction changes
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/analyze_late_prediction_changes.py'
+      - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/late-prediction-changes.yml'
+  workflow_dispatch:
+
+jobs:
+  late-prediction-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare late prediction flips and margins
+        run: |
+          python -m experiments.analyze_late_prediction_changes \
+            --output late-prediction-changes.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 10000 40000 50000
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: late-prediction-changes
+          path: late-prediction-changes.csv
+          if-no-files-found: error
