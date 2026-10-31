@@ -28,7 +28,7 @@ class ExperimentalPCC(ParticleCompetitionAndCooperation):
     def _get_backend_fn(self):
         def propagate(*args, **kwargs):
             kwargs.update(return_info=True,
-                          stop_criterion=(self._criterion if self._criterion in ("dominance_change", "dominance_relative", "label_change") else "potential"),
+                          stop_criterion=(self._criterion if self._criterion in ("dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change") else "potential"),
                           dominance_tol=self._tolerance)
             self.propagation_info = candidate_propagate(*args, **kwargs)
             return self.propagation_info
@@ -44,7 +44,8 @@ DATASETS = {
 FIELDS = ("dataset", "seed", "criterion", "tolerance", "iterations",
           "stop_reason", "cap_hit", "accuracy", "reference_agreement",
           "elapsed_seconds", "labeled_count", "unlabeled_count", "es_chk",
-          "dominance_change_trace", "relative_baseline_change")
+          "dominance_change_trace", "relative_baseline_change",
+          "neighbors", "labeled_per_class", "cap")
 
 
 def prepare(name, seed, *, neighbors=10, labeled_per_class=2):
@@ -96,7 +97,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
         graph, degrees, labels, truth, seed, "reference", cap, tolerance, es_chk)
     unknown = labels == -1
     rows = []
-    for criterion in ("reference", "potential", "dominance_change", "dominance_relative", "label_change"):
+    for criterion in ("reference", "potential", "dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change"):
         if criterion == "reference":
             predicted, accuracy, elapsed, info = (
                 reference, reference_accuracy, reference_elapsed, reference_info)
@@ -104,7 +105,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
             predicted, accuracy, elapsed, info = run_case(
                 graph, degrees, labels, truth, seed, criterion, cap, tolerance, es_chk)
         rows.append(dict(dataset=name, seed=seed, criterion=criterion,
-                         tolerance=tolerance if criterion in ("dominance_change", "dominance_relative") else "",
+                         tolerance=tolerance if criterion in ("dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid") else "",
                          iterations=info["effective_iterations"],
                          stop_reason=info.get("stop_reason", "not_exposed"),
                          cap_hit=info["effective_iterations"] >= cap, accuracy=accuracy,
@@ -113,6 +114,7 @@ def compare(name, seed, *, cap=1000, neighbors=10, labeled_per_class=2,
                          elapsed_seconds=elapsed,
                          labeled_count=int((~unknown).sum()),
                          unlabeled_count=int(unknown.sum()), es_chk=es_chk,
+                         neighbors=neighbors, labeled_per_class=labeled_per_class, cap=cap,
                          dominance_change_trace=json.dumps(info.get("dominance_trace", [])),
                          relative_baseline_change=info.get("baseline_change")))
     return rows

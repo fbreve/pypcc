@@ -1,0 +1,37 @@
+name: Experimental PCC long-reference convergence
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/compare_reference_caps.py'
+      - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/reference-long-cap-sensitivity.yml'
+  workflow_dispatch:
+
+jobs:
+  long-reference-caps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare longer capped trajectories
+        run: |
+          python -m experiments.compare_reference_caps \
+            --output reference-long-caps.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 10000 20000 30000 40000 50000 \
+            --labeled-per-class 2
+      - name: Upload long-reference convergence data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-long-cap-sensitivity
+          path: reference-long-caps.csv
+          if-no-files-found: error

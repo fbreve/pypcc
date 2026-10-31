@@ -1,0 +1,88 @@
+"""Summarize experimental dominance traces without changing PCC behavior.
+
+Usage:
+    python -m experiments.analyze_dominance_traces dominance-stopping-*.csv
+
+Reports distribution of per-check maximum dominance changes, and the longest
+consecutive run of checks below each absolute threshold. These are diagnostics,
+not evidence of predictive convergence.
+"""
+import argparse
+import csv
+import json
+import math
+from collections import defaultdict
+from statistics import median
+
+
+def longest_streak(values, threshold):
+    current = longest = 0
+    for value in values:
+        current = current + 1 if value <= threshold else 0
+        longest = max(longest, current)
+    return longest
+
+
+def first_sustained_check(values, threshold, required_checks):
+    """Return 1-based first check completing a sustained stable interval."""
+    streak = 0
+    for index, value in enumerate(values, 1):
+        streak = streak + 1 if value <= threshold else 0
+        if streak >= required_checks:
+            return index
+    return None
+
+
+def summarize(paths, thresholds, required_checks):
+    groups = defaultdict(list)
+    for path in paths:
+        with open(path, newline="", encoding="utf-8") as stream:
+            for row in csv.DictReader(stream):
+                if row["criterion"] not in ("dominance_change", "dominance_relative", "dominance_p95"):
+                    continue
+                trace = json.loads(row["dominance_change_trace"])
+                values = [float(change) for _, change in trace]
+                if not values or not all(math.isfinite(x) for x in values):
+                    raise ValueError("missing or nonfinite dominance trace in " + path)
+                groups[(row["dataset"], row["criterion"], row["tolerance"])].append(
+                    (values, float(row["relative_baseline_change"])
+                     if row["relative_baseline_change"] else None))
+    for (dataset, criterion, tolerance), trials in sorted(groups.items()):
+        all_changes = [v for values, _ in trials for v in values]
+        print(f"{dataset} {criterion} tolerance={tolerance} runs={len(trials)} "
+              f"checks={len(all_changes)} median={median(all_changes):.6g} "
+              f"min={min(all_changes):.6g} max={max(all_changes):.6g}")
+        for threshold in thresholds:
+            streaks = [longest_streak(values, threshold) for values, _ in trials]
+            first = [first_sustained_check(values, threshold, required_checks)
+                     for values, _ in trials]
+            reached = [index for index in first if index is not None]
+            print(f"  absolute <= {threshold:g}: "
+                  f"median longest streak={median(streaks):g}, max={max(streaks)}, "
+                  f"hypothetical stops={len(reached)}/{len(trials)}, "
+                  f"median first check={median(reached) if reached else 'none'}")
+        if criterion == "dominance_relative":
+            streaks = [longest_streak(values, float(tolerance) * baseline)
+                       for values, baseline in trials if baseline is not None]
+            if streaks:
+                print(f"  configured relative threshold: "
+                      f"median longest streak={median(streaks):g}, max={max(streaks)}")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("csv", nargs="+", help="Pilot CSV output files")
+    parser.add_argument("--thresholds", nargs="+", type=float,
+                        default=[0.001, 0.01, 0.05, 0.1])
+    parser.add_argument("--required-checks", type=int, default=10,
+                        help="Consecutive stable checks for counterfactual stop")
+    args = parser.parse_args(argv)
+    if any(not math.isfinite(x) or x < 0 for x in args.thresholds):
+        parser.error("thresholds must be finite and nonnegative")
+    if args.required_checks < 1:
+        parser.error("required-checks must be positive")
+    summarize(args.csv, args.thresholds, args.required_checks)
+
+
+if __name__ == "__main__":
+    main()

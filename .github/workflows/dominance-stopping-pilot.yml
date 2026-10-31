@@ -3,12 +3,29 @@ name: Experimental dominance stopping real-data pilot
 on:
   pull_request:
     paths:
+      - 'pcc.py'
+      - 'tests/test_experimental_public_stop_metrics.py'
       - 'experiments/compare_dominance_stopping.py'
+      - 'experiments/compare_reference_caps.py'
+      - 'experiments/analyze_dominance_traces.py'
       - 'experiments/pcc_numpy_dominance_candidate.py'
       - '.github/workflows/dominance-stopping-pilot.yml'
   workflow_dispatch:
 
 jobs:
+  opt-in-metrics-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tested package and dependencies
+        run: python -m pip install -e '.[numba]' pytest
+      - name: Verify opt-in stopping metadata and backend parity
+        run: python -m pytest -q tests/test_experimental_public_stop_metrics.py
+
   real-data-pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -30,10 +47,121 @@ jobs:
               --es-chk 50 \
               --tolerance "$tolerance"
           done
+      - name: Analyze dominance oscillations and threshold streaks
+        run: |
+          python -m experiments.analyze_dominance_traces dominance-stopping-*.csv \
+            --thresholds 0.001 0.01 0.05 0.1 > dominance-trace-diagnostics.txt
+          cat dominance-trace-diagnostics.txt
+      - name: Upload convergence diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-trace-diagnostics
+          path: dominance-trace-diagnostics.txt
+          if-no-files-found: warn
+      - name: Run exploratory higher-tolerance stopping comparisons
+        run: |
+          for tolerance in 0.05 0.1; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-stopping-high-${tolerance}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --tolerance "$tolerance"
+          done
+      - name: Run percentile dominance stopping pilot
+        run: |
+          for tolerance in 0.001 0.01 0.05 0.1; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-p95-${tolerance}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --tolerance "$tolerance"
+          done
+      - name: Run hybrid stopping pilot
+        run: |
+          for tolerance in 0.001 0.01 0.05 0.1; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-hybrid-${tolerance}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --tolerance "$tolerance"
+          done
+      - name: Sensitivity to labeled examples per class
+        run: |
+          for labels in 1 5 10; do
+            python -m experiments.compare_dominance_stopping \
+              --output "dominance-label-budget-${labels}.csv" \
+              --datasets iris wine breast_cancer digits \
+              --seeds 11 23 37 41 53 \
+              --cap 10000 \
+              --es-chk 50 \
+              --labeled-per-class "$labels" \
+              --tolerance 0.001
+          done
+      - name: Upload label budget sensitivity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-label-budget-sensitivity
+          path: dominance-label-budget-*.csv
+          if-no-files-found: warn
+      - name: Upload hybrid stopping comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-hybrid-pilot
+          path: dominance-hybrid-*.csv
+          if-no-files-found: warn
+      - name: Upload percentile stopping comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-percentile-pilot
+          path: dominance-p95-*.csv
+          if-no-files-found: warn
+      - name: Upload higher-tolerance comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dominance-stopping-higher-tolerances
+          path: dominance-stopping-high-*.csv
+          if-no-files-found: warn
       - name: Upload per-run measurements
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dominance-stopping-pilot
           path: dominance-stopping-*.csv
+          if-no-files-found: warn
+
+  reference-cap-sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare reference trajectory caps
+        run: |
+          python -m experiments.compare_reference_caps \
+            --output reference-cap-sensitivity.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 1000 3000 10000 \
+            --labeled-per-class 2
+      - name: Upload reference cap sensitivity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-cap-sensitivity
+          path: reference-cap-sensitivity.csv
           if-no-files-found: warn
