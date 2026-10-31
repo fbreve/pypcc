@@ -5,6 +5,7 @@ on:
     paths:
       - 'experiments/analyze_late_flip_sequences.py'
       - 'experiments/analyze_late_stability_windows.py'
+      - 'experiments/analyze_fixed_horizon_stability.py'
       - 'experiments/analyze_late_prediction_changes.py'
       - '.github/workflows/breast-cancer-late-flips.yml'
   workflow_dispatch:
@@ -35,6 +36,15 @@ jobs:
             --seeds 11 23 37 41 53 \
             --caps 40000 41000 42000 43000 44000 45000 46000 47000 48000 49000 50000 \
             --windows 1 2 3 4 5
+      - name: Compare patience at matched checkpoints and one-step horizon
+        run: |
+          python -m experiments.analyze_fixed_horizon_stability \
+            --output breast-cancer-fixed-horizon.csv \
+            --datasets breast_cancer \
+            --seeds 11 23 37 41 53 \
+            --caps 40000 41000 42000 43000 44000 45000 46000 47000 48000 49000 50000 \
+            --windows 1 2 3 4 5 \
+            --future-checks 1
       - name: Upload fine-grained sequence metrics
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,4 +53,5 @@ jobs:
           path: |
             breast-cancer-late-flips-1k.csv
             breast-cancer-late-stability.csv
+            breast-cancer-fixed-horizon.csv
           if-no-files-found: error
