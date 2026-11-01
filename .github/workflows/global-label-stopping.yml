@@ -1,0 +1,37 @@
+name: Experimental PCC global label stopping
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/analyze_global_label_stopping.py'
+      - 'experiments/analyze_late_prediction_changes.py'
+      - 'experiments/compare_dominance_stopping.py'
+      - '.github/workflows/global-label-stopping.yml'
+  workflow_dispatch:
+
+jobs:
+  global-label-stopping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Evaluate global stop triggers against capped reference
+        run: |
+          python -m experiments.analyze_global_label_stopping \
+            --output global-label-stopping.csv \
+            --datasets iris wine breast_cancer digits \
+            --seeds 11 23 37 41 53 \
+            --caps 10000 20000 30000 40000 50000 \
+            --patience 1 2 3
+      - name: Upload evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-label-stopping
+          path: global-label-stopping.csv
+          if-no-files-found: error
