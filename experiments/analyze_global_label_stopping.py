@@ -27,7 +27,7 @@ def evaluate(predictions, truth, patience, caps):
     stop_index = len(caps) - 1
     for end in range(patience, len(caps) - 1):
         if np.all(predictions[end - patience:end + 1] ==
-                  predictions[end], axis=0):
+                  predictions[end]):
             stop_index = end
             break
     reference = predictions[-1]
