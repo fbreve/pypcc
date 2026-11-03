@@ -6,6 +6,7 @@ The last cap is only a capped reference, not proof of convergence.
 """
 import argparse
 import csv
+import time
 import numpy as np
 from experiments.compare_dominance_stopping import DATASETS, prepare
 from experiments.analyze_late_prediction_changes import snapshot
@@ -13,7 +14,7 @@ from experiments.analyze_late_prediction_changes import snapshot
 FIELDS = ("dataset", "seed", "patience", "first_cap", "reference_cap",
           "stop_cap", "triggered", "iterations_saved",
           "reference_accuracy", "stop_accuracy", "accuracy_delta",
-          "reference_agreement", "unlabeled")
+          "reference_agreement", "unlabeled", "replay_seconds")
 
 
 def evaluate(predictions, truth, patience, caps):
@@ -64,13 +65,16 @@ def main(argv=None):
             for seed in args.seeds:
                 graph, degrees, labels, truth = prepare(name, seed)
                 mask = labels == -1
+                started = time.perf_counter()
                 predictions = np.stack([
                     snapshot(graph, degrees, labels, seed, cap)[0][mask]
                     for cap in caps])
+                replay_seconds = time.perf_counter() - started
                 for patience in args.patience:
                     writer.writerow(dict(dataset=name, seed=seed,
                         patience=patience, first_cap=caps[0],
                         reference_cap=caps[-1], unlabeled=int(mask.sum()),
+                        replay_seconds=replay_seconds,
                         **evaluate(predictions, truth[mask], patience, caps)))
 
 
