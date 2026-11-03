@@ -320,10 +320,10 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
-                        return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0):
+                        return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0,\n                        check_interval=10):
     if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change"):
         raise ValueError("invalid stop_criterion")
-    tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
+    if not isinstance(check_interval, (int, np.integer)) or check_interval < 1:\n        raise ValueError("check_interval must be a positive integer")\n    tracker = (DominanceChangeStopTracker(dominance_tol, stop_max)
                if stop_criterion == "dominance_change" else
                RelativeDominanceChangeStopTracker(dominance_tol, stop_max)
                if stop_criterion == "dominance_relative" else
@@ -370,7 +370,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                            dom_row, reduc, dom_list, dist_list, prob, slices,
                            dist_weights, update_mode=update_mode)
         
-        if early_stop and it % 10 == 0:
+        if early_stop and (it + 1) % check_interval == 0:
             if tracker is not None:
                 should_stop = tracker.observe(dominance)
                 if getattr(tracker, "last_change", None) is not None:
