@@ -1,0 +1,36 @@
+name: Experimental PCC in-loop global stopping
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/inloop-global-stopping.yml'
+  workflow_dispatch:
+
+jobs:
+  inloop-global-stopping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Benchmark prospective stopping
+        run: |
+          python -m experiments.benchmark_inloop_global_stopping \
+            --output inloop-global-stopping.csv \
+            --datasets iris breast_cancer \
+            --seeds 11 23 37 \
+            --cap 50000 \
+            --intervals 1000 5000 \
+            --patience 1 2 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inloop-global-stopping
+          path: inloop-global-stopping.csv
+          if-no-files-found: error
