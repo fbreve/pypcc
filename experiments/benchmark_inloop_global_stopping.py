@@ -4,6 +4,7 @@ Candidate-only NumPy backend; never modifies production PCC.
 """
 import argparse
 import csv
+import inspect
 import time
 import numpy as np
 
@@ -19,11 +20,12 @@ class InLoopPCC(ExperimentalPCC):
 
     def _get_backend_fn(self):
         def propagate(*args, **kwargs):
-            kwargs.update(return_info=True, stop_criterion="label_change",
-                          dominance_tol=0.0, check_interval=self.interval,
-                          # The tracker stops after stalled_checks > stop_max.
-                          stop_max=self.patience - 1)
-            self.propagation_info = pcc_propagate_numpy(*args, **kwargs)
+            bound = inspect.signature(pcc_propagate_numpy).bind(*args, **kwargs)
+            bound.arguments.update(return_info=True, stop_criterion="label_change",
+                                   dominance_tol=0.0, check_interval=self.interval,
+                                   # The tracker stops after stalled_checks > stop_max.
+                                   stop_max=max(0, self.patience - 1))
+            self.propagation_info = pcc_propagate_numpy(*bound.args, **bound.kwargs)
             return self.propagation_info
         return propagate
 
