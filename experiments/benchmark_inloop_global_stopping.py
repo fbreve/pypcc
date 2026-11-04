@@ -14,7 +14,8 @@ from experiments.pcc_numpy_dominance_candidate import pcc_propagate_numpy
 
 class InLoopPCC(ExperimentalPCC):
     def __init__(self, patience, interval, criterion='label_change', tolerance=0.0,
-                 checkpoint_callback=None, checkpoint_interval=None):
+                 checkpoint_callback=None, checkpoint_interval=None,
+                 particle_event_callback=None, event_start_iteration=0):
         super().__init__("label_change", 0.0)
         self.patience = patience
         self.interval = interval
@@ -22,6 +23,8 @@ class InLoopPCC(ExperimentalPCC):
         self.tolerance = tolerance
         self.checkpoint_callback = checkpoint_callback
         self.checkpoint_interval = checkpoint_interval
+        self.particle_event_callback = particle_event_callback
+        self.event_start_iteration = event_start_iteration
 
     def _get_backend_fn(self):
         def propagate(*args, **kwargs):
@@ -30,6 +33,8 @@ class InLoopPCC(ExperimentalPCC):
                                    dominance_tol=self.tolerance, check_interval=self.interval,
                                    checkpoint_callback=self.checkpoint_callback,
                                    checkpoint_interval=self.checkpoint_interval,
+                                   particle_event_callback=self.particle_event_callback,
+                                   event_start_iteration=self.event_start_iteration,
                                    check_at_interval_end=True,
                                    # The tracker stops after stalled_checks > stop_max.
                                    stop_max=max(0, self.patience - 1))
@@ -46,9 +51,11 @@ FIELDS = ("dataset", "seed", "patience", "interval", "cap", "iterations",
 
 def run(graph, degrees, labels, seed, cap, patience, interval,
         criterion="label_change", tolerance=0.0, checkpoint_callback=None,
-        checkpoint_interval=None):
+        checkpoint_interval=None, particle_event_callback=None,
+        event_start_iteration=0):
     model = InLoopPCC(patience, interval, criterion, tolerance,
-                      checkpoint_callback, checkpoint_interval)
+                      checkpoint_callback, checkpoint_interval,
+                      particle_event_callback, event_start_iteration)
     model.set_graph(graph, degrees)
     started = time.perf_counter()
     prediction = model.fit_predict(labels.copy(), max_iter=cap, seed=seed,
