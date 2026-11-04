@@ -1,0 +1,40 @@
+name: Experimental PCC hybrid stopping long horizon
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/benchmark_long_horizon_hybrid.py'
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/inloop-hybrid-long-horizon.yml'
+  workflow_dispatch:
+
+jobs:
+  long-horizon-hybrid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare 50k and 100k references with prospective hybrid stop
+        run: |
+          python -m experiments.benchmark_long_horizon_hybrid \
+            --output inloop-hybrid-long-horizon.csv \
+            --datasets iris wine \
+            --seeds 11 23 37 67 83 \
+            --short-cap 50000 \
+            --long-cap 100000 \
+            --interval 1000 \
+            --patience 2 \
+            --tolerance 0.01
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inloop-hybrid-long-horizon
+          path: inloop-hybrid-long-horizon.csv
+          if-no-files-found: error
