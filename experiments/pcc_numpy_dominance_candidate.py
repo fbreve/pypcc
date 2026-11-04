@@ -91,15 +91,7 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
 
         is_unlabeled = labels[nxt] == -1
         donor_loss = None
-        if intervention_callback is not None:
-        if not callable(intervention_callback):
-            raise ValueError("intervention_callback must be callable")
-        if (not isinstance(intervention_iteration, (int, np.integer))
-                or not 1 <= intervention_iteration <= max_iter):
-            raise ValueError("intervention_iteration must be within propagation")
-        if update_mode != "sequential":
-            raise ValueError("intervention is sequential-only")
-    if detailed_particle_callback is not None:
+        if detailed_particle_callback is not None:
             old_strength = float(part_strength[p_i])
             own_before = float(dominance[nxt, cls])
             max_before = float(np.max(dominance[nxt, :]))
@@ -358,6 +350,14 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         detailed_particle_callback=None,
                         detail_start_iteration=0, detail_end_iteration=None,
                         intervention_callback=None, intervention_iteration=None):
+    if intervention_callback is not None:
+        if not callable(intervention_callback):
+            raise ValueError("intervention_callback must be callable")
+        if (not isinstance(intervention_iteration, (int, np.integer))
+                or not 1 <= intervention_iteration <= max_iter):
+            raise ValueError("intervention_iteration must be within propagation")
+        if update_mode != "sequential":
+            raise ValueError("intervention is sequential-only")
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
