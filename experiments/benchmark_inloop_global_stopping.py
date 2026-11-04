@@ -16,7 +16,9 @@ class InLoopPCC(ExperimentalPCC):
     def __init__(self, patience, interval, criterion='label_change', tolerance=0.0,
                  checkpoint_callback=None, checkpoint_interval=None,
                  particle_event_callback=None, event_start_iteration=0,
-                 state_checkpoint_callback=None):
+                 state_checkpoint_callback=None,
+                 detailed_particle_callback=None,
+                 detail_start_iteration=0, detail_end_iteration=None):
         super().__init__("label_change", 0.0)
         self.patience = patience
         self.interval = interval
@@ -27,6 +29,9 @@ class InLoopPCC(ExperimentalPCC):
         self.particle_event_callback = particle_event_callback
         self.event_start_iteration = event_start_iteration
         self.state_checkpoint_callback = state_checkpoint_callback
+        self.detailed_particle_callback = detailed_particle_callback
+        self.detail_start_iteration = detail_start_iteration
+        self.detail_end_iteration = detail_end_iteration
 
     def _get_backend_fn(self):
         def propagate(*args, **kwargs):
@@ -38,6 +43,9 @@ class InLoopPCC(ExperimentalPCC):
                                    particle_event_callback=self.particle_event_callback,
                                    event_start_iteration=self.event_start_iteration,
                                    state_checkpoint_callback=self.state_checkpoint_callback,
+                                   detailed_particle_callback=self.detailed_particle_callback,
+                                   detail_start_iteration=self.detail_start_iteration,
+                                   detail_end_iteration=self.detail_end_iteration,
                                    check_at_interval_end=True,
                                    # The tracker stops after stalled_checks > stop_max.
                                    stop_max=max(0, self.patience - 1))
@@ -55,11 +63,15 @@ FIELDS = ("dataset", "seed", "patience", "interval", "cap", "iterations",
 def run(graph, degrees, labels, seed, cap, patience, interval,
         criterion="label_change", tolerance=0.0, checkpoint_callback=None,
         checkpoint_interval=None, particle_event_callback=None,
-        event_start_iteration=0, state_checkpoint_callback=None):
+        event_start_iteration=0, state_checkpoint_callback=None,
+        detailed_particle_callback=None, detail_start_iteration=0,
+        detail_end_iteration=None):
     model = InLoopPCC(patience, interval, criterion, tolerance,
                       checkpoint_callback, checkpoint_interval,
                       particle_event_callback, event_start_iteration,
-                      state_checkpoint_callback)
+                      state_checkpoint_callback,
+                      detailed_particle_callback, detail_start_iteration,
+                      detail_end_iteration)
     model.set_graph(graph, degrees)
     started = time.perf_counter()
     prediction = model.fit_predict(labels.copy(), max_iter=cap, seed=seed,
