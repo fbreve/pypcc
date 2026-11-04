@@ -45,7 +45,8 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
                                          p_grd, delta_v, c, part_curnode,
                                          part_label, part_strength, dist_table,
                                          dominance, owndeg, deltap, dexp,
-                                         dist_weights):
+                                         dist_weights, particle_event_callback=None,
+                                         event_iteration=None):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
     if dist_weights is None:
@@ -88,9 +89,16 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
         if nxt < 0 or nxt >= n_nodes:
             continue
 
-        if labels[nxt] == -1:
+        is_unlabeled = labels[nxt] == -1
+        donor_loss = None
+        if is_unlabeled:
             step = part_strength[p_i] * (delta_v / (c - 1))
             reduction = np.minimum(dominance[nxt, :], step)
+            if particle_event_callback is not None:
+                # Explicit donor-to-visiting-class transfers; self-reduction
+                # cancels in the update and must not count as transferred mass.
+                donor_loss = reduction.copy()
+                donor_loss[cls] = 0.0
             dominance[nxt, :] -= reduction
             dominance[nxt, cls] += reduction.sum()
 
@@ -112,6 +120,10 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
         accepted = class_dom == max_dom
         if accepted:
             part_curnode[p_i] = nxt
+        if particle_event_callback is not None:
+            particle_event_callback(event_iteration, cls, is_unlabeled,
+                                    bool(greedy), bool(accepted), donor_loss)
+
 
 def _pcc_step_numpy_synchronous(neib_list, neib_qt, labels, p_grd, delta_v, c,
                                 part_curnode, part_label, part_strength, dist_table,
@@ -322,13 +334,22 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0,
                         check_interval=10, checkpoint_callback=None,
-                        checkpoint_interval=None, check_at_interval_end=False):
+                        checkpoint_interval=None, check_at_interval_end=False,
+                        particle_event_callback=None, event_start_iteration=0):
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
         if (not isinstance(checkpoint_interval, (int, np.integer))
                 or checkpoint_interval < 1):
             raise ValueError("checkpoint_interval must be a positive integer")
+    if particle_event_callback is not None:
+        if not callable(particle_event_callback):
+            raise ValueError("particle_event_callback must be callable")
+        if (not isinstance(event_start_iteration, (int, np.integer))
+                or event_start_iteration < 0):
+            raise ValueError("event_start_iteration must be nonnegative")
+        if update_mode != "sequential":
+            raise ValueError("particle event tracing is sequential-only")
     if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change"):
         raise ValueError("invalid stop_criterion")
     if not isinstance(check_interval, (int, np.integer)) or check_interval < 1:
@@ -371,7 +392,11 @@ def pcc_propagate_numpy(neib_list, neib_qt,
             _pcc_step_numpy_sequential_unchecked(
                 neib_list, neib_qt, labels, p_grd, delta_v, c,
                 part_curnode, part_label, part_strength, dist_table,
-                dominance, owndeg, deltap, dexp, dist_weights)
+                dominance, owndeg, deltap, dexp, dist_weights,
+                particle_event_callback=(
+                    particle_event_callback
+                    if it + 1 > event_start_iteration else None),
+                event_iteration=it + 1)
         else:
             pcc_step_numpy(neib_list, neib_qt,
                            labels, p_grd, delta_v, c, zerovec,
