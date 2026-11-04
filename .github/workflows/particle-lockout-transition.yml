@@ -1,0 +1,38 @@
+name: Experimental PCC particle lockout transition
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/trace_particle_lockout_transition.py'
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/particle-lockout-transition.yml'
+  workflow_dispatch:
+
+jobs:
+  particle-lockout-transition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Track individual particle recoveries and permanent lockout
+        run: |
+          python -m experiments.trace_particle_lockout_transition \
+            --output particle-lockout-transition.csv \
+            --seed 83 \
+            --cap 50000 \
+            --interval 100 \
+            --start 38000 \
+            --end 50000
+      - name: Upload fine-grained transitions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: particle-lockout-transition
+          path: particle-lockout-transition.csv
+          if-no-files-found: error
