@@ -335,10 +335,17 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0,
                         check_interval=10, checkpoint_callback=None,
                         checkpoint_interval=None, check_at_interval_end=False,
-                        particle_event_callback=None, event_start_iteration=0):
+                        particle_event_callback=None, event_start_iteration=0,
+                        state_checkpoint_callback=None):
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
+        if (not isinstance(checkpoint_interval, (int, np.integer))
+                or checkpoint_interval < 1):
+            raise ValueError("checkpoint_interval must be a positive integer")
+    if state_checkpoint_callback is not None:
+        if not callable(state_checkpoint_callback):
+            raise ValueError("state_checkpoint_callback must be callable")
         if (not isinstance(checkpoint_interval, (int, np.integer))
                 or checkpoint_interval < 1):
             raise ValueError("checkpoint_interval must be a positive integer")
@@ -415,6 +422,12 @@ def pcc_propagate_numpy(neib_list, neib_qt,
         # for existing experiments. Prospective studies opt in to checking
         # exactly at interval boundaries (e.g. 1000,2000,3000,...).
         check_index = it + 1 if check_at_interval_end else it
+        if (state_checkpoint_callback is not None
+                and (it + 1) % checkpoint_interval == 0):
+            state_checkpoint_callback(
+                it + 1, dominance.copy(), part_curnode.copy(),
+                part_label.copy(), part_strength.copy())
+
         if early_stop and check_index % check_interval == 0:
             if tracker is not None:
                 should_stop = tracker.observe(dominance)
