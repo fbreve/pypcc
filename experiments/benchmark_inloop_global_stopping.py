@@ -30,6 +30,7 @@ class InLoopPCC(ExperimentalPCC):
                                    dominance_tol=self.tolerance, check_interval=self.interval,
                                    checkpoint_callback=self.checkpoint_callback,
                                    checkpoint_interval=self.checkpoint_interval,
+                                   check_at_interval_end=True,
                                    # The tracker stops after stalled_checks > stop_max.
                                    stop_max=max(0, self.patience - 1))
             self.propagation_info = pcc_propagate_numpy(*bound.args, **bound.kwargs)
