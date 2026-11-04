@@ -1,0 +1,36 @@
+name: Experimental PCC particle mobility onset
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_particle_mobility.py'
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/particle-mobility-onset.yml'
+  workflow_dispatch:
+
+jobs:
+  particle-mobility-onset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Audit particle mobility from first to last iteration
+        run: |
+          python -m experiments.audit_particle_mobility \
+            --output wine-particle-mobility.csv \
+            --seeds 83 \
+            --cap 100000 \
+            --interval 1000
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: particle-mobility-onset
+          path: wine-particle-mobility.csv
+          if-no-files-found: error
