@@ -1,0 +1,40 @@
+name: Experimental PCC late class transitions
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/trace_late_class_transitions.py'
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/late-class-transitions.yml'
+  workflow_dispatch:
+
+jobs:
+  late-class-transitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Analyze late Wine class transitions at 1k intervals
+        run: |
+          python -m experiments.trace_late_class_transitions \
+            --trajectory-output late-wine-class-counts.csv \
+            --transitions-output late-wine-class-transitions.csv \
+            --seeds 37 83 \
+            --start 50000 \
+            --end 100000 \
+            --interval 1000
+      - name: Upload diagnostic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: late-class-transitions
+          path: |
+            late-wine-class-counts.csv
+            late-wine-class-transitions.csv
+          if-no-files-found: error
