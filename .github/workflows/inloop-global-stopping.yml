@@ -27,7 +27,9 @@ jobs:
             --seeds 11 23 37 \
             --cap 50000 \
             --intervals 1000 5000 \
-            --patience 1 2 3
+            --patience 1 2 3 \
+            --criteria label_change dominance_label_hybrid \
+            --tolerances 0.001 0.01
       - uses: actions/upload-artifact@v4
         if: always()
         with:
