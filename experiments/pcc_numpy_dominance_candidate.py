@@ -91,7 +91,15 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
 
         is_unlabeled = labels[nxt] == -1
         donor_loss = None
-        if detailed_particle_callback is not None:
+        if intervention_callback is not None:
+        if not callable(intervention_callback):
+            raise ValueError("intervention_callback must be callable")
+        if (not isinstance(intervention_iteration, (int, np.integer))
+                or not 1 <= intervention_iteration <= max_iter):
+            raise ValueError("intervention_iteration must be within propagation")
+        if update_mode != "sequential":
+            raise ValueError("intervention is sequential-only")
+    if detailed_particle_callback is not None:
             old_strength = float(part_strength[p_i])
             own_before = float(dominance[nxt, cls])
             max_before = float(np.max(dominance[nxt, :]))
@@ -348,7 +356,8 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         particle_event_callback=None, event_start_iteration=0,
                         state_checkpoint_callback=None,
                         detailed_particle_callback=None,
-                        detail_start_iteration=0, detail_end_iteration=None):
+                        detail_start_iteration=0, detail_end_iteration=None,
+                        intervention_callback=None, intervention_iteration=None):
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
@@ -441,6 +450,14 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                            dom_row, reduc, dom_list, dist_list, prob, slices,
                            dist_weights, update_mode=update_mode)
         
+        # Explicitly counterfactual intervention in an isolated experiment.
+        # Unlike diagnostic observers this callback may mutate particle state.
+        # It executes after completing the selected iteration, before snapshots.
+        if (intervention_callback is not None
+                and it + 1 == intervention_iteration):
+            intervention_callback(it + 1, part_curnode,
+                                  part_label, part_strength)
+
         # Experimental, read-only snapshots of a single uninterrupted run.
         # Pass a copy so an observer cannot alter the propagation state.
         if (checkpoint_callback is not None
