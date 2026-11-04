@@ -321,7 +321,14 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0,
-                        check_interval=10):
+                        check_interval=10, checkpoint_callback=None,
+                        checkpoint_interval=None):
+    if checkpoint_callback is not None:
+        if not callable(checkpoint_callback):
+            raise ValueError("checkpoint_callback must be callable")
+        if (not isinstance(checkpoint_interval, (int, np.integer))
+                or checkpoint_interval < 1):
+            raise ValueError("checkpoint_interval must be a positive integer")
     if stop_criterion not in ("potential", "dominance_change", "dominance_relative", "dominance_p95", "dominance_label_hybrid", "label_change"):
         raise ValueError("invalid stop_criterion")
     if not isinstance(check_interval, (int, np.integer)) or check_interval < 1:
@@ -373,6 +380,12 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                            dom_row, reduc, dom_list, dist_list, prob, slices,
                            dist_weights, update_mode=update_mode)
         
+        # Experimental, read-only snapshots of a single uninterrupted run.
+        # Pass a copy so an observer cannot alter the propagation state.
+        if (checkpoint_callback is not None
+                and (it + 1) % checkpoint_interval == 0):
+            checkpoint_callback(it + 1, dominance.copy())
+
         if early_stop and (it + 1) % check_interval == 0:
             if tracker is not None:
                 should_stop = tracker.observe(dominance)
