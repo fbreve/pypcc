@@ -46,7 +46,7 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
                                          part_label, part_strength, dist_table,
                                          dominance, owndeg, deltap, dexp,
                                          dist_weights, particle_event_callback=None,
-                                         event_iteration=None):
+                                         event_iteration=None, detailed_particle_callback=None):
     n_particles = part_curnode.shape[0]
     n_nodes = neib_list.shape[0]
     if dist_weights is None:
@@ -91,6 +91,10 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
 
         is_unlabeled = labels[nxt] == -1
         donor_loss = None
+        if detailed_particle_callback is not None:
+            old_strength = float(part_strength[p_i])
+            own_before = float(dominance[nxt, cls])
+            max_before = float(np.max(dominance[nxt, :]))
         if is_unlabeled:
             step = part_strength[p_i] * (delta_v / (c - 1))
             reduction = np.minimum(dominance[nxt, :], step)
@@ -123,6 +127,12 @@ def _pcc_step_numpy_sequential_unchecked(neib_list, neib_qt, labels,
         if particle_event_callback is not None:
             particle_event_callback(event_iteration, cls, is_unlabeled,
                                     bool(greedy), bool(accepted), donor_loss)
+        if detailed_particle_callback is not None:
+            detailed_particle_callback(
+                event_iteration, p_i, cur, nxt, cls,
+                bool(greedy), bool(accepted), old_strength,
+                float(part_strength[p_i]), own_before, max_before,
+                float(class_dom), float(max_dom))
 
 
 def _pcc_step_numpy_synchronous(neib_list, neib_qt, labels, p_grd, delta_v, c,
@@ -336,13 +346,27 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         check_interval=10, checkpoint_callback=None,
                         checkpoint_interval=None, check_at_interval_end=False,
                         particle_event_callback=None, event_start_iteration=0,
-                        state_checkpoint_callback=None):
+                        state_checkpoint_callback=None,
+                        detailed_particle_callback=None,
+                        detail_start_iteration=0, detail_end_iteration=None):
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
         if (not isinstance(checkpoint_interval, (int, np.integer))
                 or checkpoint_interval < 1):
             raise ValueError("checkpoint_interval must be a positive integer")
+    if detailed_particle_callback is not None:
+        if not callable(detailed_particle_callback):
+            raise ValueError("detailed_particle_callback must be callable")
+        if (not isinstance(detail_start_iteration, (int, np.integer))
+                or detail_start_iteration < 0):
+            raise ValueError("detail_start_iteration must be nonnegative")
+        if detail_end_iteration is not None and (
+                not isinstance(detail_end_iteration, (int, np.integer))
+                or detail_end_iteration < detail_start_iteration):
+            raise ValueError("invalid detail_end_iteration")
+        if update_mode != "sequential":
+            raise ValueError("particle detail tracing is sequential-only")
     if state_checkpoint_callback is not None:
         if not callable(state_checkpoint_callback):
             raise ValueError("state_checkpoint_callback must be callable")
@@ -403,7 +427,12 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                 particle_event_callback=(
                     particle_event_callback
                     if it + 1 > event_start_iteration else None),
-                event_iteration=it + 1)
+                event_iteration=it + 1,
+                detailed_particle_callback=(
+                    detailed_particle_callback
+                    if (it + 1 > detail_start_iteration and (
+                        detail_end_iteration is None
+                        or it + 1 <= detail_end_iteration)) else None))
         else:
             pcc_step_numpy(neib_list, neib_qt,
                            labels, p_grd, delta_v, c, zerovec,
