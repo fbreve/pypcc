@@ -322,7 +322,7 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
                         return_info=False, seed=None, stop_criterion="potential", dominance_tol=0.0,
                         check_interval=10, checkpoint_callback=None,
-                        checkpoint_interval=None):
+                        checkpoint_interval=None, check_at_interval_end=False):
     if checkpoint_callback is not None:
         if not callable(checkpoint_callback):
             raise ValueError("checkpoint_callback must be callable")
@@ -386,7 +386,11 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                 and (it + 1) % checkpoint_interval == 0):
             checkpoint_callback(it + 1, dominance.copy())
 
-        if early_stop and (it + 1) % check_interval == 0:
+        # Keep the historical observation schedule (iterations 1,11,21,...)
+        # for existing experiments. Prospective studies opt in to checking
+        # exactly at interval boundaries (e.g. 1000,2000,3000,...).
+        check_index = it + 1 if check_at_interval_end else it
+        if early_stop and check_index % check_interval == 0:
             if tracker is not None:
                 should_stop = tracker.observe(dominance)
                 if getattr(tracker, "last_change", None) is not None:
