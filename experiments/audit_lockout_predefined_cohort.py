@@ -24,7 +24,8 @@ WINDOW_FIELDS = (
     "dataset", "seed", "iteration", "class_id", "particles",
     "valid_visits", "accepted_moves", "acceptance_fraction",
     "zero_move_streak", "winning_neighbors", "neighbor_entries",
-    "max_strength", "mean_strength", "dominance_mass",
+    "max_strength", "mean_strength", "strength_bounds_excess",
+    "dominance_mass",
     "predicted_nodes", "unlabeled_accuracy", "operational_lockout",
 )
 SUMMARY_FIELDS = (
@@ -34,6 +35,7 @@ SUMMARY_FIELDS = (
     "zero_acceptance_windows", "accepted_moves_total",
     "first_mass", "last_mass", "mass_change",
     "first_unlabeled_accuracy", "last_unlabeled_accuracy",
+    "max_strength_bounds_excess",
     "last_max_strength", "last_winning_neighbors",
     "still_zero_at_cap", "matches_uninstrumented",
 )
@@ -83,8 +85,18 @@ def observe_case(dataset, seed, cap, interval, patience, strength_cutoff):
                     f"Missing valid visits: {dataset}, seed={seed}, "
                     f"class={cls}, window={w}")
             class_strength = strengths[ids]
-            if not np.all((class_strength >= 0) & (class_strength <= 1)):
-                raise AssertionError("Particle strength outside [0,1]")
+            # Floating-point dominance conservation may differ from 1
+            # by roundoff. Do not clip or mutate the particle strength.
+            if not np.all(np.isfinite(class_strength)):
+                raise AssertionError("Nonfinite particle strength")
+            strength_excess = float(max(
+                0.0, -float(np.min(class_strength)),
+                float(np.max(class_strength)) - 1.0))
+            if strength_excess > 1e-8:
+                raise AssertionError(
+                    f"Material particle strength bound violation: "
+                    f"{dataset}, seed={seed}, class={cls}, "
+                    f"iteration={iteration}, excess={strength_excess:.17g}")
             current = positions[ids]
             if np.any((current < 0) | (current >= len(labels))):
                 raise AssertionError("Particle moved outside graph")
@@ -118,6 +130,7 @@ def observe_case(dataset, seed, cap, interval, patience, strength_cutoff):
                 neighbor_entries=neighbors_count,
                 max_strength=max_strength,
                 mean_strength=float(np.mean(class_strength)),
+                strength_bounds_excess=strength_excess,
                 dominance_mass=float(mass[cls]),
                 predicted_nodes=int(counts[cls]),
                 unlabeled_accuracy=accuracy,
@@ -174,6 +187,8 @@ def observe_case(dataset, seed, cap, interval, patience, strength_cutoff):
                 history[0]["dominance_mass"]),
             first_unlabeled_accuracy=history[0]["unlabeled_accuracy"],
             last_unlabeled_accuracy=history[-1]["unlabeled_accuracy"],
+            max_strength_bounds_excess=max(
+                row["strength_bounds_excess"] for row in history),
             last_max_strength=history[-1]["max_strength"],
             last_winning_neighbors=history[-1]["winning_neighbors"],
             still_zero_at_cap=(
