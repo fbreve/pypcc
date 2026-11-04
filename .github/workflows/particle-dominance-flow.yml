@@ -1,0 +1,40 @@
+name: Experimental PCC particle dominance flow
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_particle_dominance_flows.py'
+      - 'experiments/benchmark_inloop_global_stopping.py'
+      - 'experiments/pcc_numpy_dominance_candidate.py'
+      - '.github/workflows/particle-dominance-flow.yml'
+  workflow_dispatch:
+
+jobs:
+  particle-dominance-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Audit actual dominance transfers in continuous trajectories
+        run: |
+          python -m experiments.audit_particle_dominance_flows \
+            --class-output particle-class-flow.csv \
+            --flow-output particle-pairwise-flow.csv \
+            --seeds 37 83 \
+            --start 50000 \
+            --end 100000 \
+            --interval 5000
+      - name: Upload transfer and conservation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: particle-dominance-flow
+          path: |
+            particle-class-flow.csv
+            particle-pairwise-flow.csv
+          if-no-files-found: error
