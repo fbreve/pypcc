@@ -17,6 +17,10 @@ TRAJECTORY_FIELDS = (
     "class_1_count", "class_2_count", "changed_since_previous",
     "pre_flip_margin_median", "post_flip_margin_median",
     "pre_flip_margin_at_least_half", "p95_node_dominance_change",
+    "max_node_dominance_change", "median_flip_node_dominance_change",
+    "max_flip_node_dominance_change", "class_0_dominance_mass",
+    "class_1_dominance_mass", "class_2_dominance_mass",
+    "max_simplex_deviation", "nonfinite_dominance_entries",
 )
 TRANSITION_FIELDS = (
     "dataset", "seed", "from_iteration", "to_iteration",
@@ -57,6 +61,9 @@ def trace(seed, start, end, interval):
         if dom.shape[1] != 3:
             raise AssertionError("Wine class-count changed")
         counts = np.bincount(predicted, minlength=3)
+        class_mass = dom.sum(axis=0)
+        simplex_error = np.abs(dom.sum(axis=1) - 1.0)
+        finite = np.isfinite(dom)
         row = dict(
             dataset="wine", seed=seed, iteration=iteration,
             accuracy=float(np.mean(predicted == truth[unknown])),
@@ -66,6 +73,14 @@ def trace(seed, start, end, interval):
             pre_flip_margin_median=None, post_flip_margin_median=None,
             pre_flip_margin_at_least_half=None,
             p95_node_dominance_change=None,
+            max_node_dominance_change=None,
+            median_flip_node_dominance_change=None,
+            max_flip_node_dominance_change=None,
+            class_0_dominance_mass=float(class_mass[0]),
+            class_1_dominance_mass=float(class_mass[1]),
+            class_2_dominance_mass=float(class_mass[2]),
+            max_simplex_deviation=float(np.max(simplex_error)),
+            nonfinite_dominance_entries=int(np.size(finite) - finite.sum()),
         )
         if previous is not None:
             prev_iteration, prev_dom = previous
@@ -75,7 +90,13 @@ def trace(seed, start, end, interval):
             per_node_change = np.max(np.abs(dom - prev_dom), axis=1)
             row["p95_node_dominance_change"] = float(
                 np.percentile(per_node_change, 95))
+            row["max_node_dominance_change"] = float(
+                np.max(per_node_change))
             if np.any(changed):
+                row["median_flip_node_dominance_change"] = float(
+                    np.median(per_node_change[changed]))
+                row["max_flip_node_dominance_change"] = float(
+                    np.max(per_node_change[changed]))
                 pre_margin = margin(prev_dom)[changed]
                 post_margin = margin(dom)[changed]
                 row["pre_flip_margin_median"] = float(
