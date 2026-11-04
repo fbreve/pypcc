@@ -1,0 +1,46 @@
+name: Experimental PCC Digits nested-label lockout
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_nested_label_density_lockout.py'
+      - '.github/workflows/digits-nested-label-lockout.yml'
+  workflow_dispatch:
+
+jobs:
+  digits-nested-label-lockout:
+    strategy:
+      fail-fast: false
+      matrix:
+        labeled: [2, 5]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare fixed-graph nested labeled sets
+        run: |
+          python -m experiments.audit_nested_label_density_lockout \
+            --windows-output digits-label${{ matrix.labeled }}-windows.csv \
+            --class-output digits-label${{ matrix.labeled }}-classes.csv \
+            --case-output digits-label${{ matrix.labeled }}-cases.csv \
+            --labeled-per-class ${{ matrix.labeled }} \
+            --seeds 601 701 809 \
+            --cap 50000 \
+            --interval 1000 \
+            --zero-windows 5 \
+            --strength-cutoff 0.01
+      - name: Upload nested-label comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digits-nested-label-${{ matrix.labeled }}
+          path: |
+            digits-label${{ matrix.labeled }}-windows.csv
+            digits-label${{ matrix.labeled }}-classes.csv
+            digits-label${{ matrix.labeled }}-cases.csv
+          if-no-files-found: error
