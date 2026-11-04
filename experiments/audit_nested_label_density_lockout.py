@@ -17,7 +17,8 @@ from experiments.compare_dominance_stopping import prepare
 WINDOW_FIELDS = (
     "seed", "labeled_per_class", "iteration", "class_id", "particle_count",
     "accepted_moves", "valid_visits", "zero_move_streak",
-    "max_strength", "winning_neighbors", "operational_lockout",
+    "max_strength", "winning_neighbors", "dominance_mass",
+    "operational_lockout",
 )
 CLASS_FIELDS = (
     "seed", "labeled_per_class", "class_id",
@@ -110,6 +111,7 @@ def observe(seed, labeled_per_class, cap, interval,
                 zero_move_streak=int(streak[cls]),
                 max_strength=float(cs.max()),
                 winning_neighbors=neighbors_won,
+                dominance_mass=float(dominance[unknown, cls].sum()),
                 operational_lockout=lockout))
 
     result, _, info = run(
@@ -147,7 +149,7 @@ def observe(seed, labeled_per_class, cap, interval,
                 x["zero_move_streak"] for x in history),
             zero_move_windows=sum(x["accepted_moves"] == 0
                                   for x in history),
-            last_mass="",  # Class dominance mass is not needed to define lockout.
+            last_mass=history[-1]["dominance_mass"],
             last_max_strength=history[-1]["max_strength"],
             last_winning_neighbors=history[-1]["winning_neighbors"],
         ))
