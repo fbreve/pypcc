@@ -63,10 +63,15 @@ def fit(graph, degrees, labels, seed, cap, backend, early_stop):
     return prediction, seconds, steps, fn_name
 
 
-def warm_numba():
-    """Compile major Numba kernels before timed production runs."""
+def warm_numba(dataset):
+    """Compile Numba kernels for the current dataset's class/layout signature.
+
+    Numba can specialize on dominance-array contiguity: Digits (10 classes)
+    can use a different layout from Iris (3 classes). The original Iris-only
+    warmup was insufficient for unbiased per-dataset time comparisons.
+    """
     graph, degrees, labels, _, _ = canonical_prepare(
-        "iris", 29, k=10, labeled_per_class=2)
+        dataset, 29, k=10, labeled_per_class=2)
     fit(graph, degrees, labels, 29, 25, "numba", False)
 
 
@@ -133,7 +138,7 @@ def main(argv=None):
     if (not args.seeds or len(set(args.seeds)) != len(args.seeds)
             or args.cap < 1):
         parser.error("Invalid preregistered backend comparison")
-    warm_numba()
+    warm_numba(args.dataset)
     with open(args.output, "w", newline="", encoding="utf-8") as out:
         writer = csv.DictWriter(out, fieldnames=FIELDS)
         writer.writeheader()
