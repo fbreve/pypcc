@@ -1,0 +1,32 @@
+name: Experimental PCC Digits lockout graph structure
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_digits_lockout_graph_structure.py'
+      - '.github/workflows/digits-lockout-graph-structure.yml'
+  workflow_dispatch:
+
+jobs:
+  static-lockout-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Audit selected seed home neighborhoods without propagation
+        run: |
+          python -m experiments.audit_digits_lockout_graph_structure \
+            --output digits-lockout-graph-structure.csv \
+            --seeds 601 701 809
+      - name: Upload static graph diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digits-lockout-graph-structure
+          path: digits-lockout-graph-structure.csv
+          if-no-files-found: error
