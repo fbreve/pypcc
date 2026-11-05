@@ -1,0 +1,41 @@
+name: Experimental PCC canonical undirected stopping pilot
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_canonical_undirected_stopping.py'
+      - '.github/workflows/canonical-undirected-stopping.yml'
+  workflow_dispatch:
+
+jobs:
+  canonical-stopping:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare two in-loop stop policies with 50k undirected reference
+        run: |
+          python -m experiments.audit_canonical_undirected_stopping \
+            --dataset ${{ matrix.dataset }} \
+            --seeds 2203 2309 2411 \
+            --output canonical-stop-${{ matrix.dataset }}.csv \
+            --cap 50000 \
+            --interval 1000 \
+            --patience 3 \
+            --hybrid-tolerance 0.001
+      - name: Upload canonical stopping results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-stopping-${{ matrix.dataset }}
+          path: canonical-stop-${{ matrix.dataset }}.csv
+          if-no-files-found: error
