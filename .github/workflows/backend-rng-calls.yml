@@ -1,0 +1,30 @@
+name: Experimental PCC backend RNG call semantics
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_backend_rng_calls.py'
+      - '.github/workflows/backend-rng-calls.yml'
+  workflow_dispatch:
+
+jobs:
+  isolate-random-walk-sampling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install experimental dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Reproduce backend RNG-call differences without changing kernels
+        run: |
+          python -m experiments.audit_backend_rng_calls --output backend-rng-calls.csv
+      - name: Upload raw observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-rng-calls
+          path: backend-rng-calls.csv
+          if-no-files-found: error
