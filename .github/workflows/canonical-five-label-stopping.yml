@@ -1,0 +1,39 @@
+name: Experimental PCC five-label canonical stopping
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_canonical_five_label_stopping.py'
+      - '.github/workflows/canonical-five-label-stopping.yml'
+  workflow_dispatch:
+
+jobs:
+  five-label-stopping:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Evaluate five-label patience 3 vs 10 against 100k reference
+        run: |
+          python -m experiments.audit_canonical_five_label_stopping \
+            --dataset ${{ matrix.dataset }} \
+            --seeds 3109 3203 3301 \
+            --cap 100000 \
+            --interval 1000 \
+            --output canonical-five-label-${{ matrix.dataset }}.csv
+      - name: Upload five-label stopping comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-five-label-stopping-${{ matrix.dataset }}
+          path: canonical-five-label-${{ matrix.dataset }}.csv
+          if-no-files-found: error
