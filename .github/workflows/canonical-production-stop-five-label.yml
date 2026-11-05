@@ -1,0 +1,38 @@
+name: Experimental PCC five-label production stopping baseline
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_canonical_production_stop_five_label.py'
+      - '.github/workflows/canonical-production-stop-five-label.yml'
+  workflow_dispatch:
+
+jobs:
+  five-label-production-stop:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare production stopping with label stability at five labels per class
+        run: |
+          python -m experiments.audit_canonical_production_stop_five_label \
+            --dataset ${{ matrix.dataset }} \
+            --seeds 3701 3803 3911 \
+            --cap 100000 \
+            --output five-label-production-stop-${{ matrix.dataset }}.csv
+      - name: Upload five-label production stopping comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: five-label-production-stop-${{ matrix.dataset }}
+          path: five-label-production-stop-${{ matrix.dataset }}.csv
+          if-no-files-found: error
