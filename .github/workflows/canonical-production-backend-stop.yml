@@ -1,0 +1,40 @@
+name: Experimental PCC production backend stopping parity
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_canonical_production_backend_stop.py'
+      - '.github/workflows/canonical-production-backend-stop.yml'
+  workflow_dispatch:
+
+jobs:
+  production-backend-parity:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build editable package with production Cython and Numba
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step, pcc_numba, pcc_numpy; print('All three production backends installed')"
+      - name: Audit actual production backend potential stopping
+        run: |
+          python -m experiments.audit_canonical_production_backend_stop \
+            --dataset ${{ matrix.dataset }} \
+            --seeds 4001 4093 \
+            --cap 100000 \
+            --output production-backend-stop-${{ matrix.dataset }}.csv
+      - name: Upload backend parity results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-backend-stop-${{ matrix.dataset }}
+          path: production-backend-stop-${{ matrix.dataset }}.csv
+          if-no-files-found: error
