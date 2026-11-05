@@ -1,0 +1,39 @@
+name: Experimental PCC Digits lockout position dynamics
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_digits_lockout_position_dynamics.py'
+      - '.github/workflows/digits-lockout-position-dynamics.yml'
+  workflow_dispatch:
+
+jobs:
+  selected-digits-trajectories:
+    strategy:
+      fail-fast: false
+      matrix:
+        labeled: [2, 5]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Trace loss of winning neighbors and particle locality
+        run: |
+          python -m experiments.audit_digits_lockout_position_dynamics \
+            --output digits-dynamics-label${{ matrix.labeled }}.csv \
+            --labeled-per-class ${{ matrix.labeled }} \
+            --seeds 701 809 \
+            --cap 50000 \
+            --interval 1000
+      - name: Upload dynamics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digits-position-dynamics-label${{ matrix.labeled }}
+          path: digits-dynamics-label${{ matrix.labeled }}.csv
+          if-no-files-found: error
