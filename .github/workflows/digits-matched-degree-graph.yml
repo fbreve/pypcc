@@ -1,0 +1,47 @@
+name: Experimental PCC Digits matched mean degree
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_digits_matched_mean_degree.py'
+      - '.github/workflows/digits-matched-degree-graph.yml'
+  workflow_dispatch:
+
+jobs:
+  matched-degree-graph:
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1301, 1409, 1511, 1601]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install numpy scipy scikit-learn numba
+      - name: Compare 10-NN 14-NN and symmetrized 10-NN at fixed supervision
+        run: |
+          python -m experiments.audit_digits_matched_mean_degree \
+            --seed ${{ matrix.seed }} \
+            --graph-output degree-graph-${{ matrix.seed }}.csv \
+            --windows-output degree-windows-${{ matrix.seed }}.csv \
+            --classes-output degree-classes-${{ matrix.seed }}.csv \
+            --cases-output degree-cases-${{ matrix.seed }}.csv \
+            --cap 50000 \
+            --interval 1000 \
+            --zero-windows 5 \
+            --strength-cutoff 0.01
+      - name: Upload paired study data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digits-matched-degree-${{ matrix.seed }}
+          path: |
+            degree-graph-${{ matrix.seed }}.csv
+            degree-windows-${{ matrix.seed }}.csv
+            degree-classes-${{ matrix.seed }}.csv
+            degree-cases-${{ matrix.seed }}.csv
+          if-no-files-found: error
