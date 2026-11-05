@@ -91,7 +91,7 @@ def main(argv=None):
     parser.add_argument("--cap", type=int, default=100000)
     parser.add_argument("--output", required=True)
     args = parser.parse_args(argv)
-    if (not args.seeds or len(set(args.seeds)) != len(args.seeds
+    if (not args.seeds or len(set(args.seeds)) != len(args.seeds)
             or args.cap < 1):
         parser.error("Invalid fixed five-label protocol")
     with open(args.output, "w", newline="", encoding="utf-8") as out:
