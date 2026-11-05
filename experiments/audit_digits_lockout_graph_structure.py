@@ -65,8 +65,6 @@ def audit(seed):
             neighbors = outgoing.ravel()
             same = truth[neighbors] == cls
             neighbor_labeled = label_map[neighbors] != -1
-            incoming_src = np.flatnonzero(
-                np.any(np.isin(graph, home), axis=1))
             incoming_entries = np.isin(graph, home)
             incoming_same = int(np.count_nonzero(
                 incoming_entries & (truth[:, None] == cls)))
