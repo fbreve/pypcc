@@ -82,7 +82,7 @@ jobs:
           pattern: native-preflight-*
           merge-multiple: true
           path: preflight-results
-      - name: Validate 48 fits, 24 exact state+stop pairs, and frozen overhead gate
+      - name: Validate 96 fits, 48 exact state+stop pairs, and frozen overhead gate
         run: >-
           python -m experiments.summarize_finite_preflight_native
           --files preflight-results/native-preflight-*.csv
