@@ -1,0 +1,114 @@
+name: Experimental Cython row-max cache Windows/Linux replication
+
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'experiments/audit_cython_rowmax_cache_cross_platform.py'
+      - 'experiments/audit_cython_rowmax_cache_numeric_edges.py'
+      - 'experiments/summarize_cython_rowmax_cache_replication.py'
+      - 'experiments/cython_rowmax_cache_replication_protocol.md'
+      - '.github/workflows/cython-rowmax-cache-replication.yml'
+  workflow_dispatch:
+
+jobs:
+  numeric-edges:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build experiment Cython on each OS
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step; print('Extension:', pcc_step.__file__)"
+          python -m pip freeze > rowmax-numeric-env-${{ matrix.os }}.txt
+      - name: Check full state and every potential sample on 3240 synthetic cases
+        run: >-
+          python -m experiments.audit_cython_rowmax_cache_numeric_edges
+          --runner-os ${{ matrix.os }}
+          --output rowmax-numeric-${{ matrix.os }}.csv
+      - name: Archive all synthetic case observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rowmax-numeric-${{ matrix.os }}
+          path: |
+            rowmax-numeric-${{ matrix.os }}.csv
+            rowmax-numeric-env-${{ matrix.os }}.txt
+          if-no-files-found: error
+
+  replicate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [digits, breast_cancer]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build identical source on Windows and Linux
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step; print('Extension:', pcc_step.__file__)"
+          python -m pip freeze > rowmax-rep-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Repeat legacy/cached comparisons preserving exact state and stop metadata
+        run: >-
+          python -m experiments.audit_cython_rowmax_cache_cross_platform
+          --dataset ${{ matrix.dataset }}
+          --runner-os ${{ matrix.os }}
+          --output rowmax-replication-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Archive raw timing repetitions and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rowmax-replicate-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            rowmax-replication-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            rowmax-rep-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  validate-replication:
+    needs: [numeric-edges, replicate]
+    if: ${{ always() && needs.numeric-edges.result == 'success' && needs.replicate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install report dependencies
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rowmax-replicate-*
+          merge-multiple: true
+          path: rowmax-replication-results
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rowmax-numeric-*
+          merge-multiple: true
+          path: rowmax-numeric-results
+      - name: Require 96 timed fits and 6480 numerical-case artifacts
+        run: >-
+          python -m experiments.summarize_cython_rowmax_cache_replication
+          --replication-files rowmax-replication-results/rowmax-replication-*.csv
+          --numeric-files rowmax-numeric-results/rowmax-numeric-*.csv
+          --output cython-rowmax-cache-replication-report.md
+      - name: Preserve fixed cohort and decision gate
+        uses: actions/upload-artifact@v4
+        with:
+          name: cython-rowmax-cache-replication-summary
+          path: cython-rowmax-cache-replication-report.md
+          if-no-files-found: error
