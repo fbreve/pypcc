@@ -1,0 +1,73 @@
+name: Experimental PCC potential-monitor overhead (exact state parity)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_production_potential_monitoring_overhead.py'
+      - 'experiments/summarize_production_potential_monitoring_overhead.py'
+      - 'experiments/production_potential_monitoring_overhead_protocol.md'
+      - '.github/workflows/potential-monitoring-overhead.yml'
+  workflow_dispatch:
+
+jobs:
+  measure-readonly-monitoring:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install genuine production backend implementations
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_numpy, pcc_numba, pcc_step; print('All three production backends available')"
+          python -m pip freeze > potential-monitor-env-${{ matrix.dataset }}.txt
+      - name: Compare identical cap monitoring on/off with exact output parity
+        run: |
+          python -m experiments.audit_production_potential_monitoring_overhead \
+            --dataset ${{ matrix.dataset }} \
+            --output potential-monitor-${{ matrix.dataset }}.csv
+      - name: Archive complete raw paired observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: potential-monitor-${{ matrix.dataset }}
+          path: |
+            potential-monitor-${{ matrix.dataset }}.csv
+            potential-monitor-env-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  summarize-monitoring:
+    needs: measure-readonly-monitoring
+    if: ${{ always() && needs.measure-readonly-monitoring.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install summary dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Download complete four-artifact dataset matrix
+        uses: actions/download-artifact@v4
+        with:
+          pattern: potential-monitor-*
+          merge-multiple: true
+          path: potential-monitor-results
+      - name: Verify all 96 records and produce prespecified summary
+        run: |
+          python -m experiments.summarize_production_potential_monitoring_overhead \
+            --files potential-monitor-results/potential-monitor-*.csv \
+            --output potential-monitoring-overhead-report.md
+      - name: Archive aggregate report
+        uses: actions/upload-artifact@v4
+        with:
+          name: potential-monitoring-overhead-summary
+          path: potential-monitoring-overhead-report.md
+          if-no-files-found: error
