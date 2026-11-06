@@ -131,6 +131,12 @@ cpdef pcc_propagate(
 
     with nogil:
         for it in range(max_iter):
+            # Two specialized compiled kernels are intentional: the V1
+            # per-particle runtime cache conditional regressed default-off
+            # Digits runtime by ~30% on Linux. The original hot loop remains
+            # identical to master; the cached copy only adds the row-max write.
+            # tests/test_cython_cache_hotloop_maintenance.py enforces that
+            # invariant whenever either particle movement rule changes.
             if cache_enabled:
                 pcc_step_sequential_cached(
                     neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
