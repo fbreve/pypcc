@@ -1,4 +1,4 @@
-"""Validate all 48 native fits and all 24 exact master-vs-preflight pairs."""
+"""Validate all 96 native fits and all 48 exact master-vs-preflight pairs."""
 import argparse
 import csv
 from itertools import product
@@ -43,9 +43,9 @@ def audit(paths):
     expected=set(product(
         OSES,DATASETS,SEEDS,
         (x[0] for x in MODES),range(REPEATS),VARIANTS))
-    if len(rows)!=48 or set(rows)!=expected:
+    if len(rows)!=96 or set(rows)!=expected:
         raise AssertionError(
-            f"Missing or duplicate data: {len(rows)} expected 48; "
+            f"Missing or duplicate data: {len(rows)} expected 96; "
             f"missing={len(expected-set(rows))}")
     pairs={}
     candidate_shas=set()
@@ -80,7 +80,7 @@ def audit(paths):
                     raise AssertionError(f"Incorrect timing pair: {field}")
         pairs[(osname,ds,seed,mode,repeat)]=(
             saved,baseline,experimental)
-    if len(pairs)!=24 or len(candidate_shas)!=1:
+    if len(pairs)!=48 or len(candidate_shas)!=1:
         raise AssertionError("Missing pairs or inconsistent candidate revision")
     return pairs,next(iter(candidate_shas))
 
@@ -94,7 +94,7 @@ def main(argv=None):
     lines=[
         "# Clean Cython active-input finite preflight: OS/native parity and overhead",
         "",
-        "**Exactly 48/48 native compiled subprocess fits and 24/24 "
+        "**Exactly 96/96 native compiled subprocess fits and 48/48 "
         "strict master/candidate state-and-stop metadata comparisons PASS**, "
         "no excluded conditions; 200,000 actual native steps per fit, "
         "same canonical reciprocal graphs/seeds. ",
