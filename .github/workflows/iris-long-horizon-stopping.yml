@@ -1,0 +1,42 @@
+name: Experimental PCC Iris long horizon and stopping
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_iris_long_horizon_stopping.py'
+      - 'experiments/iris_long_horizon_stopping_protocol.md'
+      - '.github/workflows/iris-long-horizon-stopping.yml'
+  workflow_dispatch:
+
+jobs:
+  iris-long-horizon:
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [5003, 5209, 5303]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production Cython and Numba implementations
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_numpy, pcc_numba, pcc_step; print('All production kernels available')"
+          python -m pip freeze > python-environment-${{ matrix.seed }}.txt
+      - name: Run frozen long-horizon diagnostic
+        run: |
+          python -m experiments.audit_iris_long_horizon_stopping \
+            --seed ${{ matrix.seed }} \
+            --output iris-long-horizon-${{ matrix.seed }}.csv
+      - name: Upload exact inputs and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iris-long-horizon-${{ matrix.seed }}
+          path: |
+            iris-long-horizon-${{ matrix.seed }}.csv
+            python-environment-${{ matrix.seed }}.txt
+          if-no-files-found: error
