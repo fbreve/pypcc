@@ -1,0 +1,43 @@
+name: Experimental Iris 500k read-only label trace
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_iris_500k_label_trace.py'
+      - 'experiments/iris_500k_label_trace_protocol.md'
+      - '.github/workflows/iris-500k-label-trace.yml'
+  workflow_dispatch:
+
+jobs:
+  read-only-long-trajectory:
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [5003, 5303]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production and experimental Python modules
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > python-environment-${{ matrix.seed }}.txt
+      - name: Run complete read-only 500k trajectory and strict parity gates
+        run: |
+          python -m experiments.audit_iris_500k_label_trace \
+            --seed ${{ matrix.seed }} \
+            --checkpoints iris-trace-checkpoints-${{ matrix.seed }}.csv \
+            --summary iris-trace-summary-${{ matrix.seed }}.csv
+      - name: Archive full raw trace and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iris-500k-trace-${{ matrix.seed }}
+          path: |
+            iris-trace-checkpoints-${{ matrix.seed }}.csv
+            iris-trace-summary-${{ matrix.seed }}.csv
+            python-environment-${{ matrix.seed }}.txt
+          if-no-files-found: error
