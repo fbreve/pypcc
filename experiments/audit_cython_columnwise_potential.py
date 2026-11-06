@@ -78,7 +78,7 @@ def fit(graph, degrees, labels, seed, cap, es_chk, optimized):
         node_dominance=model.node.dominance.copy(),
         node_ownership=model.owndeg.copy(),
     )
-    if not state["node_dominance"].flags.f_contiguous:
+    if not model.node.dominance.flags.f_contiguous:
         raise AssertionError("Columnwise proposal assumes Fortran dominance")
     for name, arr in state.items():
         if arr.dtype.kind == "f" and not np.isfinite(arr).all():
