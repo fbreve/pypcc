@@ -18,7 +18,7 @@ from experiments.audit_clean_master_cython_cache import (  # noqa: E402
 
 OSES=("ubuntu-latest","windows-latest")
 DATASETS=("breast_cancer","digits")
-SEEDS=(9803,9901,10007)
+SEEDS=(10103,10211,10301)
 VARIANTS=("master","preflight")
 STEPS=5000
 FIELDS=(
