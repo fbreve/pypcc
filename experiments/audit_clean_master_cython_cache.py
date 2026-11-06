@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-SEEDS = (7703, 7807, 7901, 8009)
+SEEDS = (8101, 8209, 8303, 8407)
 DATASETS = ("digits", "breast_cancer")
 OSES = ("ubuntu-latest", "windows-latest")
 VARIANTS = ("master", "candidate_off", "candidate_on")
