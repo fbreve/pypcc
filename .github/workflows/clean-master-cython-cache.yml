@@ -25,7 +25,7 @@ jobs:
       - name: Checkout untouched baseline at exact base SHA
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || 'master' }}
+          ref: 2902009c80b8edd3fc5f4961769444563fcf5b8a
           path: baseline
       - name: Checkout clean opt-in candidate at exact head SHA
         uses: actions/checkout@v4
