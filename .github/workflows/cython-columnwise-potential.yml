@@ -1,0 +1,74 @@
+name: Experimental opt-in Cython columnwise potential scan
+
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'experiments/audit_cython_columnwise_potential.py'
+      - 'experiments/summarize_cython_columnwise_potential.py'
+      - 'experiments/cython_columnwise_potential_protocol.md'
+      - '.github/workflows/cython-columnwise-potential.yml'
+  workflow_dispatch:
+
+jobs:
+  compare-cython-potential:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recompile the experimental Cython extension
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step; print('Cython extension:', pcc_step.__file__)"
+          python -m pip freeze > cython-columnwise-env-${{ matrix.dataset }}.txt
+      - name: Compare existing and opt-in columnwise paths with exact state and stop parity
+        run: |
+          python -m experiments.audit_cython_columnwise_potential \
+            --dataset ${{ matrix.dataset }} \
+            --output cython-columnwise-${{ matrix.dataset }}.csv
+      - name: Archive all comparisons and installed versions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cython-columnwise-${{ matrix.dataset }}
+          path: |
+            cython-columnwise-${{ matrix.dataset }}.csv
+            cython-columnwise-env-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  summarize-optimized:
+    needs: compare-cython-potential
+    if: ${{ always() && needs.compare-cython-potential.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install same compiled extension and dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Download four dataset artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cython-columnwise-*
+          merge-multiple: true
+          path: cython-results
+      - name: Strictly validate cohort and apply frozen exploratory decision rule
+        run: |
+          python -m experiments.summarize_cython_columnwise_potential \
+            --files cython-results/cython-columnwise-*.csv \
+            --output cython-columnwise-potential-report.md
+      - name: Archive aggregated A/B report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cython-columnwise-potential-summary
+          path: cython-columnwise-potential-report.md
+          if-no-files-found: error
