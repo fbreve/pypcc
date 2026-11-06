@@ -1,0 +1,89 @@
+name: Cython direct step finite preflight performance and state parity
+
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'experiments/benchmark_finite_single_step.py'
+      - 'experiments/summarize_finite_single_step.py'
+      - 'experiments/cython_finite_step_cost_protocol.md'
+      - '.github/workflows/cython-finite-single-step-cost.yml'
+  workflow_dispatch:
+
+jobs:
+  repeated-single-step:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [breast_cancer, digits]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: c449444d99eac16d89f4a2492d44795e490d874b
+          path: baseline
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          path: candidate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install shared scientific/Cython build requirements
+        run: |
+          python -m pip install "numpy>=2,<3" "Cython>=3.2,<4" scipy scikit-learn setuptools wheel
+          python -m pip freeze > single-step-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Independently compile original master native step
+        working-directory: baseline
+        run: python setup.py build_ext --inplace
+      - name: Independently compile candidate native step
+        working-directory: candidate
+        run: python setup.py build_ext --inplace
+      - name: Run 5000 sequential public single-step calls per seed/binary
+        run: >-
+          python candidate/experiments/benchmark_finite_single_step.py
+          orchestrate
+          --baseline-dir baseline
+          --candidate-dir candidate
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --output-dir single-step-states
+          --csv single-step-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: single-step-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            single-step-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            single-step-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+            single-step-states/
+          if-no-files-found: error
+
+  summarize:
+    needs: repeated-single-step
+    if: ${{ always() && needs.repeated-single-step.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: single-step-*
+          merge-multiple: true
+          path: single-step-results
+      - name: Require 24 native fits, 12 exact-state pairs and bounded slowdown
+        run: >-
+          python -m experiments.summarize_finite_single_step
+          --files single-step-results/single-step-*.csv
+          --output finite-single-step-report.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: finite-single-step-summary
+          path: finite-single-step-report.md
+          if-no-files-found: warn
