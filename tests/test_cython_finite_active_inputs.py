@@ -107,6 +107,23 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
                 self.assertTrue(np.isnan(x["strength"][-1]))
                 self.assertTrue(np.isnan(x["dominance"][-1,0]))
 
+    def test_c_order_dominance_detects_invalid_active_value(self):
+        # The native scanner must also handle C-contiguous matrices and
+        # preserve the original caller buffers before raising.
+        for kind in ("step", "propagate"):
+            with self.subTest(kind=kind):
+                x=sample()
+                x["dominance"]=np.ascontiguousarray(x["dominance"])
+                self.assertTrue(x["dominance"].flags.c_contiguous)
+                x["dominance"][3,1]=np.inf
+                before={name:value.copy()
+                        for name,value in x.items()
+                        if isinstance(value,np.ndarray)}
+                with self.assertRaisesRegex(ValueError,"dominance"):
+                    invoke(kind,x)
+                for name,value in before.items():
+                    np.testing.assert_array_equal(x[name],value)
+
     def test_uninitialized_scratch_is_not_rejected_as_active_state(self):
         for kind in ("step","propagate"):
             with self.subTest(kind=kind):
