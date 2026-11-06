@@ -7,7 +7,7 @@ from pcc_validation import (validate_step_inputs, validate_buffers, validate_vec
                             validate_kernel_scalars, validate_seed, validate_propagation_controls,
                             validate_finite)
 from libc.stdlib cimport malloc, free
-from libc.math cimport isinf
+from libc.math cimport isinf, isfinite
 
 # Fast XORShift RNG (Sequential version)
 @cython.cdivision(True)
@@ -68,6 +68,39 @@ cdef double _pcc_calc_mmpot_from_rowmax(
     for i in range(n_nodes):
         total_max += row_max_cache[i]
     return total_max / n_nodes
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef int _pcc_active_probability_nonfinite_code(
+    double[:] strength, double[:, :] dominance, double[:] weights,
+    Py_ssize_t n_particles, Py_ssize_t n_nodes, Py_ssize_t n_classes
+) noexcept nogil:
+    """Read-only native preflight for repeated public single-step calls.
+
+    0 = all active inputs finite, 1 = particle strengths,
+    2 = dominance, 3 = the 256 actually indexed distance weights.
+    Extra allocated padding and overwritten scratch arrays are ignored.
+    """
+    cdef Py_ssize_t i, j
+    for i in range(n_particles):
+        if not isfinite(strength[i]):
+            return 1
+    if dominance.strides[0] < dominance.strides[1]:
+        # F-contiguous matrices: visit consecutive rows within each class.
+        for j in range(n_classes):
+            for i in range(n_nodes):
+                if not isfinite(dominance[i, j]):
+                    return 2
+    else:
+        for i in range(n_nodes):
+            for j in range(n_classes):
+                if not isfinite(dominance[i, j]):
+                    return 2
+    for i in range(256):
+        if not isfinite(weights[i]):
+            return 3
+    return 0
 
 
 cpdef pcc_propagate(
@@ -458,6 +491,7 @@ cpdef pcc_step(
     double[:]        dist_weights = None,
 ):
     cdef unsigned int rng_state = 123456789
+    cdef int invalid_probability_buffer
     validate_kernel_scalars(p_grd, delta_v, deltap, dexp)
     max_degree = validate_step_inputs(
         neib_list, neib_qt, labels, c, zerovec, part_curnode, part_label,
@@ -472,10 +506,17 @@ cpdef pcc_step(
         dist_weights = 1.0 / (np.arange(257, dtype=np.float64) + 1.0) ** dexp
     
     validate_vector("dist_weights", dist_weights, 256)
-    # Identical active-input preflight for the public single-step entry point.
-    validate_finite("part_strength", np.asarray(part_strength)[:part_curnode.shape[0]])
-    validate_finite("dominance", np.asarray(dominance)[:neib_list.shape[0], :c])
-    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
+    # Native read-only scan avoids allocating NumPy boolean temporaries on
+    # every public step. Validation still finishes before any state mutation.
+    invalid_probability_buffer = _pcc_active_probability_nonfinite_code(
+        part_strength, dominance, dist_weights,
+        part_curnode.shape[0], neib_list.shape[0], c)
+    if invalid_probability_buffer == 1:
+        raise ValueError("part_strength must contain only finite numeric values")
+    if invalid_probability_buffer == 2:
+        raise ValueError("dominance must contain only finite numeric values")
+    if invalid_probability_buffer == 3:
+        raise ValueError("dist_weights must contain only finite numeric values")
 
     with nogil:
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
