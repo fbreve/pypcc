@@ -284,8 +284,8 @@ def orchestrate(args):
                         ))
                     file.flush()
                     print(f"{args.runner_os}/{args.dataset} {seed} {policy} "
-                          f"rep={rep}: master→cache={onsaving:+.2f}% "
-                          f"master→default-off={offsaving:+.2f}% "
+                          f"rep={rep}: master-to-cache={onsaving:+.2f}% "
+                          f"master-to-default-off={offsaving:+.2f}% "
                           "three-way exact state/stop PASS",flush=True)
     print(f"{args.runner_os}/{args.dataset}: full cross-revision "
           "three-way cohort passed",flush=True)
