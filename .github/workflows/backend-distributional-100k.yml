@@ -1,0 +1,39 @@
+name: Experimental PCC backend 100k held-out distribution
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_backend_distributional_100k.py'
+      - 'experiments/backend_distributional_100k_protocol.md'
+      - '.github/workflows/backend-distributional-100k.yml'
+  workflow_dispatch:
+
+jobs:
+  production-backend-distribution:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production backends
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc, pcc_numpy, pcc_numba, pcc_step; print('Production backends available')"
+      - name: Run held-out 100k production backend comparison
+        run: |
+          python -m experiments.audit_backend_distributional_100k \
+            --dataset ${{ matrix.dataset }} \
+            --output backend-distribution-100k-${{ matrix.dataset }}.csv
+      - name: Preserve raw output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-distribution-100k-${{ matrix.dataset }}
+          path: backend-distribution-100k-${{ matrix.dataset }}.csv
+          if-no-files-found: error
