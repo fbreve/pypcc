@@ -7,6 +7,7 @@ on:
       - 'experiments/benchmark_finite_single_step.py'
       - 'experiments/summarize_finite_single_step.py'
       - 'experiments/cython_finite_step_cost_protocol.md'
+      - 'experiments/cython_finite_step_v2_protocol.md'
       - '.github/workflows/cython-finite-single-step-cost.yml'
   workflow_dispatch:
 
