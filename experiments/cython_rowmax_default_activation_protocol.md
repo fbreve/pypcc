@@ -1,0 +1,22 @@
+# Pre-registered Cython cache activation: default-on evaluation
+
+**Experimental stacked validation only, not a merge into master.** Frozen before changing the compiled Cython default or seeing activation results. Based on completed clean-master experimental PR #178 head `2483bf39e140f8d19b4f00a53690cb4c1b2bb34e`, which passed 6,480 numerical edge cases, 80 independently compiled master/candidate parity triplets, 4/4 regression and an exact static maintenance guard. PR #178 still has `experimental_rowmax_cache=False` by default; therefore the ordinary high-level `ParticleCompetitionAndCooperation(impl='cython').fit_predict()` **does not yet benefit** from its measured performance gains.
+
+## Exact activation delta
+
+1. Change **only the trailing default value** of the existing compiled Cython parameter to `experimental_rowmax_cache=True`; retain `experimental_verify_rowmax_cache=False`, the exact Cython numerical operations and the separate original/cached hot-loop kernels. No `pcc.py`, NumPy/Numba, graph, RNG, stopping thresholds, public high-level argument, or buffer changes.
+2. With `early_stop=False`, the pre-existing `cache_enabled=bool(experimental_rowmax_cache and early_stop != 0)` must avoid cache allocation and use the original kernel; behavior must be exactly the former no-stop behavior.
+3. Retain a direct Cython opt-out: callers can pass `experimental_rowmax_cache=False` to select the **original byte-for-byte preserved legacy hot loop**; this allows diagnosis/rollback without changing the high-level PCC model API.
+4. Update the static hot-loop maintenance regression to assert that the default is now `True` and add a high-level parity suite (ordinary `impl='cython'` against an explicit legacy-opt-out subclass). Do not change the equality rules, numeric tolerances, seeds or work caps after observing results.
+
+## Frozen testing
+
+- **Native isolated builds**: the same cross-binary tool from #178 compares (a) untouched original master extension, (b) candidate explicitly passed `experimental_rowmax_cache=False`, (c) candidate invoked **without the cache keyword**, exercising the actual new default-on behavior. Inspect imported native path/hash/revision and all full-state arrays plus **complete stop metadata**. Same Windows/Linux × Digits/Breast Cancer × 4 **fresh activation seeds 8501, 8609, 8707, 8803** × (three repeated forced 20k monitoring + one actual 100k default potential + one no-stop 5k) = **240 timed native subprocess fits, 80 three-way exact parity triplets**.
+- **Direct numerical edges:** rerun all **3,240 per OS = 6,480** compiled-original-vs-optimized scenarios on both Windows and Linux, including C and F dominance memory views, 2/3/5/10/32 classes, isolated labeled home, zero/tiny dominance increments, varied greedy probability, stopping counters and checkpoint boundaries. Opt-out baseline now **must be explicit**; optimized default must be invoked without the keyword at least on the independent-binary test.
+- **High-level public-use parity:** standardized canonical production undirected union-10-NN Iris, Wine, Breast Cancer, Digits; two labeled nodes/class, seeds **8501, 8609, 8707**; both `early_stop=True` and `False`, fixed 10k max iterations, with a fresh `ParticleCompetitionAndCooperation(impl='cython')` (no cache argument: must be default-on) against a subclass using only `pcc_step.pcc_propagate(..., experimental_rowmax_cache=False)`. Require **all six internal state buffers** and final predictions to be exactly equal in all 24 pairs. This is parity verification, not a speed benchmark.
+- **Existing PCC regression** on Linux/Windows Python 3.10 and 3.12, includes the deliberately mutation-sensitive static source guard. No automatic excludes.
+- **Performance frozen gates:** default-on Digits median native 20k speed saving vs untouched master **>=15%** separately Windows and Linux; Breast Cancer not worse than **-5%**; explicit default-off no worse than **-8%** on either dataset/OS. A single CI runner remains an exploratory performance environment and is not statistical proof. Preserve all raw runs and version metadata.
+
+## Decision
+
+Any deviation in state, stop metadata or metric = **reject activation**, regardless of speed. Otherwise this branch may be considered for integration **into clean PR #178** after the final compatibility review; no merge into production master without an explicit decision. **Changing a flag default only after all relevant comparisons are green is mandatory**, not automatic.

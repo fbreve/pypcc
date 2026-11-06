@@ -77,10 +77,10 @@ def verify_specialization_is_identical(source):
             "operation order without updating its legacy twin:\n" +
             differences)
 
-    # Preserve default-off behavior and ensure the dispatch and optional
-    # scratch allocation are only selected when explicitly requested.
-    if source.count("experimental_rowmax_cache = False") != 1:
-        raise AssertionError("Rowmax cache changed from opt-in to default-on")
+    # Activation makes the cache default-on for stopping, but must preserve
+    # explicit opt-out and the original no-stop path.
+    if source.count("experimental_rowmax_cache = True") != 1:
+        raise AssertionError("Rowmax cache unexpectedly changed from the activated default-on")
     if source.count("experimental_verify_rowmax_cache = False") != 1:
         raise AssertionError("Verification flag changed from opt-in")
     if source.count("if cache_enabled:\n                pcc_step_sequential_cached(") != 1:

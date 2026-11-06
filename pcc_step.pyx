@@ -98,7 +98,7 @@ cpdef pcc_propagate(
     int              stop_max,
     bint             return_info = False,
     object           seed = None,
-    bint             experimental_rowmax_cache = False,
+    bint             experimental_rowmax_cache = True,
     bint             experimental_verify_rowmax_cache = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
