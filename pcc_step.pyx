@@ -4,7 +4,8 @@ cimport numpy as np
 cimport cython
 from pcc_metrics import propagation_info
 from pcc_validation import (validate_step_inputs, validate_buffers, validate_vector,
-                            validate_kernel_scalars, validate_seed, validate_propagation_controls)
+                            validate_kernel_scalars, validate_seed, validate_propagation_controls,
+                            validate_finite)
 from libc.stdlib cimport malloc, free
 from libc.math cimport isinf
 
@@ -123,6 +124,12 @@ cpdef pcc_propagate(
         part_strength, dist_table, dominance, owndeg)
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
+    # Reject nonfinite probability inputs before RNG/state mutation or cache
+    # initialization. Scan only elements actually read by the Cython kernel:
+    # legal overallocated padding is not part of the active simulation.
+    validate_finite("part_strength", np.asarray(part_strength)[:part_curnode.shape[0]])
+    validate_finite("dominance", np.asarray(dominance)[:n_nodes, :c])
+    validate_finite("dist_weights", np.asarray(dist_weights)[:256])
 
     if cache_enabled:
         row_max_cache = np.empty(n_nodes, dtype=np.float64)
