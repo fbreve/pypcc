@@ -130,7 +130,7 @@ def main(argv=None):
         f"- Untouched `master` baseline commit: `{master_sha}`.",
         f"- Clean candidate commit: `{candidate_sha}`.",
         "- Conditions: 2 OS × Digits/Breast Cancer × 4 new seeds "
-        "8101/8209/8303/8407 × three variants; "
+        "8501/8609/8707/8803 × three variants; "
         "three repeated 20k fixed-check comparisons plus "
         "one 100k default-stop and one 5k no-stop case per seed.",
         "",
