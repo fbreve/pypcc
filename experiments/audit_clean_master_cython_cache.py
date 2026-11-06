@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-SEEDS = (8101, 8209, 8303, 8407)
+SEEDS = (8501, 8609, 8707, 8803)
 DATASETS = ("digits", "breast_cancer")
 OSES = ("ubuntu-latest", "windows-latest")
 VARIANTS = ("master", "candidate_off", "candidate_on")
@@ -137,8 +137,10 @@ def execute_worker(args):
             stop_max <= cap//10+1):
         raise AssertionError("The fixed-work monitor could stop")
     kwargs=dict(return_info=True,seed=args.seed)
-    if args.variant=="candidate_on":
-        kwargs["experimental_rowmax_cache"]=True
+    if args.variant=="candidate_off":
+        # The normal candidate invocation now defaults to the optimized
+        # row-max cache. Explicit False must preserve the old algorithm.
+        kwargs["experimental_rowmax_cache"]=False
     start=time.perf_counter()
     info=pcc_step.pcc_propagate(
         *kernel_args,cap,int(monitoring),es_chk,stop_max,**kwargs)
