@@ -1,0 +1,98 @@
+name: Clean Cython cache long native timing stability
+
+on:
+  pull_request:
+    paths:
+      - pcc_step.pyx
+      - experiments/audit_cython_cache_long_native.py
+      - experiments/summarize_cython_cache_long_native.py
+      - experiments/cython_cache_long_native_protocol.md
+      - .github/workflows/cython-cache-long-native.yml
+  workflow_dispatch:
+
+jobs:
+  long-native-comparison:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [digits, breast_cancer]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - name: Checkout original master as an immutable reference
+        uses: actions/checkout@v4
+        with:
+          ref: 2902009c80b8edd3fc5f4961769444563fcf5b8a
+          path: baseline
+      - name: Checkout current candidate separately
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          path: candidate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install shared compiler / scientific dependencies once
+        run: |
+          python -m pip install "numpy>=2,<3" "Cython>=3.2,<4" scipy scikit-learn setuptools wheel
+          python -m pip freeze > long-native-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Build untouched native master independently
+        working-directory: baseline
+        run: python setup.py build_ext --inplace
+      - name: Build native cache candidate independently
+        working-directory: candidate
+        run: python setup.py build_ext --inplace
+      - name: Verify pinned original/candidate commits before measurement
+        shell: bash
+        run: |
+          git -C baseline rev-parse HEAD
+          git -C candidate rev-parse HEAD
+      - name: Run 300k native propagation repetitions with full-state strict parity
+        run: >-
+          python candidate/experiments/audit_cython_cache_long_native.py
+          orchestrate
+          --baseline-dir baseline
+          --candidate-dir candidate
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --output-dir long-native-results
+          --csv long-native-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Archive raw timings and exact native output fingerprints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-native-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            long-native-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            long-native-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+            long-native-results/
+          if-no-files-found: error
+
+  validate-long-native:
+    needs: long-native-comparison
+    if: ${{ always() && needs.long-native-comparison.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lightweight summary dependency
+        run: python -m pip install numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: long-native-*
+          merge-multiple: true
+          path: native-results
+      - name: Require all 384 native measurements and exact state/stop parity
+        run: >-
+          python -m experiments.summarize_cython_cache_long_native
+          --files native-results/long-native-*.csv
+          --output cython-cache-long-native-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cython-cache-long-native-summary
+          path: cython-cache-long-native-report.md
+          if-no-files-found: error
