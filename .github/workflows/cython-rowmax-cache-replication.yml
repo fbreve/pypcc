@@ -100,7 +100,7 @@ jobs:
           pattern: rowmax-numeric-*
           merge-multiple: true
           path: rowmax-numeric-results
-      - name: Require 96 timed fits and 6480 numerical-case artifacts
+      - name: Require 192 timed fits and 6480 numerical-case artifacts
         run: >-
           python -m experiments.summarize_cython_rowmax_cache_replication
           --replication-files rowmax-replication-results/rowmax-replication-*.csv
