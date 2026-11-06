@@ -7,6 +7,7 @@ on:
       - experiments/audit_clean_master_cython_cache.py
       - experiments/summarize_clean_master_cython_cache.py
       - experiments/clean_master_cython_cache_protocol.md
+      - experiments/clean_master_cython_cache_v2_protocol.md
       - .github/workflows/clean-master-cython-cache.yml
   workflow_dispatch:
 
