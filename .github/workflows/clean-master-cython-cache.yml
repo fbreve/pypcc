@@ -1,0 +1,103 @@
+name: Clean-master Cython cache independent-native-binary comparison
+
+on:
+  pull_request:
+    paths:
+      - pcc_step.pyx
+      - experiments/audit_clean_master_cython_cache.py
+      - experiments/summarize_clean_master_cython_cache.py
+      - experiments/clean_master_cython_cache_protocol.md
+      - .github/workflows/clean-master-cython-cache.yml
+  workflow_dispatch:
+
+jobs:
+  baseline-vs-candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [digits, breast_cancer]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    steps:
+      - name: Checkout untouched baseline at exact base SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'master' }}
+          path: baseline
+      - name: Checkout clean opt-in candidate at exact head SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          path: candidate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install one shared dependency environment, no editable installs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "numpy>=2,<3" "Cython>=3.2,<4" scipy scikit-learn setuptools wheel
+          python -m pip freeze > compiled-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Compile real untouched-master native Cython extension in its own directory
+        working-directory: baseline
+        run: python setup.py build_ext --inplace
+      - name: Compile real candidate native Cython extension separately
+        working-directory: candidate
+        run: python setup.py build_ext --inplace
+      - name: Inspect distinct checked-out revisions
+        shell: bash
+        run: |
+          git -C baseline rev-parse HEAD
+          git -C candidate rev-parse HEAD
+          git -C baseline diff -- pcc_step.pyx
+          git -C candidate diff -- pcc_step.pyx
+      - name: Execute frozen three-way independent-process benchmark and full-state parity gates
+        run: >-
+          python candidate/experiments/audit_clean_master_cython_cache.py
+          orchestrate
+          --baseline-dir baseline
+          --candidate-dir candidate
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --output-dir compiled-results
+          --csv compiled-cache-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Upload complete raw native state and paired timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clean-compiled-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            compiled-cache-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            compiled-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+            compiled-results/
+          if-no-files-found: error
+
+  complete-review:
+    needs: baseline-vs-candidate
+    if: ${{ always() && needs.baseline-vs-candidate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install reporting requirements
+        run: python -m pip install numpy
+      - name: Download exact four matrix artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: clean-compiled-*
+          merge-multiple: true
+          path: clean-report-data
+      - name: Strict complete-cohort source / native SHA / state / stop / timing audit
+        run: >-
+          python -m experiments.summarize_clean_master_cython_cache
+          --files clean-report-data/compiled-cache-*.csv
+          --output clean-master-cython-cache-report.md
+      - name: Archive frozen comparative summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: clean-master-cython-cache-summary
+          path: clean-master-cython-cache-report.md
+          if-no-files-found: error
