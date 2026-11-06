@@ -1,0 +1,96 @@
+name: Cython finite active-input preflight native parity and overhead
+
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'tests/test_cython_finite_active_inputs.py'
+      - 'experiments/audit_finite_preflight_native.py'
+      - 'experiments/summarize_finite_preflight_native.py'
+      - 'experiments/cython_finite_active_inputs_protocol.md'
+      - '.github/workflows/cython-finite-active-inputs.yml'
+  workflow_dispatch:
+
+jobs:
+  separate-native-binaries:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [breast_cancer, digits]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout untouched baseline master at integrated-cache SHA
+        uses: actions/checkout@v4
+        with:
+          ref: c449444d99eac16d89f4a2492d44795e490d874b
+          path: baseline
+      - name: Checkout current clean finite-input candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          path: candidate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install identical Python/Cython/NumPy versions for both builds
+        run: |
+          python -m pip install "numpy>=2,<3" "Cython>=3.2,<4" scipy scikit-learn setuptools wheel
+          python -m pip freeze > preflight-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Compile original master native Cython independently
+        working-directory: baseline
+        run: python setup.py build_ext --inplace
+      - name: Compile only the candidate preflight version independently
+        working-directory: candidate
+        run: python setup.py build_ext --inplace
+      - name: Reproduce all six exact-state array gates and 200k-step timing pairs
+        run: >-
+          python candidate/experiments/audit_finite_preflight_native.py
+          orchestrate
+          --baseline-dir baseline
+          --candidate-dir candidate
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --output-dir raw-results
+          --csv native-preflight-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Archive raw pair CSV, full state and native binary identities
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-preflight-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            native-preflight-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            preflight-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+            raw-results/
+          if-no-files-found: error
+
+  require-complete-cohort:
+    needs: separate-native-binaries
+    if: ${{ always() && needs.separate-native-binaries.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numerical dependency
+        run: python -m pip install numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-preflight-*
+          merge-multiple: true
+          path: preflight-results
+      - name: Validate 48 fits, 24 exact state+stop pairs, and frozen overhead gate
+        run: >-
+          python -m experiments.summarize_finite_preflight_native
+          --files preflight-results/native-preflight-*.csv
+          --output finite-preflight-native-report.md
+      - name: Preserve complete results even if timing gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finite-preflight-native-summary
+          path: finite-preflight-native-report.md
+          if-no-files-found: warn
