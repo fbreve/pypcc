@@ -37,6 +37,27 @@ cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize
         total_max += row_max
     return total_max / n_nodes
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef double _pcc_calc_mmpot_columnwise(
+    double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize_t c,
+    double[:] max_by_row
+) noexcept nogil:
+    """Experimental alternative: column-local reads, original row-sum order."""
+    cdef Py_ssize_t i, j
+    cdef double total_max = 0.0
+    for i in range(n_nodes):
+        max_by_row[i] = dominance[i, 0]
+    for j in range(1, c):
+        for i in range(n_nodes):
+            if dominance[i, j] > max_by_row[i]:
+                max_by_row[i] = dominance[i, j]
+    for i in range(n_nodes):
+        total_max += max_by_row[i]
+    return total_max / n_nodes
+
+
 cpdef pcc_propagate(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
@@ -65,12 +86,14 @@ cpdef pcc_propagate(
     int              es_chk,
     int              stop_max,
     bint             return_info = False,
-    object           seed = None
+    object           seed = None,
+    bint             experimental_columnwise_mmpot = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
+    cdef double[:] max_cache = None
     validate_propagation_controls(max_iter, es_chk, stop_max)
     seed = validate_seed(seed)
     if seed is not None:
@@ -85,6 +108,9 @@ cpdef pcc_propagate(
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
 
+    if experimental_columnwise_mmpot and early_stop != 0:
+        max_cache = np.empty(n_nodes, dtype=np.float64)
+
     with nogil:
         for it in range(max_iter):
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
@@ -93,7 +119,10 @@ cpdef pcc_propagate(
                                dist_weights, prob, slices, &rng_state)
 
             if early_stop != 0 and it % 10 == 0:
-                mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
+                if experimental_columnwise_mmpot:
+                    mmpot = _pcc_calc_mmpot_columnwise(dominance, n_nodes, c, max_cache)
+                else:
+                    mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
                 if mmpot > max_mmpot:
                     max_mmpot = mmpot
                     stop_cnt = 0
