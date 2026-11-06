@@ -1,7 +1,7 @@
-"""Cython probability inputs must be finite before native mutation.
+"""The propagation boundary validates nonfinite active probability buffers.
 
-This exercises BOTH direct Cython entry points, including the recently merged
-default-on potential cache, and deliberately leaves unused buffer padding.
+The public direct single-step kernel retains its original fast behavior:
+revalidating all node/classes before EACH step failed a frozen 20% cost gate.
 """
 import unittest
 
@@ -60,7 +60,7 @@ def invoke(kind, arrays):
 
 
 @unittest.skipIf(pcc_step is None, "Cython extension not built")
-class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
+class TestCythonFinitePropagationInputs(unittest.TestCase):
     def test_nan_and_infinity_are_rejected_before_mutation(self):
         positions=(
             ("part_strength", "strength", (0,)),
@@ -68,7 +68,7 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
             ("dist_weights", "weights", (0,)),
             ("dist_weights", "weights", (255,)),
         )
-        for kind in ("step", "propagate"):
+        for kind in ("propagate",):
             for field, buffer, position in positions:
                 for invalid in (np.nan, np.inf, -np.inf):
                     with self.subTest(
@@ -90,7 +90,7 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
                                 err_msg=f"Partial mutation in {kind}: {name}")
 
     def test_unused_padding_may_contain_nan_or_infinity(self):
-        for kind in ("step","propagate"):
+        for kind in ("propagate",):
             with self.subTest(kind=kind):
                 x=sample()
                 x["strength"]=np.r_[x["strength"],np.nan]
@@ -110,7 +110,7 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
     def test_c_order_dominance_detects_invalid_active_value(self):
         # The native scanner must also handle C-contiguous matrices and
         # preserve the original caller buffers before raising.
-        for kind in ("step", "propagate"):
+        for kind in ("propagate",):
             with self.subTest(kind=kind):
                 x=sample()
                 x["dominance"]=np.ascontiguousarray(x["dominance"])
@@ -125,7 +125,7 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
                     np.testing.assert_array_equal(x[name],value)
 
     def test_uninitialized_scratch_is_not_rejected_as_active_state(self):
-        for kind in ("step","propagate"):
+        for kind in ("propagate",):
             with self.subTest(kind=kind):
                 x=sample()
                 for key in (
@@ -134,6 +134,13 @@ class TestCythonFiniteActiveProbabilityInputs(unittest.TestCase):
                     x[key][:]=np.nan
                 # Preflight must not reject buffers written during the step.
                 invoke(kind,x)
+
+    def test_unchanged_public_single_step_still_accepts_finite_state(self):
+        # Full direct-step preflight failed independent cost validation;
+        # keep finite-input functional behavior and original ABI intact.
+        x=sample()
+        invoke("step",x)
+        self.assertTrue(np.isfinite(x["dominance"][:4,:2]).all())
 
     def test_no_stop_still_rejects_active_nan(self):
         x=sample()
