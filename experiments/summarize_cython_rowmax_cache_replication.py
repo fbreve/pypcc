@@ -48,8 +48,8 @@ def read_replication(paths):
         raise AssertionError(
             f"Missing or unexpected replication entries "
             f"{len(expected-set(rows))} / {len(set(rows)-expected)}")
-    if len(rows)!=96:
-        raise AssertionError(f"Expected exactly 96 repeated-fit rows, got {len(rows)}")
+    if len(rows)!=192:
+        raise AssertionError(f"Expected exactly 192 repeated-fit rows, got {len(rows)}")
     pairs={}
     for osname,ds,seed in product(OSES,DATASETS,SEEDS):
         for policy,cap,es_chk,count in POLICIES:
@@ -79,8 +79,8 @@ def read_replication(paths):
                        for z in (old,new)):
                     raise AssertionError("Pair timing fields inconsistent")
                 pairs[(osname,ds,seed,policy,rep)] = saved
-    if len(pairs)!=48:
-        raise AssertionError("Expected 48 parity/timing pairs")
+    if len(pairs)!=96:
+        raise AssertionError("Expected 96 parity/timing pairs")
     return pairs
 
 
@@ -131,7 +131,7 @@ def main(argv=None):
     lines=[
         "# Cython row-max cache: independent Windows/Linux replication",
         "",
-        "**Data integrity: 96/96 full-fit observations, 48/48 exact state + "
+        "**Data integrity: 192/192 full-fit observations, 96/96 exact state + "
         "stop-metadata parity comparisons, 2 operating systems, "
         "fresh seeds 7307/7403/7507/7603, no exclusions.**",
         f"Both OS direct-kernel numerical stress grids passed: "
