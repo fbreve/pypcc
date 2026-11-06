@@ -1,0 +1,74 @@
+name: Experimental Cython incremental per-node global potential cache
+
+on:
+  pull_request:
+    paths:
+      - 'pcc_step.pyx'
+      - 'experiments/audit_cython_incremental_rowmax_cache.py'
+      - 'experiments/summarize_cython_incremental_rowmax_cache.py'
+      - 'experiments/cython_incremental_rowmax_cache_protocol.md'
+      - '.github/workflows/cython-incremental-rowmax-cache.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-cache-vs-original:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Cython extension with both legacy and opt-in kernels
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step; print('Extension:',pcc_step.__file__)"
+          python -m pip freeze > cache-potential-env-${{ matrix.dataset }}.txt
+      - name: Verify potential scalar at all 200 checks and compare timed full-state parity
+        run: |
+          python -m experiments.audit_cython_incremental_rowmax_cache \
+            --dataset ${{ matrix.dataset }} \
+            --output cached-potential-${{ matrix.dataset }}.csv
+      - name: Keep raw paired CSV and exact environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cached-potential-${{ matrix.dataset }}
+          path: |
+            cached-potential-${{ matrix.dataset }}.csv
+            cache-potential-env-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  validate-summary:
+    needs: verify-cache-vs-original
+    if: ${{ always() && needs.verify-cache-vs-original.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install same experimental code for report audit
+        run: python -m pip install -e ".[numba]"
+      - name: Download all four paired benchmark artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cached-potential-*
+          merge-multiple: true
+          path: cached-results
+      - name: Validate all 64 records, 32 parities, and frozen performance threshold
+        run: |
+          python -m experiments.summarize_cython_incremental_rowmax_cache \
+            --files cached-results/cached-potential-*.csv \
+            --output cython-incremental-rowmax-cache-report.md
+      - name: Archive consolidated result
+        uses: actions/upload-artifact@v4
+        with:
+          name: cython-incremental-rowmax-cache-summary
+          path: cython-incremental-rowmax-cache-report.md
+          if-no-files-found: error
