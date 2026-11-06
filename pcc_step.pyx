@@ -37,6 +37,38 @@ cdef double _pcc_calc_mmpot(double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize
         total_max += row_max
     return total_max / n_nodes
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef void _pcc_initialize_rowmax_cache(
+    double[:, :] dominance, Py_ssize_t n_nodes, Py_ssize_t c,
+    double[:] row_max_cache
+) noexcept nogil:
+    """Compute the same per-row maximum as legacy global potential."""
+    cdef Py_ssize_t i, j
+    cdef double row_max
+    for i in range(n_nodes):
+        row_max = dominance[i, 0]
+        for j in range(1, c):
+            if dominance[i, j] > row_max:
+                row_max = dominance[i, j]
+        row_max_cache[i] = row_max
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef double _pcc_calc_mmpot_from_rowmax(
+    double[:] row_max_cache, Py_ssize_t n_nodes
+) noexcept nogil:
+    """Exact original node-index sum order; no running float accumulator."""
+    cdef Py_ssize_t i
+    cdef double total_max = 0.0
+    for i in range(n_nodes):
+        total_max += row_max_cache[i]
+    return total_max / n_nodes
+
+
 cpdef pcc_propagate(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
@@ -65,12 +97,19 @@ cpdef pcc_propagate(
     int              es_chk,
     int              stop_max,
     bint             return_info = False,
-    object           seed = None
+    object           seed = None,
+    bint             experimental_rowmax_cache = False,
+    bint             experimental_verify_rowmax_cache = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
     cdef int stop_cnt = 0
     cdef unsigned int rng_state = 123456789
+    cdef double[:] row_max_cache = None
+    cdef bint cache_enabled = bool(experimental_rowmax_cache and early_stop != 0)
+    cdef int metric_mismatch_iteration = 0
+    if experimental_verify_rowmax_cache and not cache_enabled:
+        raise ValueError("experimental metric verification requires active rowmax cache")
     validate_propagation_controls(max_iter, es_chk, stop_max)
     seed = validate_seed(seed)
     if seed is not None:
@@ -85,15 +124,28 @@ cpdef pcc_propagate(
     validate_buffers(c, max_degree, dom_row, reduc, dom_list, dist_list,
                      prob, slices, dist_weights)
 
+    if cache_enabled:
+        row_max_cache = np.empty(n_nodes, dtype=np.float64)
+        with nogil:
+            _pcc_initialize_rowmax_cache(dominance, n_nodes, c, row_max_cache)
+
     with nogil:
         for it in range(max_iter):
             pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
                                dominance, owndeg, deltap, dexp,
-                               dist_weights, prob, slices, &rng_state)
+                               dist_weights, prob, slices, &rng_state,
+                               row_max_cache, cache_enabled)
 
             if early_stop != 0 and it % 10 == 0:
-                mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
+                if cache_enabled:
+                    mmpot = _pcc_calc_mmpot_from_rowmax(row_max_cache, n_nodes)
+                    if experimental_verify_rowmax_cache and (
+                            mmpot != _pcc_calc_mmpot(dominance, n_nodes, c)):
+                        metric_mismatch_iteration = it + 1
+                        break
+                else:
+                    mmpot = _pcc_calc_mmpot(dominance, n_nodes, c)
                 if mmpot > max_mmpot:
                     max_mmpot = mmpot
                     stop_cnt = 0
@@ -102,6 +154,11 @@ cpdef pcc_propagate(
                     if stop_cnt > stop_max:
                         break
 
+    if metric_mismatch_iteration:
+        raise AssertionError(
+            f"Incremental potential cache differs from legacy at iteration "
+            f"{metric_mismatch_iteration}"
+        )
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
 
@@ -127,7 +184,9 @@ cdef void pcc_step_sequential(
     double[:]        dist_weights,
     double[:]        prob_buf,
     double[:]        slices_buf,
-    unsigned int    *rng_state
+    unsigned int    *rng_state,
+    double[:]        row_max_cache,
+    bint             cache_enabled
 ) noexcept nogil:
     cdef Py_ssize_t n_particles = part_curnode.shape[0]
     cdef Py_ssize_t n_nodes = neib_list.shape[0]
@@ -226,6 +285,11 @@ cdef void pcc_step_sequential(
                 if dominance[next_node, i] > max_dom:
                     max_dom = dominance[next_node, i]
 
+            if cache_enabled and labels[next_node] == -1:
+                # Existing movement decision already calculated the final row
+                # maximum in the legacy class-order. No second scan needed.
+                row_max_cache[next_node] = max_dom
+
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
 
@@ -269,4 +333,5 @@ cpdef pcc_step(
         pcc_step_sequential(neib_list, neib_qt, labels, p_grd, delta_v, c, zerovec,
                            part_curnode, part_label, part_strength, dist_table,
                            dominance, owndeg, deltap, dexp,
-                           dist_weights, prob, slices, &rng_state)
+                           dist_weights, prob, slices, &rng_state,
+                           None, False)
