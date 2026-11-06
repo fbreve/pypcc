@@ -15,6 +15,11 @@ import time
 
 import numpy as np
 
+# The CLI is invoked from a checkout parent directory; add the candidate
+# repository root for its reusable, unchanged canonical-graph test helpers.
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+
 from experiments.audit_clean_master_cython_cache import (
     canonical_direct_kernel_input, expected_stop_max, STATE,
 )
