@@ -121,12 +121,10 @@ def execute_worker(args):
             f"Imported extension from wrong checkout: {extension} != {checkout}")
     if extension.suffix.lower() not in (".so",".pyd"):
         raise AssertionError("Expected an actual compiled extension")
-    if args.variant == "master":
-        if "experimental_rowmax_cache" in pcc_step.pcc_propagate.__doc__:
-            raise AssertionError("Baseline binary unexpectedly includes candidate API")
-    if args.variant != "master":
-        if "experimental_rowmax_cache" not in pcc_step.pcc_propagate.__doc__:
-            raise AssertionError("Candidate binary is missing opt-in API")
+    # Do not infer the Cython signature from __doc__: different generated
+    # extensions may omit it. Explicit opt-in invocation below verifies the
+    # candidate accepts the flag, while native binary hashes and separate
+    # source revisions prove which compiled module was loaded.
 
     policy = next(x for x in POLICIES if x[0]==args.policy)
     name,cap,monitoring,es_chk,_ = policy
