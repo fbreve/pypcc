@@ -57,7 +57,7 @@ def read_complete_cohort(paths):
                     raise AssertionError("Paired modes must run separately")
                 off, on = (float(base["elapsed_seconds"]),
                            float(monitor["elapsed_seconds"]))
-                if not 0 < off and not 0 < on:
+                if not (off > 0 and on > 0):
                     raise AssertionError("Invalid wall time")
                 overhead = 100*(on/off - 1)
                 share = 100*(on-off)/on
