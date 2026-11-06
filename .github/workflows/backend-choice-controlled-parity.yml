@@ -1,0 +1,39 @@
+name: Experimental PCC backend forced-choice parity
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/audit_backend_choice_controlled_parity.py'
+      - 'experiments/backend_choice_controlled_parity_protocol.md'
+      - '.github/workflows/backend-choice-controlled-parity.yml'
+  workflow_dispatch:
+
+jobs:
+  controlled-choice-backend-parity:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual production backends
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc, pcc_numpy, pcc_numba, pcc_step; print('Production backends available')"
+      - name: Run preregistered full-state parity diagnostics
+        run: |
+          python -m experiments.audit_backend_choice_controlled_parity \
+            --dataset ${{ matrix.dataset }} \
+            --output backend-choice-parity-${{ matrix.dataset }}.csv
+      - name: Preserve comparison output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-choice-parity-${{ matrix.dataset }}
+          path: backend-choice-parity-${{ matrix.dataset }}.csv
+          if-no-files-found: error
