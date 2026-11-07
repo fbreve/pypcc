@@ -1,0 +1,53 @@
+# Performance re-entry after the PCC particle-trajectory audit (2026-11-07)
+
+This is a **decision and execution plan**, not a new timing experiment or authorization for a large compute campaign. It accompanies [the independent #182–#188 research audit](pcc_experimental_pr182_188_audit.md) and is based on the existing **production `master`**, not a seven-PR experimental NumPy stack. No performance claims in this file were measured anew.
+
+## 1. Establish the real current baseline before touching a kernel
+
+**Important integration status at audit time:** native Cython optimization [#178](https://github.com/fbreve/pypcc/pull/178), default-on cache activation [#179](https://github.com/fbreve/pypcc/pull/179), and scoped Cython finite-input preflight [#180](https://github.com/fbreve/pypcc/pull/180) are all already **merged**. Their code is in current `master` at `8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128`. The previous Cython row-max potential cache is therefore **NOT** an unmerged candidate to benchmark as if it were new.
+
+Historical, reproducible timing evidence already exists and **must not be recreated indiscriminately**:
+
+- [Fixed-iteration campaign](performance_fixed_results.md): 20 frozen datasets, 10 label masks/dataset, 10k iterations, 6 balanced backend repetitions, **3,600 measured native/NumPy fits** + 1,200 warm-ups, across original sequential NumPy/Numba/Cython. Its measured source was `c9f512c2da576a4095e9bf0192133ee34896f494` on Windows i7-14700K, **not current master**.
+- [Order/session sensitivity replication](performance_order_sensitivity.md): **432 measured fits** across three native consecutive sessions; backend ordering, Cython vs Numba native differences and host variability matter. Wine showed a repeatable Cython lead in that old binary, while Digits/Satimage stayed close or mixed. This is prior evidence, not a current-master ranking.
+- [Full original stopping campaign](performance_full_campaign_results.md): another **3,600 measured fits**, fixed historical masks and 500k maximum, **480/3,600 capped observations**. Longer propagation does not automatically improve every dataset: PageBlocks suffered large endpoint accuracy losses in the retrospective fixed10k-vs-longer comparison, while Spambase improved. These are **different work budgets**, not an isolated default-stopping causal comparison. The approved raw artifacts and reports must remain immutable.
+- [Simple current-baseline protocol](benchmarks/backend_comparison.md): exact per-phase timings and separate warm-up show why **propagation-only ratios overstate end-to-end gains** if a new graph is built for every call; Numba's cold compilation should never be mixed with warmed timings.
+
+Thus a current performance issue should start from the **already merged and buildable native Cython cache**, and should **not** repeat the known 200-dataset-mask campaign or start by altering the numerics, RNG, graph, stopping or particle movement.
+
+## 2. Small prospective current-master triage — first action
+
+1. **Pin the exact master SHA and clean native binaries** (including compiler/build flags, Cython extension .pyd/.so hash and Numba versions); record Python OS, CPU, NumPy/Numba/Cython/SciPy/sklearn versions, threads and power/affinity controls. Verify each requested backend was really used without silent fallback, and warm Numba signature compilation outside measured sections. Start with **Wine, Digits and Breast Cancer**, all local sklearn datasets, so no new OpenML download or reprocessing is needed.
+2. **Use the existing `benchmarks/` runner** and its fixture/timing conventions rather than writing a second incompatible timer. First inspect `python -m benchmarks.run --help` and execute its dry-run mode. For an optional custom short pilot, freeze **two labeled masks** (e.g. fresh seeds 25013/25117) and **4–6 balanced backend-order repetitions** per dataset/backend, 10k fixed iterations. Explicitly record the exact fixture hashes and approximate work cost in the frozen protocol *before* running. Keep all repeats, including outliers; a Cython-vs-Numba ranking from a hosted Linux CI runner must not be extrapolated to native Windows. Do **not** reuse experimental unmerged NumPy observer instrumentation for performance figures.
+3. Separately time **(a) load/preprocess, (b) graph construction, (c) fitting initialization, (d) steady-state propagation, (e) postprocessing and (f) full end-to-end workflow**. The original benchmark already defines these boundaries; do not compare a propagation-only Cython timer against a graph-included NumPy total. Examine reuse of a fixed graph across multiple label masks versus rebuilding it each fit, without altering semantics.
+4. Run a **minimal fixed-iteration pilot first**, checking all native final state/label invariants and per-backend RNG reproducibility within the same backend. Native Cython and Numba use different RNG algorithms and are **not required to have identical cross-backend final arrays**; no optimization can claim bitwise equivalence across different generators. Check the original potential stop **separately** on a small, predeclared subset, since current Cython's recently merged cache is designed for the potential metric; fixed `early_stop=False` alone may conceal its benefit.
+5. Measure **peak process RSS and incremental allocations** with an explicit process-isolation/memory-monitoring method rather than relying on a coarse system free-RAM sample or Python-only tracemalloc as a C-extension allocation gauge. Preserve array sizes, ownership, degree table memory, class count and particle count. Verify no output/state change when considering memory-layout tweaks.
+6. Deliver a **single short baseline report**, including matched medians and distributions, full input/binary/environment identity and any host/noise qualification. If a threshold is useful for promoting a candidate, freeze it before measurements (for example a practical >=5% reduction in median propagation time without a material slowdown in other representative workloads, but a chosen threshold is a review criterion, **not** an observed result).
+
+**Important:** The frozen historical PR #16/#17 results are strong documentation, but they are not an uncontaminated current-master baseline after #178–#180. The small pilot's goal is to locate current hot work, not to redo all historical matrices.
+
+## 3. Optimization candidate selection — only after measurements
+
+### Priority A: distinguish steady-state native propagation from monitoring
+
+The merged Cython per-node maximum cache should change the cost of potential monitoring with `early_stop=True`; this deserves a clean **current master Cython vs Numba matched workload** rather than another attempt to activate an already active feature. Include fixed-iteration and potential-stop modes as **different** workloads. The [old Cython clean-master cache pilot](../experiments/clean_master_cython_cache_v1_findings.md) warned that a runtime flag checked **inside the hot loop** can cause a large default-disabled slowdown; the successful later scoped implementation/activation was merged via #178/#179. Do not reintroduce a per-particle flag branch or assume an opt-in numerical cache is still disabled.
+
+If profiling is needed after triage, reuse `benchmarks/profile_cython_kernel.py` with the existing callgrind workflow and `benchmarks/profile_numba_native.py` with the existing Numba workflow; profiling estimates hot functions but is **not** itself a performance regression gate. In environments without native perf counters, do not invent CPU sample counts.
+
+### Priority B: memory layout and allocations
+
+The existing repository already has isolated experiments `benchmarks/benchmark_numba_{distance,dominance,owndeg}_layout.py`. Read their actual results and tests before proposing a different memory order, loop vectorization or buffer aliasing. Do not implement a new temporary-buffer optimization without first determining whether the existing candidates were accepted or rejected. Protect all six full state arrays, distances and strength ranges, class labels, ownership normalization, native stop metadata and backend seeds. Reproducible memory improvements may trade accuracy or runtime; assess both.
+
+### Priority C: end-to-end preparation and repeated fits
+
+The old 10k fixed campaign found that most *warmed* Wine/Digits Cython/Numba propagation fits were measured in **milliseconds**, while loading and graph construction were charged only once per dataset. In workflows with a fresh graph each time, preparation may dominate. If the new current-master profile confirms it, reducing redundant graph preparation and allocations may offer larger practical benefit than optimizing a tiny steady-state native kernel. Avoid hidden changes to graph topology, neighbor ordering or label-mask semantics; if graph reuse is possible, prefer the already exposed `set_graph`/reuse workflow.
+
+## 4. Integration constraints
+
+- **One hypothesis, one independent feature branch from current master.** Do not stack performance code on #182–#188 or silently carry their NumPy observer into production. Keep scientific-data branches and output archives stable.
+- **Benchmark before coding** with an immutable baseline binary and fresh, frozen test inputs. After coding, compile candidate and baseline **independently** on the same OS and compare matched workloads with balanced order, a clear warm-up boundary and all retained results. Preserve exact timing scope and graph/label hashes.
+- Validate both **bitwise same-backend state/RNG/stopping parity** when a change claims no semantic effect, and specifically defined numerical tolerances only for deliberately approved approximate variants. A candidate that fails semantic invariants cannot be adopted solely for speed. Test initial/final state, no-stop and early-stop, seeded/unseeded paths and edge/memory layouts.
+- Require **real observed gain across more than one relevant dataset and no disproportionate regression** on other native backends and workloads, Windows/Linux builds and all existing CI checks. Tiny single-run timing gaps are not a production win; CI runners are noisy. Make no universal winner claim.
+- Keep current production defaults (`k_nn`, potential stopping, backend selection) and published benchmark artifacts unchanged until a separately reviewed, reproducible, scientifically defensible patch demonstrates an actual net benefit.
+
+**Concrete next step after this document:** prepare a *separate*, small, preregistered, current-master **performance baseline** with only locally available sklearn datasets. Do not introduce new movement or stopping logic until that baseline identifies a measurable bottleneck.
