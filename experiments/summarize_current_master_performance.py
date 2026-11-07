@@ -41,6 +41,11 @@ def is_hash(value):
         c in "0123456789abcdef" for c in value.lower())
 
 
+def is_git_sha(value):
+    return isinstance(value,str) and len(value)==40 and all(
+        c in "0123456789abcdef" for c in value.lower())
+
+
 def ensure(ok,message):
     if not ok:
         raise AssertionError(message)
@@ -94,7 +99,7 @@ def verify_host(root):
         c.get("session_id")==f"master-native-{host}",
         f"Runtime configuration changed: {host}")
     r=manifest.get("repository",{})
-    ensure(is_hash(r.get("commit")),
+    ensure(is_git_sha(r.get("commit")),
            f"Missing current benchmark branch commit: {host}")
     # The current branch adds only benchmark/CI/docs, so this commit is
     # expected to differ from the pinned production ancestor.
