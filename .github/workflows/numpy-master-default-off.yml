@@ -1,0 +1,95 @@
+name: Experimental NumPy observer default-off vs original master
+
+on:
+  pull_request:
+    paths:
+      - pcc_numpy.py
+      - experiments/audit_numpy_master_default_off.py
+      - experiments/summarize_numpy_master_default_off.py
+      - experiments/numpy_continuous_phase3_protocol.md
+      - .github/workflows/numpy-master-default-off.yml
+  workflow_dispatch:
+
+jobs:
+  independent-sources:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [iris, breast_cancer, digits]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Fetch pinned untouched original master in a separate directory
+        uses: actions/checkout@v4
+        with:
+          ref: 8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128
+          path: baseline
+      - name: Checkout current candidate independently
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          path: candidate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install shared scientific dependencies from candidate only
+        working-directory: candidate
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > ../numpy-master-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Verify pinned baseline and candidate commit identity
+        shell: bash
+        run: |
+          git -C baseline rev-parse HEAD
+          git -C candidate rev-parse HEAD
+      - name: Compare real independent-source normal fit_predict path and final RNG
+        run: >-
+          python candidate/experiments/audit_numpy_master_default_off.py
+          orchestrate
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --master-dir baseline
+          --candidate-dir candidate
+          --output-dir native-numpy-paired-data
+          --csv numpy-default-off-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Preserve complete source hashes and full raw state files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-numpy-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            numpy-default-off-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            numpy-master-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+            native-numpy-paired-data/
+          if-no-files-found: error
+
+  enforce-independent-gates:
+    needs: independent-sources
+    if: ${{ always() && needs.independent-sources.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install reporting requirements
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: independent-numpy-*
+          merge-multiple: true
+          path: independent-data
+      - name: Require all independently sourced 24 exact state/RNG and speed pairs
+        run: >-
+          python -m experiments.summarize_numpy_master_default_off
+          --files independent-data/numpy-default-off-*.csv
+          --output numpy-default-off-master-report.md
+      - name: Preserve result even if frozen performance gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-numpy-master-summary
+          path: numpy-default-off-master-report.md
+          if-no-files-found: error

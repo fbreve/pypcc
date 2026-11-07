@@ -1,0 +1,27 @@
+# Pre-registered phase 3: NumPy observer edge behavior and independent default-off baseline
+
+Frozen **before executing phase-3 CI**, after the successful 68/68 phase-1+2 NumPy state/RNG/stop pairs. Current reference `master` source commit `8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128` is pinned. Candidate branch remains draft #182; no production merge and no algorithm changes in this phase.
+
+## 1. Boundary compatibility (two operating systems)
+
+Canonical standardized union-symmetrized undirected 10-NN **Iris** (3 classes) and **Digits** (10 classes), exactly two initially labeled vertices per class selected by an independent `default_rng`. NumPy backend required, and every graph must be reciprocal without duplicate/self edges. Both Windows and Linux, Python 3.12, with **new seeds 14003, 14107, 14209**, used for deterministic *harness-only initial global RNG state* and label selection, not as a propagation seed where `seed=None` is under test.
+
+Three **distinct** policies for each dataset×seed×OS:
+1. **unseeded**: ordinary sequential propagation, `seed=None`, `max_iter=111`, `early_stop=True`, `es_chk=10`. Before **each** fit, explicitly install the exact same global `np.random.seed(harness_seed)` outside `fit_predict`. The caller passes **no seed keyword**. The observed and unobserved fits must match all six full-state arrays, exact propagation-stop metadata, complete global MT19937 RNG state, and next 16 draws. The observer's iteration-0 RNG fingerprint must equal the installed pre-call fingerprint. This tests a matching external initial RNG state, **not** unconditional equality of unseeded independent runs.
+2. **zero_iterations**: `seed=None`, `max_iter=0`, `early_stop=True`, `es_chk=10`. Same externally controlled global state. Must yield 0 effective steps, no draw, exactly **one** physical observer row `iteration=0` upgraded to final metadata, and final/high-level state and RNG equal the unobserved run. A zero cap remains allowed by current production NumPy control validation; if the original baseline does not allow it, record that restriction instead of weakening validation.
+3. **synchronous**: NumPy's current opt-in synchronous update mode, `seed=None`, `max_iter=111`, `early_stop=True`, `es_chk=10`. Paired ordinary/observed fits with identical explicitly initialized global RNG; **no** changes to synchronous movement rules, batching, or random draws. Capturing the native return-info is allowed only in an identical non-mutating wrapper in both variants.
+
+**2 OS × 2 datasets × 3 seeds × 3 policies × 2 fits = 72 fits, 18 strict parity pairs per OS, 36 strict pairs in total.** Preserve all 36 pair rows. For every pair assert **six arrays**, full NumPy RNG state, next 16 random outputs, exact native stop metadata, all actually visited checkpoint snapshots and the true final state, and <=9 rows / <=48 MiB. Check the final low-level snapshot corresponds exactly to the model state before ownership normalization. Never claim cross-OS stochastic bitwise equality. Also include the existing fast negative callback/budget tests. New experimental files only; no new public API.
+
+## 2. Separately sourced master-versus-candidate default-OFF timing and parity
+
+This is a **distinct** check from phase 1/2's same-candidate-source toggles. Two **separate Git checkouts** at pinned master SHA and candidate PR HEAD. Each test invokes each checkout from its **own separate Python process**, inserts the checkout ahead of the candidate driver in `sys.path`, verifies imported `pcc.py` and `pcc_numpy.py` actually belong to that checkout, and records source commit and SHA-256 for each imported `pcc_numpy.py`. The master source cannot have the observer parameter; the candidate has it but normal high-level `fit_predict` passes no observer and must remain behavior-compatible.
+
+Frozen Windows/Linux × **Iris, Breast Cancer, Digits** × fresh seeds **15013, 15101** × **two alternating baseline/candidate blocks** × two different source versions = **48 separate-process high-level fits and 24 exact state/RNG comparison pairs**. Each fit is the **ordinary public `PCC(impl='numpy').fit_predict`**, `max_iter=6001`, `early_stop=False`, matched standardized undirected union-10NN graph, two labeled/class, `p_grd=.5`, `delta_v=.1`, `deltap=1`, `dexp=2`. Measure **only full `fit_predict`**, excluding Python startup, import, graph preparation and subprocess launch; retain every duration plus raw state/RNG digests, native source path/hash, seed and execution ordering.
+
+Default-off performance decision: compute median of the two block **paired candidate relative-to-original-master savings** per seed, then median across two seeds for each OS/dataset (positive means candidate faster). **No OS/dataset may regress more than -8%** median. If the runner's timing is too short/noisy, do not weaken the already frozen threshold after outcomes; document the failure and preregister a longer replication separately. Any state/RNG mismatch is unconditional failure. Do not change production code based on timing alone.
+
+## 3. Review decision
+
+- The two phase-3 CI suites and the complete frozen-cohort summaries must pass with no omissions.
+- Even if both succeed, **retain PR #182 as draft and unmerged** until exception semantics, packaging, callback observer contract and independent quality review are deemed production-ready. Keep historical #18 separate and untouched. No Numba/Cython port until the NumPy diagnostic is demonstrated safe.

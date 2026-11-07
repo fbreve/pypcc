@@ -1,0 +1,15 @@
+# Pre-registered phase 5: isolated wheel contract for NumPy observer
+
+Written **before phase-5 workflow execution** on draft PR #182 after all six phase-4-head CI workflows (including original regression) had completed successfully. No production merge; pinned untouched-master reference remains `8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128`. The existing `pcc-regression.yml` **already** builds sdist, builds a wheel from that sdist, installs and smoke-tests all three backends outside checkout on Windows/Linux Python 3.10/3.12. This experiment does NOT claim that generic packaging was previously untested.
+
+## New question: does the *specific low-level observer contract* survive installed-wheel packaging?
+
+Use Windows/Linux × Python 3.10/3.12 = **four independent jobs**. Each job builds an isolated sdist and then a wheel from that sdist, installs the wheel with its runtime dependencies, changes working directory outside the checkout, and invokes Python in isolated mode (`-I`). Assert that:
+
+1. `pcc` and `pcc_numpy` are actually imported from installed wheel files **outside the source checkout**, and package metadata identifies distribution `pcc_step`.
+2. The packaged `pcc_numpy.pcc_propagate_numpy` has an **optional trailing `observer=None`**, but `ParticleCompetitionAndCooperation.fit_predict` does **not** advertise this argument, and passing `observer=` to this high-level API gives `TypeError`. This is a private, low-level experimental diagnostic, not a newly public model API.
+3. The wheel's recorded members do **not** contain `experiments/` or the diagnostic `ContinuousNumpyObserver`. The standalone test script must implement its own tiny, non-mutating callback and **must not import the in-repository experiment module**.
+4. In a small canonical reciprocal six-vertex two-class graph, ordinary unobserved and private low-level observed **single uninterrupted NumPy** fits at fixed seed `17011`, `max_iter=21`, `early_stop=False` must agree **bitwise** on all six final state arrays, complete propagation metadata, complete global MT19937 RNG state, and next 16 draws. Observed snapshots must be exactly `0,1,21`, final metadata attached once (no double final row) and terminal array/RNG values must match the actual completed model state. Collect exact booleans as machine-readable JSON, including wheel module locations and the runtime version.
+5. Unchanged source `pcc.py`, `pcc_numpy.py`, Cython/Numba kernels, mathematics, RNG, stopping, or dependency constraints. Only a dedicated verification script, CI workflow and documentation may be added. No production API extension.
+
+**Gate:** require all four platform/Python jobs and a mandatory independent 4/4 report aggregation to pass without exclusions. No performance gate: the focus is packaging/API and exact behavior. Do not merge PR #182 even if green. Memory caps remain *retained payload*, not peak RSS. Untrusted custom observers remain potentially mutating or raising mid-step; this test uses only a deliberately non-mutating callback, not a promise of callback sandboxing.

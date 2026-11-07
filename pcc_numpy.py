@@ -211,7 +211,14 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                         dom_row, reduc, dom_list, dist_list, prob, slices,
                         dist_weights,
                         max_iter, early_stop, es_chk, stop_max, update_mode="sequential",
-                        return_info=False, seed=None):
+                        return_info=False, seed=None, observer=None):
+    """Propagate unchanged PCC dynamics; optional bounded read-only NumPy trace.
+
+    The experimental observer is never used by the ordinary model. Its
+    wants(iteration) predicate is checked after the existing particle and
+    stopping work. Only selected rows copy the RNG state; no RNG is drawn.
+    The final notification can upgrade the last selected snapshot.
+    """
     if update_mode not in ("sequential", "synchronous"):
         raise ValueError("update_mode must be 'sequential' or 'synchronous'")
     
@@ -229,6 +236,13 @@ def pcc_propagate_numpy(neib_list, neib_qt,
     seed = validate_seed(seed)
     if seed is not None:
         np.random.seed(seed)
+
+    if observer is not None:
+        # The callback sees the initialized state after the optional seed,
+        # but before the first particle movement.
+        if observer.wants(0):
+            observer.capture(0, dominance, part_curnode, part_strength,
+                             dist_table, owndeg, np.random.get_state(), None)
 
     it = -1
     max_mmpot = 0.0
@@ -257,6 +271,18 @@ def pcc_propagate_numpy(neib_list, neib_qt,
                 stop_cnt += 1
                 if stop_cnt > stop_max:
                     break
+
+        if observer is not None and observer.wants(it + 1):
+            observer.capture(it + 1, dominance, part_curnode, part_strength,
+                             dist_table, owndeg, np.random.get_state(), None)
+
+    if observer is not None:
+        # The actual stopping decision is finished. The collector de-duplicates
+        # a final iteration that was also a scheduled milestone.
+        observer.capture(it + 1, dominance, part_curnode, part_strength,
+                         dist_table, owndeg, np.random.get_state(),
+                         propagation_info(it + 1, early_stop, max_iter,
+                                          stop_max, stop_cnt))
 
     if return_info:
         return propagation_info(it + 1, early_stop, max_iter, stop_max, stop_cnt)
