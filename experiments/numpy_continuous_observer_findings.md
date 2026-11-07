@@ -19,7 +19,7 @@ Only `pcc_numpy.py` changes the executable model: a new **trailing optional `obs
 | Breast Cancer | +1.05% | +1.46% | +1.14% |
 | Digits | +1.10% | +0.17% | +0.20% |
 
-The preregistered exploratory overhead threshold (<={50}% median per dataset in the 6001 no-stop policy) **passes**.
+The preregistered exploratory overhead threshold (<= +50% median per dataset in the 6001 no-stop policy) **passes**.
 
 ## Phase 2 — independent Windows/Linux replication
 
