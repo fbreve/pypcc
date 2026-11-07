@@ -1,0 +1,71 @@
+name: Experimental undirected split vs bridge NumPy dynamics
+
+on:
+  pull_request:
+    paths:
+      - experiments/numpy_undirected_bridge_disconnect_protocol.md
+      - experiments/audit_numpy_undirected_bridge_disconnect.py
+      - experiments/summarize_numpy_undirected_bridge_disconnect.py
+      - tests/test_numpy_undirected_bridge_disconnect.py
+      - .github/workflows/numpy-undirected-bridge-disconnect.yml
+  workflow_dispatch:
+
+jobs:
+  native-connectivity-pairs:
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [21107, 21221, 21317, 21401]
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native PCC and dependency versions
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > bridge-env-${{ matrix.seed }}.txt
+      - name: Verify actual graph, labeled partition and crossing assertions
+        run: python -m unittest -v tests.test_numpy_undirected_bridge_disconnect
+      - name: Perform genuine 100k split vs one bridge vs full native pairs
+        run: >-
+          python -m experiments.audit_numpy_undirected_bridge_disconnect
+          --seed ${{ matrix.seed }}
+          --output bridge-${{ matrix.seed }}.json
+      - name: Archive complete seed diagnostics and original dependencies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-${{ matrix.seed }}
+          path: |
+            bridge-${{ matrix.seed }}.json
+            bridge-env-${{ matrix.seed }}.txt
+          if-no-files-found: warn
+
+  all-twelve-complete:
+    needs: native-connectivity-pairs
+    if: ${{ always() && needs.native-connectivity-pairs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bridge-*
+          merge-multiple: true
+          path: bridge-results
+      - name: Enforce all four seeds and all twelve exact native graph pairs
+        run: >-
+          python -m experiments.summarize_numpy_undirected_bridge_disconnect
+          --files bridge-results/bridge-*.json
+          --output undirected-bridge-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: undirected-bridge-scientific-report
+          path: undirected-bridge-scientific-report.md
+          if-no-files-found: error
