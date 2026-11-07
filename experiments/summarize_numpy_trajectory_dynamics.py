@@ -57,7 +57,14 @@ def enforce(files):
                 raise AssertionError(f"Invalid hidden-reversal accounting: {key}")
             if (not 0<=metrics["zero_motion_steps"]<=6001 or
                     not 0<=metrics["particles_never_changed_position"]<=
-                    case["n_particles"]):
+                    case["n_particles"] or
+                    not 0<=metrics["longest_stationary_steps"]<=6001 or
+                    metrics["longest_stationary_steps"]!=max(
+                        metrics["particle_max_streaks"],default=0) or
+                    any(not 0<=x<=6001
+                        for x in metrics["particle_max_streaks"]) or
+                    not 0<=metrics["particles_final_stationary_ge_100"]<=
+                        case["n_particles"]):
                 raise AssertionError(f"Invalid movement accounting: {key}")
             if (case["stop_reason"]=="early_stop" and
                     metrics["shadow_first_stop_iteration"]!=stop):
@@ -87,8 +94,8 @@ def write_summary(cases):
         "full native fits, cap 6001. The 6002 physical per-iteration records",
         "come from ONE uninterrupted observed fit per case, not prefix replays.",
         "",
-        "| Dataset | Seed | Potential stop | Endpoint-quiet windows (of 60) | Quiet with hidden reversals | Reverted node-window events | Never-moved particles | Changed unlabeled outputs after continuation | Accuracy stop → continue |",
-        "|---|---:|---|---:|---:|---:|---:|---:|---|",
+        "| Dataset | Seed | Potential stop | Endpoint-quiet windows (of 60) | Quiet with hidden reversals | Reverted node-window events | Never-moved particles | Longest stationary streak | Steps with no particle moving | Changed unlabeled outputs after continuation | Accuracy stop → continue |",
+        "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for key,c in sorted(cases.items()):
         d=c["dynamics"]
@@ -98,6 +105,8 @@ def write_summary(cases):
             f"{d['quiet_endpoint_windows']} | {d['quiet_but_hidden_windows']} | "
             f"{d['reverted_node_window_events']} | "
             f"{d['particles_never_changed_position']} / {c['n_particles']} | "
+            f"{d['longest_stationary_steps']} | "
+            f"{d['zero_motion_steps']} / 6001 | "
             f"{c['classification_disagreement_after_continuation']} | "
             f"{c['stop_unlabeled_accuracy']:.4f} → "
             f"{c['continued_unlabeled_accuracy']:.4f} |")
