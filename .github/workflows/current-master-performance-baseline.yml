@@ -75,7 +75,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: baseline-*
-          merge-multiple: true
+          merge-multiple: false
           path: imported
       - name: Enforce complete unmodified two-host 216 fit baseline and prepare report
         run: >-
