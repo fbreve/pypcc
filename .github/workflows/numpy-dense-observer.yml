@@ -1,0 +1,72 @@
+name: Experimental NumPy observer high-frequency phase 4
+
+on:
+  pull_request:
+    paths:
+      - pcc_numpy.py
+      - experiments/numpy_continuous_observer.py
+      - experiments/audit_numpy_dense_observer.py
+      - experiments/summarize_numpy_dense_observer.py
+      - experiments/numpy_continuous_phase4_protocol.md
+      - tests/test_numpy_continuous_observer.py
+      - .github/workflows/numpy-dense-observer.yml
+  workflow_dispatch:
+
+jobs:
+  dense-pairs:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [iris, digits]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native PCC and observer test dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Assert callback failure and collector memory guards
+        run: python -m unittest -v tests.test_numpy_continuous_observer
+      - name: Run all-iteration 112-row exact parity pairs
+        run: >-
+          python -m experiments.audit_numpy_dense_observer
+          --dataset ${{ matrix.dataset }}
+          --runner-os ${{ matrix.os }}
+          --output numpy-dense-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: numpy-dense-${{ matrix.os }}-${{ matrix.dataset }}
+          path: numpy-dense-${{ matrix.os }}-${{ matrix.dataset }}.csv
+          if-no-files-found: error
+
+  validate-dense:
+    needs: dense-pairs
+    if: ${{ always() && needs.dense-pairs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install report dependencies
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numpy-dense-*
+          merge-multiple: true
+          path: dense-data
+      - name: Enforce all eight strict pairs without exclusions
+        run: >-
+          python -m experiments.summarize_numpy_dense_observer
+          --files dense-data/numpy-dense-*.csv
+          --output numpy-dense-summary.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numpy-dense-phase4-summary
+          path: numpy-dense-summary.md
+          if-no-files-found: error
