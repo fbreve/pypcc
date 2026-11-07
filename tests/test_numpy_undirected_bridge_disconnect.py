@@ -23,8 +23,7 @@ class UndirectedBridgeTests(unittest.TestCase):
         self.assertEqual(joined["ncomponents"],1)
         self.assertEqual(full["ncomponents"],1)
         self.assertEqual(joined["undirected_edges"]-split["undirected_edges"],1)
-        self.assertEqual(edge[0]%2,0)
-        self.assertEqual(edge[1]%2,1)
+        self.assertEqual({edge[0]%2,edge[1]%2},{0,1})
         self.assertTrue(all(v[1]["min_degree"]>0 for v in variants.values()))
 
     def test_class_homes_avoid_missing_classes_on_a_partition(self):
