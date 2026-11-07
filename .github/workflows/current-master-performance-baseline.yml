@@ -1,0 +1,90 @@
+name: Experimental current-master native performance baseline
+
+on:
+  pull_request:
+    paths:
+      - experiments/current_master_performance_protocol.md
+      - experiments/run_current_master_performance.py
+      - experiments/summarize_current_master_performance.py
+      - tests/test_current_master_performance.py
+      - .github/workflows/current-master-performance-baseline.yml
+  workflow_dispatch:
+
+jobs:
+  real-current-master-baseline:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native production PCC and external memory monitor
+        run: python -m pip install -e ".[numba]" psutil
+      - name: Verify original frozen master kernels and balanced pilot plan
+        run: python -m unittest -v tests.test_current_master_performance
+      - name: Execute original benchmark with full six permutations and 50ms RSS monitor
+        run: >-
+          python -m experiments.run_current_master_performance
+          --os-label ${{ matrix.label }}
+          --output-root "${{ runner.temp }}/baseline-${{ matrix.label }}"
+      - name: Print native runner log conclusion
+        if: always()
+        shell: python
+        run: |
+          import pathlib
+          path=pathlib.Path(r"${{ runner.temp }}/baseline-${{ matrix.label }}/execution.log")
+          if path.exists():
+              text=path.read_text(encoding="utf-8",errors="replace").splitlines()
+              print("\n".join(text[-70:]))
+          else:
+              print("No native runner log yet")
+      - name: Archive complete raw native fits, fixtures, Cython binary ID and memory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-${{ matrix.label }}
+          path: ${{ runner.temp }}/baseline-${{ matrix.label }}
+          if-no-files-found: warn
+
+  mandatory-both-os-all-216:
+    needs: real-current-master-baseline
+    if: ${{ always() && needs.real-current-master-baseline.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: baseline-*
+          merge-multiple: true
+          path: imported
+      - name: Enforce complete unmodified two-host 216 fit baseline and prepare report
+        run: >-
+          python -m experiments.summarize_current_master_performance
+          --roots imported/baseline-linux imported/baseline-windows
+          --output current-master-performance-report.md
+      - name: Archive complete strict consolidated result
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-master-performance-report
+          path: current-master-performance-report.md
+          if-no-files-found: error
