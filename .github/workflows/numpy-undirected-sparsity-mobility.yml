@@ -1,0 +1,70 @@
+name: Experimental canonical undirected NumPy sparse mobility
+
+on:
+  pull_request:
+    paths:
+      - experiments/numpy_undirected_sparsity_mobility_protocol.md
+      - experiments/audit_numpy_undirected_sparsity_mobility.py
+      - experiments/summarize_numpy_undirected_sparsity_mobility.py
+      - tests/test_numpy_undirected_sparsity_mobility.py
+      - .github/workflows/numpy-undirected-sparsity-mobility.yml
+  workflow_dispatch:
+
+jobs:
+  mobility-pairs:
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [20107, 20201, 20309, 20411]
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install current native PyPCC
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > mobility-env-${{ matrix.seed }}.txt
+      - name: Validate all synthetic mobility and lockout counters
+        run: python -m unittest -v tests.test_numpy_undirected_sparsity_mobility
+      - name: Execute official undirected graph k3/k10 same-seed paired fits
+        run: >-
+          python -m experiments.audit_numpy_undirected_sparsity_mobility
+          --seed ${{ matrix.seed }}
+          --output mobility-${{ matrix.seed }}.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobility-${{ matrix.seed }}
+          path: |
+            mobility-${{ matrix.seed }}.json
+            mobility-env-${{ matrix.seed }}.txt
+          if-no-files-found: warn
+
+  require-all-cohort:
+    needs: mobility-pairs
+    if: ${{ always() && needs.mobility-pairs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mobility-*
+          merge-multiple: true
+          path: mobility-data
+      - name: Enforce all 8 complete independent pairs without omissions
+        run: >-
+          python -m experiments.summarize_numpy_undirected_sparsity_mobility
+          --files mobility-data/mobility-*.json
+          --output canonical-undirected-mobility-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-undirected-mobility-report
+          path: canonical-undirected-mobility-report.md
+          if-no-files-found: error
