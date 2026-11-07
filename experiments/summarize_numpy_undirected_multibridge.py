@@ -126,7 +126,7 @@ def validate(files):
                     d["zero_move_class_windows"]!=sum(
                         row["accepted_moves"]==0 for row in d["windows"])):
                 raise AssertionError(f"Movement/streak totals mismatch: {key}")
-            perclass=np.zeros(10,dtype=np.int64) if False else [0]*10
+            perclass=[0]*10
             for i,row in enumerate(d["windows"]):
                 w=i//10
                 cls=i%10
