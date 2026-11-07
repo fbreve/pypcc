@@ -160,8 +160,8 @@ def labelled_nodes(truth,seed):
 
 class CrossingObserver(MobilityObserver):
     """Observe exact crossings on every native step, without modifying PCC."""
-    def __init__(self,mapped,graph,degrees,variant,bridge):
-        super().__init__(mapped,graph,degrees,cap=CAP,window=WINDOW)
+    def __init__(self,mapped,graph,degrees,variant,bridge,*,cap=CAP,window=WINDOW):
+        super().__init__(mapped,graph,degrees,cap=cap,window=window)
         self.variant=variant
         self.bridge=frozenset(bridge)
         self.old_positions=None
