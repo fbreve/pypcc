@@ -1,0 +1,78 @@
+name: Experimental NumPy continuous observer cross-OS replication
+
+on:
+  pull_request:
+    paths:
+      - pcc_numpy.py
+      - experiments/numpy_continuous_observer.py
+      - experiments/audit_numpy_continuous_observer.py
+      - experiments/numpy_continuous_observer_cross_os_protocol.md
+      - experiments/summarize_numpy_continuous_cross_os.py
+      - .github/workflows/numpy-continuous-cross-os.yml
+  workflow_dispatch:
+
+jobs:
+  replicate:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [iris, wine, breast_cancer, digits]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production PCC and recording dependencies
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > numpy-continuous-cross-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Run synthetic failure and bound validations
+        run: python -m unittest -v tests.test_numpy_continuous_observer
+      - name: Run fresh cross-OS full-state RNG and actual stop comparisons
+        run: >-
+          python -m experiments.audit_numpy_continuous_observer
+          --runner-os ${{ matrix.os }}
+          --dataset ${{ matrix.dataset }}
+          --seeds 13001 13109
+          --policies no_stop aggressive_potential
+          --output cross-os-numpy-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Archive complete independent OS raw observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-os-numpy-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            cross-os-numpy-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            numpy-continuous-cross-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  verify-cross-os:
+    needs: replicate
+    if: ${{ always() && needs.replicate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install summarizer requirements
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cross-os-numpy-*
+          merge-multiple: true
+          path: cross-os-data
+      - name: Require all 32 new-seed Linux/Windows true continuous parity records
+        run: >-
+          python -m experiments.summarize_numpy_continuous_cross_os
+          --files cross-os-data/cross-os-numpy-*.csv
+          --output continuous-numpy-cross-os-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: continuous-numpy-cross-os-summary
+          path: continuous-numpy-cross-os-report.md
+          if-no-files-found: error
