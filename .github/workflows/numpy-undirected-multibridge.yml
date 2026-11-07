@@ -1,0 +1,71 @@
+name: Experimental NumPy undirected multibridge dose response
+
+on:
+  pull_request:
+    paths:
+      - experiments/numpy_undirected_multibridge_protocol.md
+      - experiments/audit_numpy_undirected_multibridge.py
+      - experiments/summarize_numpy_undirected_multibridge.py
+      - tests/test_numpy_undirected_multibridge.py
+      - .github/workflows/numpy-undirected-multibridge.yml
+  workflow_dispatch:
+
+jobs:
+  native-multibridge-pairs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [22103, 22229, 22307, 22441]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native PyPCC and record exact dependencies
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > multibridge-env-${{ matrix.seed }}.txt
+      - name: Verify nested real-graph, exact crossings and synthetic controls
+        run: python -m unittest -v tests.test_numpy_undirected_multibridge
+      - name: Run all four real 100k no-stop bridge doses for this seed
+        run: >-
+          python -m experiments.audit_numpy_undirected_multibridge
+          --seed ${{ matrix.seed }}
+          --output multibridge-${{ matrix.seed }}.json
+      - name: Preserve all raw true-trajectory class windows and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multibridge-${{ matrix.seed }}
+          path: |
+            multibridge-${{ matrix.seed }}.json
+            multibridge-env-${{ matrix.seed }}.txt
+          if-no-files-found: warn
+
+  all-sixteen-complete:
+    needs: native-multibridge-pairs
+    if: ${{ always() && needs.native-multibridge-pairs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: multibridge-*
+          merge-multiple: true
+          path: multibridge-results
+      - name: Enforce every preregistered 0,1,8,32 arm across all four seeds
+        run: >-
+          python -m experiments.summarize_numpy_undirected_multibridge
+          --files multibridge-results/multibridge-*.json
+          --output undirected-multibridge-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: undirected-multibridge-scientific-report
+          path: undirected-multibridge-scientific-report.md
+          if-no-files-found: error
