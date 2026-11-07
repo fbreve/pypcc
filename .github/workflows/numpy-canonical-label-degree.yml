@@ -1,0 +1,73 @@
+name: Experimental canonical undirected PCC labeled-home degree
+
+on:
+  pull_request:
+    paths:
+      - experiments/numpy_canonical_label_degree_protocol.md
+      - experiments/audit_numpy_canonical_label_degree.py
+      - experiments/summarize_numpy_canonical_label_degree.py
+      - tests/test_numpy_canonical_label_degree.py
+      - .github/workflows/numpy-canonical-label-degree.yml
+  workflow_dispatch:
+
+jobs:
+  native-label-placement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [digits, wine, breast_cancer]
+        seed: [24103, 24223, 24317, 24439]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the original native PCC and freeze all dependency versions
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > label-degree-env-${{ matrix.dataset }}-${{ matrix.seed }}.txt
+      - name: Assert true canonical graph, rank ties, home-class coverage and common hold-out
+        run: python -m unittest -v tests.test_numpy_canonical_label_degree
+      - name: Run native 100k unobserved and true per-iteration observed pairs
+        run: >-
+          python -m experiments.audit_numpy_canonical_label_degree
+          --dataset ${{ matrix.dataset }}
+          --seed ${{ matrix.seed }}
+          --output label-degree-${{ matrix.dataset }}-${{ matrix.seed }}.json
+      - name: Archive all true class windows, label masks, graph identity and dependencies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: label-degree-${{ matrix.dataset }}-${{ matrix.seed }}
+          path: |
+            label-degree-${{ matrix.dataset }}-${{ matrix.seed }}.json
+            label-degree-env-${{ matrix.dataset }}-${{ matrix.seed }}.txt
+          if-no-files-found: warn
+
+  mandatory-all-thirty-six:
+    needs: native-label-placement
+    if: ${{ always() && needs.native-label-placement.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: label-degree-*
+          merge-multiple: true
+          path: all-label-degree-results
+      - name: Require exactly all 36 predefined states and common held-out scores
+        run: >-
+          python -m experiments.summarize_numpy_canonical_label_degree
+          --files all-label-degree-results/label-degree-*.json
+          --output canonical-label-degree-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-label-degree-scientific-report
+          path: canonical-label-degree-scientific-report.md
+          if-no-files-found: error
