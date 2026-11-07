@@ -89,6 +89,32 @@ class ContinuousNumpyObserver:
         is_final = info is not None
         if not is_final and not self.wants(iteration):
             raise AssertionError("NumPy propagator sent an unscheduled snapshot")
+
+        # Bound retained payload *before* copying any row arrays. This is not
+        # a process RSS / transient-allocation bound: the post-copy statistics
+        # (argmax, sort, hashes) may allocate additional temporary buffers.
+        dom_view = np.asarray(dominance)
+        own_view = np.asarray(raw_ownership)
+        if (dom_view.ndim != 2 or dom_view.shape[0] != self.labels.size
+                or own_view.shape != dom_view.shape):
+            raise AssertionError("observer state dimensions changed")
+        upgrading_final = bool(
+            is_final and self.samples
+            and self.samples[-1]["iteration"] == iteration)
+        if not upgrading_final:
+            if self.samples and iteration <= self.samples[-1]["iteration"]:
+                raise AssertionError("observer iterations must be strictly increasing")
+            if len(self.samples) >= self.max_observations:
+                raise ValueError("observer row budget exceeded")
+            expected_bytes = (
+                self.labels.size * np.dtype(np.int64).itemsize
+                + sum(np.asarray(v).nbytes for v in (
+                    positions, strengths, distances, dominance, raw_ownership))
+                + np.asarray(rng_state[1]).nbytes
+            )
+            if self.used_bytes + expected_bytes > self.max_bytes:
+                raise ValueError("observer byte budget exceeded")
+
         state = {
             "assignments": np.argmax(dominance, axis=1).astype(np.int64),
             "positions": np.array(positions, copy=True),
@@ -113,15 +139,10 @@ class ContinuousNumpyObserver:
             last["final_info"] = dict(info)
             self.final_info = dict(info)
             return
-        if self.samples and iteration <= self.samples[-1]["iteration"]:
-            raise AssertionError("observer iterations must be strictly increasing")
-        if len(self.samples) >= self.max_observations:
-            raise ValueError("observer row budget exceeded")
         rng = clone_rng(rng_state)
         size = sum(v.nbytes for v in state.values()) + rng[1].nbytes
-        if self.used_bytes + size > self.max_bytes:
-            raise ValueError("observer byte budget exceeded")
-        self.used_bytes += size
+        if size != expected_bytes:
+            raise AssertionError("observer retained byte estimate changed")
         if any(v.dtype.kind == "f" and not np.all(np.isfinite(v))
                for v in state.values()):
             raise AssertionError("non-finite state observed")
@@ -141,6 +162,7 @@ class ContinuousNumpyObserver:
             "mean_margin": float(np.mean(top2[:, 1]-top2[:, 0])),
             "final_info": dict(info) if is_final else None,
         })
+        self.used_bytes += size
         if is_final:
             self.final_info = dict(info)
 
