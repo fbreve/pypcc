@@ -120,6 +120,74 @@ class TestNumpyContinuousObserver(unittest.TestCase):
                 np.array_equal(current,expected),
                 "The failed initial callback must precede particle changes")
 
+
+    def test_failed_capture_does_not_reserve_bytes_or_append_partial_row(self):
+        labels,dom,pos,strength,dist,own,rng=synthetic_arrays()
+        trial=ContinuousNumpyObserver(labels,milestones=(0,1))
+        trial.capture(0,dom,pos,strength,dist,own,rng,None)
+        row_bytes=trial.used_bytes
+        self.assertEqual(row_bytes,sum(
+            a.nbytes for a in trial.samples[0]["state"].values())
+            + trial.samples[0]["rng"][1].nbytes)
+        c=ContinuousNumpyObserver(
+            labels,milestones=(0,1),max_bytes=2*row_bytes-1)
+        c.capture(0,dom,pos,strength,dist,own,rng,None)
+        with self.assertRaisesRegex(ValueError,"byte budget"):
+            c.capture(1,dom,pos,strength,dist,own,rng,None)
+        self.assertEqual(c.used_bytes,row_bytes)
+        self.assertEqual([r["iteration"] for r in c.samples],[0])
+        self.assertIsNone(c.final_info)
+        invalid=ContinuousNumpyObserver(labels,milestones=(0,))
+        broken=dom.copy()
+        broken[0,0]=np.nan
+        with self.assertRaisesRegex(AssertionError,"non-finite"):
+            invalid.capture(0,broken,pos,strength,dist,own,rng,None)
+        self.assertEqual(invalid.used_bytes,0)
+        self.assertEqual(len(invalid.samples),0)
+
+    def test_failure_after_first_iteration_is_not_atomic(self):
+        from pcc import ParticleCompetitionAndCooperation as PCC
+        from pcc_numpy import pcc_propagate_numpy
+
+        captured=[]
+        visited=[]
+
+        class FailAfterOne:
+            def wants(self,iteration):
+                return iteration==1
+
+            def capture(self,*args):
+                visited.append(args[0])
+                raise RuntimeError("intentional post-mutation observer failure")
+
+        class FailingObservedPCC(PCC):
+            def _get_backend_fn(self):
+                native=PCC._get_backend_fn(self)
+                if native is not pcc_propagate_numpy:
+                    raise AssertionError("wrong backend")
+                def fail(*args,**kwargs):
+                    buffers=[args[i] for i in (7,9,10,11,12)]
+                    captured.append((buffers,[x.copy() for x in buffers]))
+                    return native(*args,observer=FailAfterOne(),**kwargs)
+                return fail
+
+        model=FailingObservedPCC(impl="numpy")
+        graph=np.array([[1,3],[0,2],[1,3],[0,2]],dtype=np.int64)
+        model.set_graph(graph,np.full(4,2,dtype=np.int64),k_nn=2)
+        np.random.seed(73)
+        with self.assertRaisesRegex(RuntimeError,"post-mutation"):
+            model.fit_predict(np.array([0,-1,-1,1],dtype=np.int64),
+                              seed=73,max_iter=20,early_stop=False)
+        self.assertEqual(visited,[1])
+        self.assertIsNone(model.part) # Existing high-level attribute rollback
+        refs,before=captured[0]
+        self.assertTrue(any(not np.array_equal(now,old)
+                            for now,old in zip(refs,before)),
+                        "A real particle step must have occurred")
+        self.assertFalse(rng_equal(np.random.get_state(),
+                                   np.random.RandomState(73).get_state()),
+                         "Global RNG is not rolled back after a failed callback")
+
     def test_rng_clone_and_comparison_include_continuation_state(self):
         _,_,_,_,_,_,rng=synthetic_arrays()
         copy=clone_rng(rng)
