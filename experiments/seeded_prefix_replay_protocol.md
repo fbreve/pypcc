@@ -1,0 +1,22 @@
+# Frozen pilot: isolated seeded prefix replay on current PyPCC master
+
+**Pre-registered before results. Historical PR #18 stays unmerged.** This clean branch starts from integrated master commit `8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128`. It changes **zero production modules**, and does not copy #18's stale backend modifications. Original #18 is 83 commits behind and predates: (a) explicit Cython/NumPy/Numba seeded propagation; (b) the Cython global row-max cache (master #178); and (c) the newly integrated Cython active-input validation (#180). Its Cython fixed-seed assumption and native wrapper signatures cannot be transplanted without renewed parity proof.
+
+## Precise question
+
+Is repeatedly executing **fresh, seeded, no-early-stop fits to fixed milestones** a trustworthy, small-scale **read-only exploratory** way to inspect each backend's particle state at selected iterations using today's unmodified master? This is **not** the same as PR #18's efficient, continuous-run instrumented trace: each milestone is a separate complete replay, so total cost is the sum of all caps. It cannot recover visit histories, instantaneous flips between checkpoints, hidden RNG state, or the exact trajectory inside a single actual early-stopping run. No conclusions about convergence or stopping safety may be drawn from a quiet sampled interval alone.
+
+## Frozen cohort and provenance
+
+- Datasets: `iris` (3 classes), `breast_cancer` (2), `digits` (10), standardized via `StandardScaler`. Graphs: **production undirected union-symmetrized kNN=10**, and assert reciprocal edges, no duplicate/self neighbors.
+- Backends: **numpy, numba, cython**, with strict checks that the requested actual compiled/native dispatch is selected; no fallback. Never compare their *stochastic internal states across backends* as an equivalence test.
+- Fresh hold-aside *diagnostic* seeds: **11003 and 11117**, independent `numpy.random.default_rng(seed)` for selecting exactly **2 initially labeled vertices per class**; pass the same seed explicitly to the actual model's `fit_predict`.
+- Milestones: **1, 11, 101, 501, 2001** effective iterations, fixed globally. Every fit uses `early_stop=False`, `p_grd=0.5`, `delta_v=0.1`, `deltap=1.0`, `dexp=2.0`. No change to any stopping policy or production default.
+- For each dataset/backend/seed, execute five independent fresh-instance fits, one to each milestone. The last (2,001 steps) is run **a second time** using fresh objects and identical input graph/labels/seed as an independent reproducibility/parity control. Require bitwise equality of six final state arrays: predictions, particle positions, strengths, distance tables, node dominances, normalized ownership. Also check labeled-home correctness, finite floating state and internal label mapping.
+- 3 datasets × 3 backends × 2 seeds × (5 milestone fits + 1 duplicated last fit) = **108 actual fits** across **9 CI jobs**; 18 exact six-array duplicate parity gates and 90 canonical checkpoint records, with no omissions.
+- One CSV per dataset/backend job, record all 10 checkpoint rows and duplicate parity by seed, SHA-256 digest per array (dtype/shape/C-order bytes), and **changes only between observed milestones**, not all intermediate steps. The final report validates every expected case and digest, retains all raw observations, per-dataset/backend retrospective unlabeled accuracies, and identifies intervals that may contain unobserved flips.
+- Inspecting two independent replays at the final cap tests deterministic reproducibility, but **does not directly compare intermediate states within one continuous unobserved run**. The prefix interpretation rests on fixed seed and the current no-stop kernel's cap-independent particle updates; this limitation must be stated in the report. If duplicate final states diverge, reject this observational approach and do not infer trajectories.
+
+## Decision
+
+Do **not** merge the experiment into production automatically. If the raw and summary CI pass, this may be retained as a cheap-to-maintain low-resolution observation utility, without modifying backends. For detailed/long continuous trajectories, **re-port #18's native instrumentation in a separate, minimal opt-in kernel experiment**, preserving the current cache/default/finite preflight and showing exact parity of state, RNG continuation and stopping on Linux/Windows before any scientific comparisons. An exploratory replay cohort cannot be promoted to independent scientific validation of a stopping rule.
