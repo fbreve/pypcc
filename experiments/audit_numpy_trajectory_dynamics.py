@@ -231,10 +231,6 @@ class ScientificPCC(PCC):
         return invoke
 
 
-def fit(graph,degrees,labels,seed,kind):
-    raise AssertionError("fit requires stop controls; call run_fit instead")
-
-
 def run_fit(graph,degrees,labels,seed,kind,*,stopped=None):
     stop_iter=None if stopped is None else stopped["info"]["effective_iterations"]
     stop_max=None if stopped is None else stopped["info"]["stop_max"]
