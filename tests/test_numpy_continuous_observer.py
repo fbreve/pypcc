@@ -73,6 +73,53 @@ class TestNumpyContinuousObserver(unittest.TestCase):
             good.capture(0,dom,pos,strength,dist,own,rng,
                          dict(effective_iterations=0))
 
+    def test_failing_observer_aborts_before_first_particle_update(self):
+        from pcc import ParticleCompetitionAndCooperation as PCC
+        from pcc_numpy import pcc_propagate_numpy
+
+        views = []
+        calls = []
+
+        class FailFirst:
+            def wants(self, iteration):
+                return iteration == 0
+
+            def capture(self, *args):
+                calls.append(args[0])
+                raise RuntimeError("synthetic observer failure")
+
+        class FailingObservedPCC(PCC):
+            def _get_backend_fn(self):
+                native = PCC._get_backend_fn(self)
+                if native is not pcc_propagate_numpy:
+                    raise AssertionError("NumPy backend unavailable")
+
+                def fail(*args, **kwargs):
+                    # Capture writable native buffers by reference plus copies;
+                    # fit_predict rolls its own model fields back on failure.
+                    buffers = [args[i] for i in (7, 9, 10, 11, 12)]
+                    views.append((buffers, [x.copy() for x in buffers]))
+                    return native(*args, observer=FailFirst(), **kwargs)
+
+                fail.__name__ = native.__name__
+                return fail
+
+        model = FailingObservedPCC(impl="numpy")
+        graph = np.array([
+            [1,3],[0,2],[1,3],[0,2]], dtype=np.int64)
+        model.set_graph(graph, np.full(4,2,dtype=np.int64),k_nn=2)
+        with self.assertRaisesRegex(RuntimeError,"synthetic observer failure"):
+            model.fit_predict(
+                np.array([0,-1,-1,1],dtype=np.int64),
+                seed=73,max_iter=20,early_stop=True)
+        self.assertEqual(calls,[0])
+        self.assertEqual(len(views),1)
+        refs,original = views[0]
+        for current,expected in zip(refs,original):
+            self.assertTrue(
+                np.array_equal(current,expected),
+                "The failed initial callback must precede particle changes")
+
     def test_rng_clone_and_comparison_include_continuation_state(self):
         _,_,_,_,_,_,rng=synthetic_arrays()
         copy=clone_rng(rng)
