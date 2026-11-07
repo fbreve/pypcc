@@ -1,0 +1,76 @@
+name: Experimental NumPy continuous single-run observer parity
+
+on:
+  pull_request:
+    paths:
+      - pcc_numpy.py
+      - experiments/numpy_continuous_observer_protocol.md
+      - experiments/numpy_continuous_observer.py
+      - experiments/audit_numpy_continuous_observer.py
+      - experiments/summarize_numpy_continuous_observer.py
+      - tests/test_numpy_continuous_observer.py
+      - .github/workflows/numpy-continuous-observer.yml
+  workflow_dispatch:
+
+jobs:
+  trace-dataset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, wine, breast_cancer, digits]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install current PyPCC and actual native backends
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step, pcc_numpy, pcc_numba; print('Real current production modules available')"
+          python -m pip freeze > continuous-numpy-env-${{ matrix.dataset }}.txt
+      - name: Run fast bounded collector regression tests
+        run: python -m unittest -v tests.test_numpy_continuous_observer
+      - name: Compare each actual uninterrupted observed and unobserved NumPy fit
+        run: >-
+          python -m experiments.audit_numpy_continuous_observer
+          --dataset ${{ matrix.dataset }}
+          --output continuous-numpy-${{ matrix.dataset }}.csv
+      - name: Archive raw per-snapshot digests, full RNG proofs, parity, dependency versions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuous-numpy-${{ matrix.dataset }}
+          path: |
+            continuous-numpy-${{ matrix.dataset }}.csv
+            continuous-numpy-env-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  require-complete-cohort:
+    needs: trace-dataset
+    if: ${{ always() && needs.trace-dataset.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install report dependencies without changing production source
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: continuous-numpy-*
+          merge-multiple: true
+          path: numpy-continuous-results
+      - name: Enforce all 36 state, RNG continuation, stop and actual-snapshot parity checks
+        run: >-
+          python -m experiments.summarize_numpy_continuous_observer
+          --files numpy-continuous-results/continuous-numpy-*.csv
+          --output numpy-continuous-observer-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numpy-continuous-observer-complete-report
+          path: numpy-continuous-observer-report.md
+          if-no-files-found: error
