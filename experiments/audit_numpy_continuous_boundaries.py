@@ -73,7 +73,8 @@ def run_one(graph,degrees,labels,external_seed,policy,record):
         raise AssertionError("A zero-step original algorithm unexpectedly moved")
     return dict(
         state=output,info=model.info,initial_rng=initial,
-        final_rng=rng_after,next_draws=draws,elapsed=elapsed,
+        final_rng=rng_after,rng_after=rng_after,
+        next_draws=draws,elapsed=elapsed,
         observer=model.observer,model=model,
     )
 
