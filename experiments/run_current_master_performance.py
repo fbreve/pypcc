@@ -11,7 +11,6 @@ import subprocess
 import sys
 import time
 
-import psutil
 
 FROZEN_MASTER="8298ece05c4edf4bbdc871d0aa5b13d9b8ed4128"
 PRODUCTION_FILES=(
@@ -72,6 +71,9 @@ def validate_plan(plan):
 
 
 def execute(rootdir,os_label):
+    # Optional external monitoring dependency must not be required for
+    # importing protocol constants in the repository's minimal regression CI.
+    import psutil
     repo=verify_original_master_source()
     rootdir=Path(rootdir).resolve()
     if rootdir.exists():
