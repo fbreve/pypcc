@@ -1,0 +1,75 @@
+name: Experimental NumPy observer boundary compatibility
+
+on:
+  pull_request:
+    paths:
+      - pcc_numpy.py
+      - experiments/audit_numpy_continuous_boundaries.py
+      - experiments/summarize_numpy_continuous_boundaries.py
+      - experiments/numpy_continuous_phase3_protocol.md
+      - .github/workflows/numpy-continuous-boundaries.yml
+  workflow_dispatch:
+
+jobs:
+  boundary-pairs:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dataset: [iris, digits]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original scientific environment and experimental observer
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip freeze > numpy-boundary-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+      - name: Verify bounded observer and synthetic fail-first semantics
+        run: python -m unittest -v tests.test_numpy_continuous_observer
+      - name: Check unseeded, zero-iteration, synchronous state and RNG parity
+        run: >-
+          python -m experiments.audit_numpy_continuous_boundaries
+          --dataset ${{ matrix.dataset }}
+          --runner-os ${{ matrix.os }}
+          --output numpy-boundaries-${{ matrix.os }}-${{ matrix.dataset }}.csv
+      - name: Archive all raw OS-specific boundary cases
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: numpy-boundaries-${{ matrix.os }}-${{ matrix.dataset }}
+          path: |
+            numpy-boundaries-${{ matrix.os }}-${{ matrix.dataset }}.csv
+            numpy-boundary-env-${{ matrix.os }}-${{ matrix.dataset }}.txt
+          if-no-files-found: error
+
+  validate-boundaries:
+    needs: boundary-pairs
+    if: ${{ always() && needs.boundary-pairs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install reporting dependencies
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numpy-boundaries-*
+          merge-multiple: true
+          path: boundary-results
+      - name: Require all 36 strict zero/seedless/synchronous cases
+        run: >-
+          python -m experiments.summarize_numpy_continuous_boundaries
+          --files boundary-results/numpy-boundaries-*.csv
+          --output numpy-boundary-parity-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numpy-boundary-complete-report
+          path: numpy-boundary-parity-report.md
+          if-no-files-found: error
