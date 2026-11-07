@@ -31,7 +31,7 @@ POLICIES = {
     "aggressive_potential": (6001, True, 10),
 }
 FIELDS = (
-    "dataset","seed","policy","n_nodes","n_classes","n_particles",
+    "runner_os","dataset","seed","policy","n_nodes","n_classes","n_particles",
     "graph_reciprocal","requested_actual_backend","baseline_first",
     "cap","es_chk","early_stop","effective_iterations","stop_reason",
     "stalled_checks","checks","stop_max",
@@ -193,14 +193,20 @@ def check_last_snapshot(result):
     return actual,rng_ok
 
 
-def evaluate(dataset,output):
+def evaluate(dataset,output,*,seeds=SEEDS,policies=None,runner_os="ubuntu-latest"):
+    if policies is None:
+        policies=tuple(POLICIES)
+    if (not seeds or len(set(seeds))!=len(seeds) or
+            not policies or len(set(policies))!=len(policies) or
+            set(policies)-set(POLICIES)):
+        raise ValueError("invalid frozen observer cohort")
     with open(output,"w",newline="",encoding="utf-8") as f:
         w=csv.DictWriter(f,fieldnames=FIELDS)
         w.writeheader()
         f.flush()
-        for seed_idx,seed in enumerate(SEEDS):
+        for seed_idx,seed in enumerate(seeds):
             graph,degrees,labels,truth=graph_and_labels(dataset,seed)
-            for policy_idx,policy in enumerate(POLICIES):
+            for policy_idx,policy in enumerate(policies):
                 baseline_first=(seed_idx+policy_idx)%2==0
                 order=(False,True) if baseline_first else (True,False)
                 results={}
@@ -229,7 +235,7 @@ def evaluate(dataset,output):
                 accuracy=float(np.mean(changed==truth[labels==-1]))
                 overhead=100*(b["elapsed"]/a["elapsed"]-1)
                 w.writerow(dict(
-                    dataset=dataset,seed=seed,policy=policy,
+                    runner_os=runner_os,dataset=dataset,seed=seed,policy=policy,
                     n_nodes=len(labels),n_classes=len(np.unique(truth)),
                     n_particles=int(np.count_nonzero(labels>=0)),
                     graph_reciprocal=True,
@@ -273,8 +279,14 @@ def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--dataset",required=True,choices=tuple(DATASETS))
     p.add_argument("--output",required=True)
+    p.add_argument("--runner-os",choices=("ubuntu-latest","windows-latest"),default="ubuntu-latest")
+    p.add_argument("--seeds",type=int,nargs="+",default=None)
+    p.add_argument("--policies",nargs="+",choices=tuple(POLICIES),default=None)
     args=p.parse_args(argv)
-    evaluate(args.dataset,args.output)
+    evaluate(args.dataset,args.output,
+             seeds=tuple(args.seeds) if args.seeds is not None else SEEDS,
+             policies=tuple(args.policies) if args.policies is not None else None,
+             runner_os=args.runner_os)
 
 
 if __name__=="__main__":
