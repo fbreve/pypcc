@@ -1,0 +1,73 @@
+name: Experimental clean-master seeded prefix replay diagnostics
+
+on:
+  pull_request:
+    paths:
+      - experiments/seeded_prefix_replay_protocol.md
+      - experiments/audit_seeded_prefix_replay.py
+      - experiments/summarize_seeded_prefix_replay.py
+      - .github/workflows/seeded-prefix-replay.yml
+  workflow_dispatch:
+
+jobs:
+  replay:
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [iris, breast_cancer, digits]
+        backend: [numpy, numba, cython]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the actual compiled master Cython and Numba backends
+        run: |
+          python -m pip install -e ".[numba]"
+          python -c "import pcc_step, pcc_numba, pcc_numpy; print('All production backends available')"
+          python -m pip freeze > replay-env-${{ matrix.dataset }}-${{ matrix.backend }}.txt
+      - name: Run fixed milestone replays and exact original public-API parity controls
+        run: >-
+          python -m experiments.audit_seeded_prefix_replay
+          --dataset ${{ matrix.dataset }}
+          --backend ${{ matrix.backend }}
+          --output seeded-replay-${{ matrix.dataset }}-${{ matrix.backend }}.csv
+      - name: Preserve all raw observed checkpoint records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seeded-replay-${{ matrix.dataset }}-${{ matrix.backend }}
+          path: |
+            seeded-replay-${{ matrix.dataset }}-${{ matrix.backend }}.csv
+            replay-env-${{ matrix.dataset }}-${{ matrix.backend }}.txt
+          if-no-files-found: error
+
+  validate-all:
+    needs: replay
+    if: ${{ always() && needs.replay.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install model and report dependencies
+        run: python -m pip install -e ".[numba]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seeded-replay-*
+          merge-multiple: true
+          path: replay-results
+      - name: Reject any missing backend/dataset/seed/milestone or original API parity
+        run: >-
+          python -m experiments.summarize_seeded_prefix_replay
+          --files replay-results/seeded-replay-*.csv
+          --output seeded-prefix-replay-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seeded-prefix-replay-complete-report
+          path: seeded-prefix-replay-report.md
+          if-no-files-found: error
