@@ -486,8 +486,9 @@ class ParticleCompetitionAndCooperation:
         )
         # mapped_labels are used here
         dominance[labeled_idx] = 0.0
-        for i in range(self.c):
-            dominance[self.mapped_labels == i, i] = 1.0
+        # Assign all labeled one-hot entries without rescanning every node
+        # once per class. Preserve the existing dominance array and layout.
+        dominance[np.flatnonzero(labeled_idx), self.mapped_labels[labeled_idx]] = 1.0
 
         # owndeg also benefits from F order
         self.owndeg = np.zeros(
