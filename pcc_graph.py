@@ -152,8 +152,12 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     # preserves connectivity without overflowing an integer count.
     ones = np.ones(len(rows), dtype=np.bool_)
     adj = csr_matrix((ones, (rows, cols)), shape=(num_nodes, num_nodes), dtype=np.bool_)
-    adj.setdiag(0)      # remove self-loops
-    adj.eliminate_zeros()
+    # Boolean CSR has only nonzero entries; without input self-loops there
+    # is no diagonal entry to clear or explicit zero to eliminate. Keep the
+    # original cleanup unchanged for the self-loop case.
+    if np.any(src == dst):
+        adj.setdiag(0)      # remove self-loops
+        adj.eliminate_zeros()
 
     # Deduplicate: keep only binary (0/1) entries
     adj.data[:] = 1
