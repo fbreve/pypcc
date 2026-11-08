@@ -89,6 +89,9 @@ def measure(arrays, case, backend_name, iterations, early_stop, seed, parameters
         result.update(initialization_and_dispatch_s=entered-start,
                       propagation_s=exited-entered, propagation_end=exited)
 
+    # Preserve the native backend name: __genNodes uses it to select C-order
+    # dominance for Numba with >=8 classes. Timing must not change that layout.
+    timed_backend.__name__ = backend.__name__
     # Wrap only this model's dispatch. The actual loop and stopping logic remain intact.
     model._get_backend_fn = lambda: timed_backend
     start = time.perf_counter()
