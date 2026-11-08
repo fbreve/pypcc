@@ -1,0 +1,27 @@
+# Preregistered V1: vectorized labeled-node dominance initialization
+
+**Research DRAFT ONLY.** Frozen BEFORE candidate source change and before CI measurements. Baseline is production `master` commit `7e589e2c9097a507d636b55c6269c0e3223e8343`, after merged PR #201. This branch is independent of other open research PRs. It does not change the intentional dense `neib_list` storage, any adjacency construction, mapped-label semantics, algorithm, public API, backend kernels, RNG or stopping.
+
+## Hypothesis and precisely bounded candidate
+
+In `ParticleCompetitionAndCooperation.__genNodes`, after the unchanged initial `dominance = np.full((n_nodes,self.c),1.0/self.c,...)` and `dominance[labeled_idx] = 0.0`, replace only the `for i in range(self.c): dominance[self.mapped_labels == i, i] = 1.0` block with a vectorized one-hot assignment:
+
+```python
+dominance[np.flatnonzero(labeled_idx), self.mapped_labels[labeled_idx]] = 1.0
+```
+
+No change to `self.mapped_labels`, its class ordering, index validity, C-vs-Fortran memory layout, unlabeled 1/c initial dominance, labeled one-hot values, `node.label`, `owndeg`, or any allocation/ownership outside this one block. Existing fit exception handling and valid/invalid inputs remain unchanged. The only new temporary is the compact list of labeled row indices (which is usually much smaller than n_nodes). It might hurt for nearly fully labeled graphs, and such behavior must be measured rather than assumed.
+
+## Fixed experiments and required controls
+
+- Compare **exact original frozen Git blob `pcc.py` compiled into a separate module** against candidate `pcc.py` from the experiment. Source guard must verify that only the specified hunk differs. Do not rewrite the baseline kernel or borrow code from another PR. Preserve all samples and per-host hardware and versions.
+- **Focused permanent tests**: exact complete dominance and owndeg arrays, dtype, C/F contiguity, class-0 vs other class assignments, noncontiguous/negative external label values after ordinary mapping, isolated nodes, empty homes, all-labeled nodes, zero-nodes, fresh allocated node.label, and unchanged seed/backend behavior. Existing full regression runs on Linux/Windows Python 3.10 and 3.12 must pass. No promise that direct `__genNodes` supports impossible internal invalid class indices.
+- **Isolated native model `__genNodes` benchmark**: original method, not an unrepresentative hand-coded fragment. Six deterministic synthetic node/class distributions `(150,3),(1797,10),(30000,10),(30000,50),(100000,50),(100000,2)`, with 3 labeled home nodes/class except for the 150-node case (still 3/class), seeded independent `default_rng(35011)`. Run for `impl=numpy` (F-order) and `impl=numba` (C-order for c>=8); same fixture and original source on each OS. 20 alternating ORIGINAL/CANDIDATE time pairs per fixture/layout/OS = **480 whole-method pairs**, warm-ups excluded. Separate 4 balanced `tracemalloc` tracked-peak comparisons per fixture/layout/OS = **96 memory pairs**. Time whole method including `_get_backend_fn`, `dominance`, `owndeg` allocation; do not trace while timing. Output all measurements and layout/complete matrix SHA for every case. Tracemalloc does NOT measure true native heap or process RSS; host CPU differs across OS.
+- **Original complete PCC outcome gates**: standardized sklearn Iris, Wine, Breast Cancer, Digits; original undirected union kNN=10 graph, original 3 class-balanced labels/class with independent seeds `35027,35053`; original NumPy/Numba/Cython sequential backends, both `early_stop=False/True`, `max_iter=1000`, `es_chk=10`, explicit propagation seed `35059`. Each original-vs-candidate pair must match predictions and **all six final array SHA-256**, exact stop counters/reason/effective iteration number, original RNG state when measurable and actual no-fallback backend identity. **48 native fit pairs/OS = 96 across OS**. Individual full `fit_predict` times and complete benchmark timer components must be recorded without deleting outliers. Backends are compared *within the same backend*, not across their different random generators.
+- Mandatory third aggregate job must reject missing/partial original/alternative rows, invalid provenance, graph/label mismatch across OS, incomplete native pairs and any of the above functional mismatches. A scientifically valid negative speed result reports NO-GO but does **not** cause CI to report failure.
+
+## Frozen decision
+
+Do not change `master` or merge this scientific branch. Candidate is GO only with exact parity, scientific completeness, **>=15% paired median whole-`__genNodes` CPU saving on each OS and BOTH array layouts for BOTH `(30000,10)` and `(30000,50)`**, no >10% median whole-method CPU regression in any smaller `(150,3)` or `(1797,10)` layout on either OS, no >10% `tracemalloc` peak regression in any measured shape/layout/OS, and no >10% median full-fit CPU regression within any real dataset/backend/stop mode across the two label seeds on each OS. Any failed predeclared gate: NO-GO, no post hoc threshold change or conditional input-size dispatch based on these trial results. If GO, separately extract a **minimal master-based production candidate** with permanent tests and independent 4-platform native CI before review/merge.
+
+An earlier local non-native simplified fragment on Linux was suggestive but is **not evidence for this experiment** or a complete model speedup.
