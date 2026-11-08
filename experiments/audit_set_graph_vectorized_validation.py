@@ -19,7 +19,7 @@ import types
 import numpy as np
 
 from pcc import ParticleCompetitionAndCooperation as Candidate
-from pcc_graph import build_knn_graph
+from pcc_graph import build_knn_graph, build_graph_from_edge_index
 
 BASE = "ababc48986b40f083d5930e922f844aa2ea418b2"
 SEED = 34007
@@ -155,25 +155,37 @@ def native_pairs(reference, candidate):
     for dataset, loader in cases:
         X, y = loader(return_X_y=True)
         X = StandardScaler().fit_transform(X)
-        graph, degree = build_knn_graph(X, k_nn=10)
+        knn_graph, knn_degree = build_knn_graph(X, k_nn=10)
+        active = np.arange(knn_graph.shape[1])[None, :] < knn_degree[:, None]
+        edges = np.vstack((
+            np.repeat(np.arange(X.shape[0], dtype=np.int64), knn_degree),
+            knn_graph[active]
+        ))
+        edge_graph, edge_degree = build_graph_from_edge_index(X.shape[0], edges)
         labels = np.full(y.size, -1, dtype=np.int64)
         for value in np.unique(y):
             labels[np.flatnonzero(y == value)[:3]] = int(value)
-        for backend, module in expected.items():
-            a, b = reference(impl=backend), candidate(impl=backend)
-            a.set_graph(graph, degree, k_nn=10)
-            b.set_graph(graph, degree, k_nn=10)
-            if a._get_backend_fn().__module__ != module or b._get_backend_fn().__module__ != module:
-                raise AssertionError("native backend fallback " + backend)
-            predictions = []
-            for model in (a, b):
-                result = model.fit_predict(labels, max_iter=101, early_stop=False, seed=34017)
-                predictions.append(tuple(sha(z) for z in (
-                    result, model.node.dominance, model.part.curnode,
-                    model.part.strength, model.part.dist_table, model.owndeg)))
-            if predictions[0] != predictions[1]:
-                raise AssertionError("native final state mismatch: " + dataset + "/" + backend)
-            results.append(dict(dataset=dataset, backend=backend, state_hashes=predictions[0]))
+        for source, graph, degree in (
+            ("knn", knn_graph, knn_degree),
+            ("edge_index", edge_graph, edge_degree),
+        ):
+            for backend, module in expected.items():
+                a, b = reference(impl=backend), candidate(impl=backend)
+                a.set_graph(graph, degree, k_nn=10)
+                b.set_graph(graph, degree, k_nn=10)
+                if a._get_backend_fn().__module__ != module or b._get_backend_fn().__module__ != module:
+                    raise AssertionError("native backend fallback " + backend)
+                predictions = []
+                for model in (a, b):
+                    result = model.fit_predict(labels, max_iter=101, early_stop=False, seed=34017)
+                    predictions.append(tuple(sha(z) for z in (
+                        result, model.node.dominance, model.part.curnode,
+                        model.part.strength, model.part.dist_table, model.owndeg)))
+                if predictions[0] != predictions[1]:
+                    raise AssertionError("native final state mismatch: " + dataset + "/" + source + "/" + backend)
+                results.append(dict(dataset=dataset, source=source,
+                                    backend=backend, graph_hash=sha(graph),
+                                    state_hashes=predictions[0]))
     return results
 
 
