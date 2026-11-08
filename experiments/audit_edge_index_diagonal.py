@@ -54,7 +54,7 @@ def git(*args):
 
 
 def load_reference():
-    original=git("show",f"{MASTER}:pcc_graph.py")
+    original=subprocess.check_output(\n        ["git","show",f"{MASTER}:pcc_graph.py"],\n        cwd=root(),text=True)
     candidate=(root()/"pcc_graph.py").read_text(encoding="utf-8")
     old='''    adj = csr_matrix((ones, (rows, cols)), shape=(num_nodes, num_nodes), dtype=np.bool_)
     adj.setdiag(0)      # remove self-loops
