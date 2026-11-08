@@ -1,0 +1,83 @@
+name: Experimental exact in-place PCC owndeg postprocessing
+
+on:
+  pull_request:
+    paths:
+      - pcc.py
+      - tests/test_owndeg_inplace_normalization.py
+      - experiments/owndeg_inplace_normalization_protocol.md
+      - experiments/audit_owndeg_inplace.py
+      - experiments/summarize_owndeg_inplace.py
+      - .github/workflows/owndeg-inplace-normalization.yml
+  workflow_dispatch:
+
+jobs:
+  full-native-and-postprocessing:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install all original compiled native PCC backends
+        run: python -m pip install -e ".[numba]"
+      - name: Verify exact model owndeg output, zero rows and in-place identity
+        run: python -m unittest -v tests.test_owndeg_inplace_normalization
+      - name: Prepare independent evidence files
+        run: python -c "from pathlib import Path; Path('owndeg-inplace-results').mkdir()"
+      - name: Record entire installed dependency inventory
+        run: python -m pip freeze > owndeg-inplace-results/pip-freeze.txt
+      - name: Measure unchanged full native states and exact isolated CPU/memory pairs
+        run: >-
+          python -m experiments.audit_owndeg_inplace
+          --output owndeg-inplace-results/result.json
+      - name: Archive all raw paired timings, tracked peaks, native states and versions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owndeg-inplace-${{ matrix.label }}
+          path: owndeg-inplace-results/
+          if-no-files-found: warn
+
+  mandatory-two-os-completion-and-decision:
+    needs: full-native-and-postprocessing
+    if: ${{ always() && needs.full-native-and-postprocessing.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: owndeg-inplace-*
+          merge-multiple: false
+          path: downloaded
+      - name: Verify 96 native fits, 480 matched CPU and 60 traced peak pairs
+        run: >-
+          python -m experiments.summarize_owndeg_inplace
+          --linux downloaded/owndeg-inplace-linux
+          --windows downloaded/owndeg-inplace-windows
+          --output owndeg-inplace-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owndeg-inplace-scientific-report
+          path: owndeg-inplace-scientific-report.md
+          if-no-files-found: error
