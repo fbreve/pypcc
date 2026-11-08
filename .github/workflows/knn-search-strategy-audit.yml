@@ -1,0 +1,82 @@
+name: Experimental exact sklearn nearest-neighbor engine audit
+
+on:
+  pull_request:
+    paths:
+      - experiments/knn_search_strategy_protocol.md
+      - experiments/audit_knn_search_strategies.py
+      - experiments/summarize_knn_search_strategies.py
+      - tests/test_knn_search_strategy_audit.py
+      - .github/workflows/knn-search-strategy-audit.yml
+  workflow_dispatch:
+
+jobs:
+  original-graph-knn-search:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install unmodified production PCC with actual Cython and Numba
+        run: python -m pip install -e ".[numba]"
+      - name: Validate real sklearn methods and exact graph comparison controls
+        run: python -m unittest -v tests.test_knn_search_strategy_audit
+      - name: Preserve original native versions for comparison
+        run: python -c "from pathlib import Path; Path('knn-search-results').mkdir()"
+      - name: Freeze native and numerical runtime packages
+        run: python -m pip freeze > knn-search-results/pip-freeze.txt
+      - name: Execute all original-master graph/search pairs including ties and native controls
+        run: >-
+          python -m experiments.audit_knn_search_strategies
+          --output knn-search-results/results.json
+      - name: Preserve every matching and mismatching graph plus timing and package inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knn-search-${{ matrix.label }}
+          path: knn-search-results/
+          if-no-files-found: warn
+
+  mandatory-all-search-engines:
+    needs: original-graph-knn-search
+    if: ${{ always() && needs.original-graph-knn-search.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: knn-search-*
+          merge-multiple: false
+          path: imported
+      - name: Require complete two-OS engine/ties/native cohort without filtering regressions
+        run: >-
+          python -m experiments.summarize_knn_search_strategies
+          --linux imported/knn-search-linux
+          --windows imported/knn-search-windows
+          --output knn-search-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knn-search-scientific-report
+          path: knn-search-scientific-report.md
+          if-no-files-found: error
