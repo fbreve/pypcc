@@ -98,9 +98,8 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
     # np.repeat broadcasts row offsets; we then scatter directly without a Python loop.
     degrees = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)  # == neib_qt
     row_idx = np.repeat(np.arange(n_nodes, dtype=np.int64), degrees)
-    col_idx = np.concatenate(
-        [np.arange(d, dtype=np.int64) for d in degrees]
-    ) if n_nodes > 0 else np.empty(0, dtype=np.int64)
+    col_idx = (np.arange(adj.indices.size, dtype=np.int64)
+               - np.repeat(adj.indptr[:-1], degrees))
     neib_list[row_idx, col_idx] = adj.indices.astype(np.int64)
 
     return neib_list, neib_qt
@@ -166,9 +165,8 @@ def build_graph_from_edge_index(num_nodes, edge_index):
     # Vectorized fill: same CSR-based scatter as build_knn_graph.
     degrees2 = (adj.indptr[1:] - adj.indptr[:-1]).astype(np.int64)
     row_idx2 = np.repeat(np.arange(num_nodes, dtype=np.int64), degrees2)
-    col_idx2 = np.concatenate(
-        [np.arange(d, dtype=np.int64) for d in degrees2]
-    ) if num_nodes > 0 else np.empty(0, dtype=np.int64)
+    col_idx2 = (np.arange(adj.indices.size, dtype=np.int64)
+                - np.repeat(adj.indptr[:-1], degrees2))
     if len(row_idx2) > 0:
         neib_list[row_idx2, col_idx2] = adj.indices.astype(np.int64)
 
