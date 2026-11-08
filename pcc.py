@@ -440,7 +440,7 @@ class ParticleCompetitionAndCooperation:
 
         row_sums = np.sum(self.owndeg, axis=1, keepdims=True)
         row_sums[row_sums == 0.0] = 1.0
-        self.owndeg = self.owndeg / row_sums
+        np.divide(self.owndeg, row_sums, out=self.owndeg)
 
     def __genParticles(self) -> Particles:
         homenode = np.where(self.mapped_labels != -1)[0].astype(np.int64)
