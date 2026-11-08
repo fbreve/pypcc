@@ -49,8 +49,11 @@ class NearestNeighborSearchAuditTests(unittest.TestCase):
         self.assertFalse(difference(orig,changed_degree)["exact"])
         added=(orig[0].copy(),orig[1].copy())
         added[0][0,:2]=[1,3]
-        self.assertGreater(difference(orig,added)["missing_edges"],0)
         self.assertGreater(difference(orig,added)["extra_edges"],0)
+        removed=(orig[0].copy(),orig[1].copy())
+        removed[0][0,:2]=[1,3]
+        removed[0][2,:2]=[1,3]
+        self.assertGreater(difference(orig,removed)["missing_edges"],0)
 
     def test_alternative_nn_queries_are_real_sklearn_calls(self):
         # No approximation or changed query semantics; these engine names
