@@ -1,0 +1,11 @@
+# Timing-wrapper dominance-layout correction
+
+The production `ParticleCompetitionAndCooperation.__genNodes` method chooses **C-order** for `dominance` when it resolves the native Numba `pcc_propagate_numba` backend and sees >=8 classes; otherwise it uses Fortran order. This policy is intentional and covered by `tests/test_dominance_layout_policy.py`.
+
+Until this correction, `benchmarks.runner.measure` replaced the model's resolved backend callable with a timing wrapper whose name was `timed_backend`. `__genNodes` uses the **callable name** to select the Numba C-order branch. Thus instrumented `measure` runs with >=8 classes incorrectly initialized Numba dominance in F-order, unlike normal uninstrumented `fit_predict`. This is a **benchmark fidelity defect**, not a production prediction defect. It can affect initialization/propagation/cache behavior and timings; no preexisting numerical comparison should be silently reinterpreted as a matched production-layout benchmark.
+
+Minimal repair: after creating the existing timing wrapper, set `timed_backend.__name__ = backend.__name__` before the model uses it. The exact original native function, source, RNG, early stopping, passed buffers, timing boundaries and public model API remain unchanged. New focused tests cover 2/3/7 (Numba F), 8/10/12 (Numba C), and NumPy/Cython F across representative class counts, instrumenting the actual allocated array.
+
+**Historical interpretation:** previous `benchmarks.runner.measure` Numba comparisons for eight or more classes, including archived Digits/other 10-class cohorts, need to be clearly labeled *instrumented F-layout*, not production Numba C-layout. We have NOT rerun the existing campaigns or replaced their recorded data. Different layout can alter performance, so do not compare old/Numa throughput estimates directly with post-fix benchmarks as if code and layout were unchanged. Other backend cases and small-class Numba are not affected by this specific defect.
+
+This benchmark-harness repair is isolated from experimental node one-hot initialization PR #202 and from the deliberately dense `neib_list` graph representation. Any new CPU comparison of `__genNodes` or full PCC should use the actual production layout and include input/output exactness tests.
