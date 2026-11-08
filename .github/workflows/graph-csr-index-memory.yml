@@ -1,0 +1,83 @@
+name: Experimental native-width CSR graph index memory audit
+
+on:
+  pull_request:
+    paths:
+      - pcc_graph.py
+      - experiments/graph_csr_index_memory_protocol.md
+      - experiments/audit_graph_csr_index_memory.py
+      - experiments/summarize_graph_csr_index_memory.py
+      - tests/test_graph_csr_index_memory.py
+      - .github/workflows/graph-csr-index-memory.yml
+  workflow_dispatch:
+
+jobs:
+  original-graph-memory-and-native-parity:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install unchanged native model backends
+        run: python -m pip install -e ".[numba]"
+      - name: Permanent original graph index and tie compatibility
+        run: python -m unittest -v tests.test_graph_csr_index_memory
+      - name: Prepare archived results directory
+        run: python -c "from pathlib import Path; Path('graph-index-memory-results').mkdir()"
+      - name: Capture actual Python and SciPy dependencies
+        run: python -m pip freeze > graph-index-memory-results/pip-freeze.txt
+      - name: Run 660 original graph timing pairs, 165 isolated traced peak pairs and 96 native state controls
+        run: >-
+          python -m experiments.audit_graph_csr_index_memory
+          --output graph-index-memory-results/results.json
+      - name: Archive full original/candidate timings, traced peak samples and state hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-index-memory-${{ matrix.label }}
+          path: graph-index-memory-results
+          if-no-files-found: warn
+
+  mandatory-both-os-complete:
+    needs: original-graph-memory-and-native-parity
+    if: ${{ always() && needs.original-graph-memory-and-native-parity.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: graph-index-memory-*
+          merge-multiple: false
+          path: imported
+      - name: Require all 1320 time pairs, 330 traced peak pairs and 192 native states exactly
+        run: >-
+          python -m experiments.summarize_graph_csr_index_memory
+          --linux imported/graph-index-memory-linux
+          --windows imported/graph-index-memory-windows
+          --output graph-csr-index-memory-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graph-csr-index-memory-scientific-report
+          path: graph-csr-index-memory-scientific-report.md
+          if-no-files-found: error
