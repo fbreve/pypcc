@@ -1,0 +1,83 @@
+name: Experimental graph ordered CSR-offset construction vs original master
+
+on:
+  pull_request:
+    paths:
+      - pcc_graph.py
+      - experiments/graph_dense_layout_protocol.md
+      - experiments/audit_graph_dense_layout.py
+      - experiments/summarize_graph_dense_layout.py
+      - tests/test_graph_dense_layout.py
+      - .github/workflows/graph-dense-layout.yml
+  workflow_dispatch:
+
+jobs:
+  graph-and-native-equivalence:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install all original native PCC engines and development fixtures
+        run: python -m pip install -e ".[numba]"
+      - name: Check exact ordered adjacency, ties, mixed isolates and empty inputs
+        run: python -m unittest -v tests.test_graph_dense_layout
+      - name: Prepare archive directory without modifying the benchmarked source
+        run: python -c "from pathlib import Path; Path('graph-dense-results').mkdir()"
+      - name: Preserve frozen Python, native packages and compiler identities
+        run: python -m pip freeze > graph-dense-results/pip-freeze.txt
+      - name: Compare 360 full graph pairs, 120 phases and 48 exact native state pairs
+        run: >-
+          python -m experiments.audit_graph_dense_layout
+          --output graph-dense-results/result.json
+      - name: Preserve full original-vs-candidate measurements and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-dense-${{ matrix.label }}
+          path: graph-dense-results/
+          if-no-files-found: warn
+
+  mandatory-two-os-graph-equivalence:
+    needs: graph-and-native-equivalence
+    if: ${{ always() && needs.graph-and-native-equivalence.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: graph-dense-*
+          merge-multiple: false
+          path: both-host-results
+      - name: Enforce 720 full graphs, 240 phases and 96 native original state pairs
+        run: >-
+          python -m experiments.summarize_graph_dense_layout
+          --linux both-host-results/graph-dense-linux
+          --windows both-host-results/graph-dense-windows
+          --output graph-dense-layout-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graph-dense-layout-scientific-report
+          path: graph-dense-layout-scientific-report.md
+          if-no-files-found: error
