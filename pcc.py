@@ -259,16 +259,18 @@ class ParticleCompetitionAndCooperation:
         new_neib_qt = neib_qt.astype(np.int64)
         if np.any(new_neib_qt < 0) or np.any(new_neib_qt > width):
             raise ValueError("node degrees must fit the neighbor matrix")
-        for row, degree in zip(neib_list, new_neib_qt):
-            validate_finite("neib_list", row[:degree])
-        # Convert only active entries: padding may contain NaN, infinity,
-        # strings or arbitrary sentinels and is never read by the kernels.
+        # Validate and convert only active entries. The existing dense
+        # mask is reused instead of performing one Python call per node.
+        # Unused padding may contain NaN, infinity or arbitrary sentinels.
         active = np.arange(width)[None, :] < new_neib_qt[:, None]
-        new_neib_list = np.zeros((n_nodes, width), dtype=np.int64)
-        self._check_int64_conversion_range("neib_list", neib_list[active])
-        new_neib_list[active] = neib_list[active].astype(np.int64)
-        if np.any(new_neib_list[active] < 0) or np.any(new_neib_list[active] >= n_nodes):
+        active_neighbors = neib_list[active]
+        validate_finite("neib_list", active_neighbors)
+        self._check_int64_conversion_range("neib_list", active_neighbors)
+        converted_neighbors = active_neighbors.astype(np.int64, copy=False)
+        if np.any(converted_neighbors < 0) or np.any(converted_neighbors >= n_nodes):
             raise ValueError("active neighbor indices must refer to existing nodes")
+        new_neib_list = np.zeros((n_nodes, width), dtype=np.int64)
+        new_neib_list[active] = converted_neighbors
         new_k_nn = int(k_nn) if k_nn is not None else (int(new_neib_qt.max()) if n_nodes else 0)
         self.neib_list = new_neib_list
         self.neib_qt = new_neib_qt
