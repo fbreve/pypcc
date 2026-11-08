@@ -1,0 +1,63 @@
+name: Experimental node one-hot initialization CPU/state audit
+
+on:
+  push:
+    branches: [experiment/nodes-onehot-initialization-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-native:
+    name: Exact original/one-hot (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native PCC distribution
+        run: python -m pip install -e ".[numba]"
+      - name: Check native Cython/Numba and NumPy
+        run: python -c "import pcc_step, pcc_numba, pcc_numpy; print('All three native backends available')"
+      - name: Compare pinned original Git __genNodes and candidate native fits
+        run: python experiments/audit_nodes_onehot.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nodes-onehot-${{ matrix.os }}
+          path: nodes_onehot_result.json
+          if-no-files-found: error
+
+  mandatory-aggregate:
+    name: Require full two-OS original/candidate evidence
+    needs: exact-native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nodes-onehot-*
+          path: reports
+          merge-multiple: false
+      - name: Enforce all native hashes and frozen performance gates
+        run: python experiments/summarize_nodes_onehot.py reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nodes-onehot-aggregate
+          path: nodes_onehot_summary.json
+          if-no-files-found: error
