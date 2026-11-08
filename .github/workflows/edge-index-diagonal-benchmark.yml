@@ -1,0 +1,83 @@
+name: Experimental edge-index diagonal cleanup exact baseline
+
+on:
+  pull_request:
+    paths:
+      - pcc_graph.py
+      - experiments/edge_index_diagonal_protocol.md
+      - experiments/audit_edge_index_diagonal.py
+      - experiments/summarize_edge_index_diagonal.py
+      - tests/test_edge_index_conditional_diagonal.py
+      - .github/workflows/edge-index-diagonal-benchmark.yml
+  workflow_dispatch:
+
+jobs:
+  original-edge-index-state-and-timing:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original production native model and scientific dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: Test permanent exact looped, loop-free, sparse, dense and error semantics
+        run: python -m unittest -v tests.test_edge_index_conditional_diagonal
+      - name: Create isolated results directory
+        run: python -c "from pathlib import Path; Path('edge-diagonal-results').mkdir()"
+      - name: Archive original actual package versions
+        run: python -m pip freeze > edge-diagonal-results/pip-freeze.txt
+      - name: Execute all 660 paired full edge-index graphs and 48 native state pairs
+        run: >-
+          python -m experiments.audit_edge_index_diagonal
+          --output edge-diagonal-results/result.json
+      - name: Preserve every original/candidate array fingerprint and raw timing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-diagonal-${{ matrix.label }}
+          path: edge-diagonal-results/
+          if-no-files-found: warn
+
+  mandatory-both-os-complete:
+    needs: original-edge-index-state-and-timing
+    if: ${{ always() && needs.original-edge-index-state-and-timing.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: edge-diagonal-*
+          merge-multiple: false
+          path: imported
+      - name: Fail unless both OS have all 1320 full graph/96 native comparisons
+        run: >-
+          python -m experiments.summarize_edge_index_diagonal
+          --linux imported/edge-diagonal-linux
+          --windows imported/edge-diagonal-windows
+          --output edge-diagonal-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edge-diagonal-scientific-report
+          path: edge-diagonal-scientific-report.md
+          if-no-files-found: error
