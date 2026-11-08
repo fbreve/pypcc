@@ -1,0 +1,83 @@
+name: Experimental CSR degree reuse and native-index memory V2 audit
+
+on:
+  pull_request:
+    paths:
+      - pcc_graph.py
+      - experiments/graph_csr_reuse_degrees_memory_protocol.md
+      - experiments/audit_graph_csr_reuse_degrees_memory.py
+      - experiments/summarize_graph_csr_reuse_degrees_memory.py
+      - tests/test_graph_csr_reuse_degrees_memory.py
+      - .github/workflows/graph-csr-reuse-degrees-memory.yml
+  workflow_dispatch:
+
+jobs:
+  original-graph-memory-and-native-parity:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+          - os: windows-latest
+            label: windows
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      NUMBA_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install unchanged native model backends
+        run: python -m pip install -e ".[numba]"
+      - name: Permanent original graph index and tie compatibility
+        run: python -m unittest -v tests.test_graph_csr_reuse_degrees_memory
+      - name: Prepare archived results directory
+        run: python -c "from pathlib import Path; Path('graph-degree-memory-v2-results').mkdir()"
+      - name: Capture actual Python and SciPy dependencies
+        run: python -m pip freeze > graph-degree-memory-v2-results/pip-freeze.txt
+      - name: Run 700 original graph timing pairs, 175 isolated traced peak pairs and 96 native state controls
+        run: >-
+          python -m experiments.audit_graph_csr_reuse_degrees_memory
+          --output graph-degree-memory-v2-results/results.json
+      - name: Archive full original/candidate timings, traced peak samples and state hashes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-degree-memory-v2-${{ matrix.label }}
+          path: graph-degree-memory-v2-results
+          if-no-files-found: warn
+
+  mandatory-both-os-complete:
+    needs: original-graph-memory-and-native-parity
+    if: ${{ always() && needs.original-graph-memory-and-native-parity.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: graph-degree-memory-v2-*
+          merge-multiple: false
+          path: imported
+      - name: Require all 1400 time pairs, 350 traced peak pairs and 192 native states exactly
+        run: >-
+          python -m experiments.summarize_graph_csr_reuse_degrees_memory
+          --linux imported/graph-degree-memory-v2-linux
+          --windows imported/graph-degree-memory-v2-windows
+          --output graph-csr-degree-memory-v2-scientific-report.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graph-csr-degree-memory-v2-scientific-report
+          path: graph-csr-degree-memory-v2-scientific-report.md
+          if-no-files-found: error
