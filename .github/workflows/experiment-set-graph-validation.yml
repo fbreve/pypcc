@@ -1,0 +1,63 @@
+name: Experimental vectorized set_graph validation
+
+on:
+  push:
+    branches: [experiment/set-graph-vectorized-active-validation-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-versus-candidate:
+    name: Original vs candidate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native PCC distribution and Numba
+        run: python -m pip install -e ".[numba]"
+      - name: Require native backends
+        run: python -c "import numpy, numba, pcc_numba, pcc_step; print('Native PCC available')"
+      - name: Run original Git blob vs candidate set_graph audit
+        run: python experiments/audit_set_graph_vectorized_validation.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setgraph-${{ matrix.os }}
+          path: set_graph_validation_result.json
+          if-no-files-found: error
+
+  strict-summary:
+    name: Strict two-OS summary
+    needs: original-versus-candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: setgraph-*
+          path: reports
+          merge-multiple: false
+      - name: Validate raw samples, native states and gates
+        run: python experiments/summarize_set_graph_vectorized_validation.py reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setgraph-strict-summary
+          path: set_graph_validation_summary.json
+          if-no-files-found: error
