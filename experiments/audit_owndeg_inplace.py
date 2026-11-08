@@ -54,7 +54,7 @@ def git(*args):
 
 def original_model():
     code=subprocess.check_output(
-        ["git","show",f"{MASTER}:pcc.py"],cwd=root(),text=True)
+        ["git","show",f"{MASTER}:pcc.py"],cwd=root(),text=True,encoding="utf-8")
     old="        self.owndeg = self.owndeg / row_sums"
     new="        np.divide(self.owndeg, row_sums, out=self.owndeg)"
     check(code.count(old)==1,
