@@ -284,6 +284,13 @@ def native_conditions(modules,caches,real_data):
                   f"Graph changed before native test {key}")
             for backend in SEMANTIC_BACKENDS:
                 args=dict(truth=truth,labels=labels)
+                if backend=="numba":
+                    # Existing runner requires a real two-iteration JIT warm-up
+                    # before steady-state native validation. No timed metric
+                    # is taken from this semantic parity control.
+                    measure(dict(neighbors=original[0],degrees=original[1],
+                                 **args),case,backend,2,
+                            False,0,steady_state=False)
                 a=measure(dict(neighbors=original[0],degrees=original[1],
                                **args),case,backend,SEMANTIC_CAP,
                           False,0,steady_state=True)
