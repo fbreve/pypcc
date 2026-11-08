@@ -13,13 +13,14 @@ BASE = "ababc48986b40f083d5930e922f844aa2ea418b2"
 def check(data):
     assert data["schema"] == 1 and data["baseline"] == BASE
     assert data["seed"] == 34007 and data["adverse_count"] == 8
-    assert len(data["cases"]) == 6 and len(data["native"]) == 12
+    assert len(data["cases"]) == 6 and len(data["native"]) == 24
     assert {(c["nodes"], c["width"]) for c in data["cases"]} == SIZES
-    assert {(v["dataset"], v["backend"]) for v in data["native"]} == {
-        (d, b) for d in ("Iris", "Wine", "Breast Cancer", "Digits")
+    assert {(v["dataset"], v["source"], v["backend"]) for v in data["native"]} == {
+        (d, source, b) for d in ("Iris", "Wine", "Breast Cancer", "Digits")
+        for source in ("knn", "edge_index")
         for b in ("numpy", "numba", "cython")}
     for v in data["native"]:
-        assert len(v["state_hashes"]) == 6
+        assert len(v["state_hashes"]) == 6 and len(v["graph_hash"]) == 64
         assert all(len(k) == 64 for k in v["state_hashes"])
     for c in data["cases"]:
         assert len(c["timings_ms"]) == 25 and len(c["traced_peaks_bytes"]) == 5
