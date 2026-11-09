@@ -1,0 +1,76 @@
+name: "Experiment: frozen original PCC argmax full CPU A/B"
+
+on:
+  push:
+    branches: [experiment/argmax-full-rows-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-native-ab:
+    name: "Source exact whole-fit argmax A/B (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install exact real package and Cython/Numba/NumPy native backends
+        run: python -m pip install -e ".[numba]"
+      - name: Compile scientific runner and strict independent aggregator
+        run: >-
+          python -m py_compile
+          experiments/audit_argmax_fullrows.py
+          experiments/summarize_argmax_fullrows.py
+      - name: Run all frozen source-exact full-fit and memory cases
+        run: >-
+          python -m experiments.audit_argmax_fullrows
+          --output .cache/argmax-native-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: argmax-native-raw-${{ matrix.os }}
+          path: .cache/argmax-native-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  strict-two-os-science:
+    name: "Independent all-48-cohort Linux/Windows CPU GO decision"
+    runs-on: ubuntu-latest
+    needs: source-native-ab
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: argmax-native-raw-*
+          path: .cache/argmax-frozen-raw
+          merge-multiple: false
+      - name: Compare every original source, state, native RNG and all paired CPU samples
+        run: >-
+          python -m experiments.summarize_argmax_fullrows
+          .cache/argmax-frozen-raw .cache/argmax-science-report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: argmax-fullrows-frozen-science-decision
+          path: .cache/argmax-science-report
+          if-no-files-found: error
+          retention-days: 90
