@@ -1,0 +1,50 @@
+name: Verify archived native Numba persistent JIT cache CPU corpus
+
+on:
+  push:
+    branches: [experiment/numba-persistent-jit-cache-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  strictly-validate-original-two-host-artifacts:
+    name: Exact original Git and 48 fresh processes; no native reruns
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Exact source-blob provenance from measured commit
+        shell: bash
+        run: |
+          git cat-file -e 06c07452d494ba6c009d60a5465c6089b4920df9^{commit}
+          git diff --exit-code 06c07452d494ba6c009d60a5465c6089b4920df9 HEAD -- \
+            experiments/audit_numba_jit_cache_child.py \
+            experiments/audit_numba_persistent_jit_cache.py
+          git diff --exit-code d25d5446b7fa51cc0264a496b7eea87dbb11f1fc HEAD -- \
+            pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx \
+            pcc_validation.py setup.py benchmarks/
+      - name: Download completed untouched 24 Linux plus 24 Windows interpreter reports
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 42604775348
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-persistent-jit-*
+          path: evidence
+          merge-multiple: false
+      - name: Enforce original complete two-host native CPU, cache loads, RNG, state
+        run: python -m experiments.summarize_numba_persistent_jit_cache evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numba-jit-cache-strict-archived-verdict
+          path: |
+            numba_persistent_cache_report.md
+            numba_persistent_cache_decision.json
+          if-no-files-found: error
