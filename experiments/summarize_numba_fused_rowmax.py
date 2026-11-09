@@ -42,8 +42,12 @@ def validate_doc(d):
             "frozen original production source or existing real Numba path missing")
     require(d["batch"]==8 and d["repetitions"]==5 and len(d["cases"])==10,
             "preregistered source paired sample count missing")
-    require(all(hash64(d[x]) for x in ("head","original_sha","candidate_sha")),
-            "original Git/candidate provenance missing")
+    # Git commit object IDs are 40-hex; Git blob SHA-256 fingerprints
+    # for the original/derived source are 64-hex. Do not conflate them.
+    require(isinstance(d["head"],str) and len(d["head"])==40 and
+            all(c in "0123456789abcdef" for c in d["head"]) and
+            all(hash64(d[x]) for x in ("original_sha","candidate_sha")),
+            "original Git commit/candidate SHA256 provenance missing")
     result={}
     for c in d["cases"]:
         key=(c["dataset"],c["seed"])
