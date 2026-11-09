@@ -11,3 +11,7 @@ Committed after the original protocol and BEFORE any candidate audit, CI or CPU 
 - Both OS timed datasets and raw source class phase timings remain archived, including sparse and 50%-labeled controls. No invented performance improvement or threshold adjustments.
 
 The batch clock technique is adopted before collecting any CPU data because of the known Windows timer granularity from experiments #220–#221.
+
+## Before-data clock sizing refinement
+
+A further nonexperimental clock-resolution audit confirms that a **4-fit Cython or 8-fit short ring 0-step batch may still fall below Windows' ~15.625ms process-CPU quantum**. Before any hosted run/data, supersede only batch sizes (not workload, source, repeats or frozen GO gates): real source pairs use **4 full NumPy fits, 32 full Numba fits and 64 full Cython fits per CPU interval**; each synthetic 30k/100k ring source interval uses **32 complete native fits**, and 1024/1797 50%-known controls use **128 complete fits**. Every case reports its actual `count`; original/candidate in the same cohort use the SAME count. This preserves exactly 192 real, 96 ring and 4 dense original/candidate CPU pairs across both hosts. No semantic test, source edit, memory budget, GO or regression criterion changes. This refinement precedes all external measurements and prevents a known instrumentation failure from wasting scientific CI work.
