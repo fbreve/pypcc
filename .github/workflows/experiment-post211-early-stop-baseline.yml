@@ -1,8 +1,9 @@
 name: Experimental post211 master native early stopping full CPU baseline
 
+# CPU-intensive 216-fit measurement is already complete in run 42557056732.
+# Keep it available for explicit reruns only; use separate artifact-verification
+# workflow to check the already archived two-host original observations.
 on:
-  push:
-    branches: [experiment/post211-native-early-stop-baseline-v1]
   workflow_dispatch:
 
 permissions:
