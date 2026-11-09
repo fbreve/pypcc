@@ -1,0 +1,73 @@
+name: "Experiment: original PCC sparse known classes CPU and exact native state"
+
+on:
+  push:
+    branches: [experiment/sparse-known-classes-unique-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-versus-candidate:
+    name: True original PCC source/3 backends and sparse unique CPU (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install exact original NumPy/Numba/Cython PCC distribution
+        run: python -m pip install -e ".[numba]"
+      - name: Freeze original master byte-identical native source and compile science
+        run: >-
+          python -m py_compile
+          experiments/audit_sparse_known_classes.py
+          experiments/summarize_sparse_known_classes.py
+      - name: Source-derived class arrays and all 3 true native backends preflight
+        run: python -m experiments.audit_sparse_known_classes --smoke-only
+      - name: Full 12-case 600 paired CPU / 120 peak and 3-backend real PCC corpus
+        run: python -m experiments.audit_sparse_known_classes
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-sparse-known-classes-${{ matrix.os }}
+          path: sparse_known_classes_results.json
+          if-no-files-found: warn
+
+  strict-independent-two-os-science:
+    name: Exact 2-host 600 micro and 292 real/ring full-fit CPU source verdict
+    needs: original-versus-candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: original-sparse-known-classes-*
+          path: evidence
+          merge-multiple: false
+      - name: Demand all original Git sources, six state array SHA, RNG, native stop, CPU and memory
+        run: python -m experiments.summarize_sparse_known_classes evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-sparse-known-classes-strict-science-decision
+          path: |
+            sparse_known_classes_report.md
+            sparse_known_classes_decision.json
+          if-no-files-found: error
