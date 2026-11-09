@@ -79,7 +79,9 @@ def row_valid(row):
          "incomplete genuine greedy tape")
     must(tape["events"]>0 if p>0 else tape["events"]==0,
          "wrong number of recorded actual greedy attempts")
-    must(0<=tape["max_degree"]<=max(2,22) and
+    # Symmetric kNN union degrees can exceed k; never impose an
+    # invented global upper bound such as k=10 or 22.
+    must(0<=tape["max_degree"]<=8192 and
          tape["tape_allocated_bytes"]>=tape["tape_used_bytes"]>0,
          "invalid real original tape size/degree")
     for field in ("event_meta_sha","event_total_sha",
