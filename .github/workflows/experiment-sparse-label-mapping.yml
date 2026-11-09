@@ -1,0 +1,63 @@
+name: Experimental sparse label mapping CPU / native state audit
+
+on:
+  push:
+    branches: [experiment/label-mapping-sparse-searchsorted-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired-original-native:
+    name: Exact frozen original/mapping (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native PCC package
+        run: python -m pip install -e ".[numba]"
+      - name: Require all three native backends
+        run: python -c "import pcc_step, pcc_numpy, pcc_numba; print('Native backends available')"
+      - name: Frozen source block CPU+allocation and exact full native PCC
+        run: python experiments/audit_sparse_label_mapping.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: label-mapping-${{ matrix.os }}
+          path: label_mapping_result.json
+          if-no-files-found: error
+
+  strict-two-os-aggregate:
+    name: Complete two-OS original/candidate scientific decision
+    needs: paired-original-native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: label-mapping-*
+          path: reports
+          merge-multiple: false
+      - name: Validate all original/candidate pairs and preregistered CPU/memory limits
+        run: python experiments/summarize_sparse_label_mapping.py reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: label-mapping-decision
+          path: label_mapping_summary.json
+          if-no-files-found: error
