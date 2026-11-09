@@ -133,8 +133,16 @@ def check_document(d):
              control["dataset"] in ("digits","ring_8192_32"),
              "invalid original 0/5 native controls")
         state_valid(control["state"])
-        must(sha(control["graph_sha"]) and sha(control["label_sha"]),
-             "zero/5 input graph/label SHA missing")
+        # Short controls record exact original graph ID/seed and full
+        # resulting eight-state/RNG/stop; input SHA values live in each
+        # frozen full cohort. Do not require unrecorded short-only keys.
+        must((control["dataset"],control["k"],control["seed"]) in
+             (("digits",10,89021),("ring_8192_32",2,89119)),
+             "unexpected original 0/5 input graph/seed")
+        must(type(control["next_rng"]) is float and
+             0<=control["next_rng"]<1 and
+             0<=control["stop"]["effective_iterations"]<=control["cap"],
+             "missing short-control native RNG/stop")
         must(control["tape_count"]>=0 and
              (control["tape_count"]==0 if
               control["p_grd"]==0 or control["cap"]==0 else True),
