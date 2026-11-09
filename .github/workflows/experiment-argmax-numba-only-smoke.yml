@@ -1,8 +1,6 @@
 name: "Experiment: Numba-only argmax source-exact smoke"
 
 on:
-  push:
-    branches: [experiment/argmax-numba-only-v1]
   workflow_dispatch:
 
 permissions:
