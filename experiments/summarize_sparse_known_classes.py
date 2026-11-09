@@ -99,7 +99,7 @@ def verify(d):
         must(key in MICRO and key not in micro and
              sha(row["input_sha"]) and sha(row["outputs_sha"]),
              "duplicate or nonfrozen labeled-class microphase")
-        reps=2048 if row["n"]<=1797 else 256
+        reps=(16384 if row["n"]<=1797 else 4096 if row["n"]==30000 else 2048 if row["n"]==100000 else 1024)
         must(row["repetitions"]==reps and
              len(row["timings"])==25 and
              len(row["peak_pairs"])==5,

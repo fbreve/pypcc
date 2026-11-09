@@ -142,7 +142,7 @@ def measure_micro(original, candidate, source_sha):
     for n,c,kind in MICRO_FIXTURES:
         values=deterministic_labels(n,c,kind)
         checksum=array_hash(values)
-        repetitions=2048 if n<=1797 else 256
+        repetitions=(16384 if n<=1797 else 4096 if n==30000 else 2048 if n==100000 else 1024)
         timers=[]
         peaks=[]
         for pair in range(CPU_PAIRS_MICRO):
