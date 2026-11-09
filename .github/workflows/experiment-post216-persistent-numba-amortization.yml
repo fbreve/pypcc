@@ -1,0 +1,71 @@
+name: Experiment post216 Numba cache: one graph reused for 20 fits
+
+on:
+  push:
+    branches: [experiment/post216-persistent-numba-amortization-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistent-20-native-fits:
+    name: 20 real native PCC fits per fresh interpreter (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install original production NumPy Numba and Cython PCC package
+        run: python -m pip install -e ".[numba]"
+      - name: Compile and verify complete science scripts before expensive run
+        run: >-
+          python -m py_compile
+          experiments/run_post216_persistent_child.py
+          experiments/audit_post216_persistent_amortization.py
+          experiments/summarize_post216_persistent_amortization.py
+      - name: 24 genuinely new Python processes with 20 timed and 20 replay fits each
+        run: python -m experiments.audit_post216_persistent_amortization
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post216-persistent-20-fits-${{ matrix.os }}
+          path: post216_persistent_amortization_results.json
+          if-no-files-found: error
+
+  strict-independent-combined-os-verdict:
+    name: Two-host 960+960 exact Numba fits; amortized real CPU/wall verdict
+    needs: persistent-20-native-fits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: post216-persistent-20-fits-*
+          path: evidence
+          merge-multiple: false
+      - name: Strict 48 real processes, 5 timing checkpoints, 20 exact native RNG replays each
+        run: python -m experiments.summarize_post216_persistent_amortization evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post216-persistent-numba-amortization-scientific-decision
+          path: |
+            post216_persistent_amortization_report.md
+            post216_persistent_amortization_decision.json
+          if-no-files-found: error
