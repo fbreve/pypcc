@@ -142,8 +142,8 @@ def check_doc(d):
                "original graph class/rollback/Numba policy invalid")
         for field in ("graph_sha","degree_sha","label_sha","fixture_sha"):
             insist(is_sha256(item[field]),"original ordered graph or label hash")
-        nrep=2 if ds in ("digits","ring_8192_32") and
-                      mode=="fixed_10000" else 1
+        nrep=(2 if ds in ("digits","ring_8192_32") and
+              mode=="fixed_10000" else 1)
         insist(len(item["results"])==nrep,"original reused-fit replay count missing")
         for rep in item["results"]:
             check_pair(rep["original"],rep["counter"],cap,stop,item["particles"])
