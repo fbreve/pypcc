@@ -280,7 +280,7 @@ def result_states(model,pred,info,backend,cap,mode):
         monitored=mode)
 
 
-def run_batch(PCC,neighbors,degrees,k,labels,backend,cap,mode,count):
+def run_batch(PCC,neighbors,degrees,k,labels,backend,cap,mode,count,require_cpu=True):
     # Create all eight independently initialized objects/graphs BEFORE timer,
     # then discard their large fit state one by one to bound peak RAM.
     models=[make_model(PCC,neighbors,degrees,k,backend)
@@ -305,8 +305,8 @@ def run_batch(PCC,neighbors,degrees,k,labels,backend,cap,mode,count):
         del model,info
     elapsed_wall=time.perf_counter_ns()-t_wall
     elapsed_cpu=time.process_time_ns()-t_cpu
-    ensure(elapsed_wall>0 and elapsed_cpu>0,
-           "actual CPU/wall 4/8-full-fit source batch must be measurable")
+    ensure(elapsed_wall>0 and (elapsed_cpu>0 or not require_cpu),
+           "original scientific native CPU/wall batch below timer resolution")
     last=result_states(last_model,preds[-1],last_info,
                        backend,cap,mode)
     all_predictions=[array_hash(p) for p in preds]
@@ -482,7 +482,7 @@ def preflight():
             pair={}
             for name,PCC in modules.items():
                 pair[name]=run_batch(PCC,adj,degree,2,labels,backend,2,
-                                     False,1)
+                                     False,1,require_cpu=False)
             exact_pair(pair["original"],pair["candidate"],
                        ("smoke",backend))
     print("SMOKE ORIGINAL GIT PCC SOURCE PAIR and real 3-backend "
