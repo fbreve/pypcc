@@ -391,8 +391,12 @@ class ParticleCompetitionAndCooperation:
 
             # Unmap labels before returning
             final_labels = np.full(self.node.label.shape, -1, dtype=np.int64)
-            for idx, lbl in self.idx_to_label.items():
-                final_labels[self.node.label == idx] = lbl
+            if self.c < 8 or self.node.label.size < 1024:
+                for idx, lbl in self.idx_to_label.items():
+                    final_labels[self.node.label == idx] = lbl
+            else:
+                valid = (self.node.label >= 0) & (self.node.label < self.c)
+                final_labels[valid] = self.unique_labels[self.node.label[valid]]
             return final_labels
 
         except Exception:
