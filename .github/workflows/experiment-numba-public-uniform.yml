@@ -1,0 +1,71 @@
+name: "Experiment: public Numba uniform draw original CPU and exact RNG"
+
+on:
+  push:
+    branches: [experiment/numba-public-uniform-draw-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-numba-paired-cpu:
+    name: 8-fit source-matched CPU and public RNG bit patterns (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install true frozen master Numba and original Cython/native PCC package
+        run: python -m pip install -e ".[numba]"
+      - name: Validate source-exact private LLVM RNG intrinsics and original frozen CPU scripts
+        run: >-
+          python -m py_compile
+          experiments/audit_numba_public_uniform.py
+          experiments/summarize_numba_public_uniform.py
+      - name: 96 paired actual eight-fit CPU batches with original Numba MT19937 exact state
+        run: python -m experiments.audit_numba_public_uniform
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-public-uniform-${{ matrix.os }}
+          path: numba_public_uniform_results.json
+          if-no-files-found: warn
+
+  strict-both-os-original-source:
+    name: Strict 192 real native CPU batches, 3072 fit and 2-OS original RNG verdict
+    needs: original-numba-paired-cpu
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-public-uniform-*
+          path: evidence
+          merge-multiple: false
+      - name: Complete every original full fit, state, RNG, branch, source, memory and CPU gate
+        run: python -m experiments.summarize_numba_public_uniform evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numba-public-uniform-strict-scientific-decision
+          path: |
+            numba_public_uniform_report.md
+            numba_public_uniform_decision.json
+          if-no-files-found: error
