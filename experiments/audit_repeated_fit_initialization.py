@@ -84,7 +84,9 @@ def check_sources():
     for path in PROTECTED:
         original = subprocess.check_output(
             ["git", "show", f"{BASE}:{path}"], stderr=subprocess.DEVNULL)
-        assert (Path(__file__).resolve().parents[1] / path).read_bytes() == original, path
+        working = (Path(__file__).resolve().parents[1] / path).read_bytes()
+        # Git blob uses LF; Windows checkout core.autocrlf may materialize CRLF.
+        assert working.replace(b"\r\n", b"\n") == original.replace(b"\r\n", b"\n"), path
     changes = subprocess.check_output(
         ["git", "diff", "--name-only", BASE, "HEAD", "--", *PROTECTED],
         text=True).strip()
