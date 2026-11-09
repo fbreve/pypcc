@@ -70,3 +70,9 @@
 - This file and PR link serve as the audit decision log; each closed experimental PR should receive a short final closure comment linking this index and its own original run artifacts.
 - The archive must distinguish **scientific evidence complete** from **performance acceptance**, and note if the outcome was only observational.
 - Do not alter `master` or merge the documentation PR without maintainer review.
+
+## Post-audit continuation — #225 (separate from the initial 35 PRs)
+
+- [#225](https://github.com/fbreve/pypcc/pull/225) decomposed the same-model repeated-fit non-native original PyPCC phases and preserved full original-array/RNG parity in 36 cohorts per OS. A line-ending-sensitive decoded-text SHA check required a **recheck of the already frozen artifacts**, not new native fits; [strict independent run 42667891453](https://github.com/fbreve/pypcc/actions/runs/42667891453) passed.
+- Compact durable scientific summary: [fit_non_native_phase_2026-11-09.md](fit_non_native_phase_2026-11-09.md). The summary is not a durable copy of raw GitHub Actions JSON artifacts.
+- The next genuinely distinct hypothesis should investigate the materiality of full-matrix unlabeled-node assignment on many-class problems while preserving the original output/ownership, rather than resubmitting rejected #199/#202/#222 candidates.
