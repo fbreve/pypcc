@@ -101,8 +101,12 @@ def make_model(graph, degrees, k, traced):
     model = PCC(impl="numba", update_mode="sequential")
     model.set_graph(graph, degrees, k_nn=k)
     assert model._get_backend_fn() is ORIGINAL_NUMBA
-    assert np.array_equal(model.neib_list, graph)
     assert np.array_equal(model.neib_qt, degrees)
+    # Original set_graph preserves active ordered neighbor entries but
+    # canonicalizes UNUSED input padding (often -1) to zeros.
+    active = np.arange(graph.shape[1])[None, :] < degrees[:, None]
+    assert np.array_equal(model.neib_list[active], graph[active])
+    assert not np.any(model.neib_list[~active])
     timings = []
 
     def wall_tracer(*args, **kwargs):
