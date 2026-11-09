@@ -1,8 +1,6 @@
 name: "Experiment: original Numba policy and undirected degree native-wall profile"
 
 on:
-  push:
-    branches: [experiment/numba-native-policy-cost-profile-v1]
   workflow_dispatch:
 
 permissions:
