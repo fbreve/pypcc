@@ -34,7 +34,7 @@ jobs:
       - name: Preflight frozen source, unchanged backend, and exact workload plan
         run: python -m unittest -v tests.test_post211_early_stop_protocol
       - name: Run all original native modes and deterministic fixed-prefix checks
-        run: python experiments/audit_post211_early_stop.py
+        run: python -m experiments.audit_post211_early_stop
       - uses: actions/upload-artifact@v4
         with:
           name: post211-early-stop-${{ matrix.os }}
