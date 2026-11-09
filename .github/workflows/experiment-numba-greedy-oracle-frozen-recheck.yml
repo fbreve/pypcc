@@ -1,0 +1,61 @@
+name: "Experiment: strict frozen Numba greedy-oracle artifact-only recheck"
+
+on:
+  push:
+    branches: [experiment/numba-greedy-oracle-replay-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  frozen-native-and-original-source-recheck:
+    name: "Strict original 48-cohort 2-OS oracle + archived original #231/#232 state replay"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reuse EXACT original successful Linux and Windows native CPU archives
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42707243191
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-greedy-oracle-native-raw-*
+          path: .cache/frozen-numba-greedy-oracle/new
+          merge-multiple: false
+      - name: Reuse original immutable #231 native source time archive
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42694136277
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-native-policy-original-raw-*
+          path: .cache/frozen-numba-greedy-oracle/old231
+          merge-multiple: false
+      - name: Reuse original immutable #232 native path counters
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42703206929
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-path-counts-native-raw-*
+          path: .cache/frozen-numba-greedy-oracle/old232
+          merge-multiple: false
+      - name: Verify frozen complete actual trajectories, full CPU samples and old source SHA
+        run: >-
+          python -m experiments.summarize_numba_greedy_oracle
+          .cache/frozen-numba-greedy-oracle
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-greedy-oracle-immutable-2os-final-decision
+          path: |
+            numba_greedy_oracle_report.md
+            numba_greedy_oracle_decision.json
+          if-no-files-found: error
+          retention-days: 90
