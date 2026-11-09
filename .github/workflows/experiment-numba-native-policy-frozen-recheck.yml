@@ -1,0 +1,43 @@
+name: "Experiment: validate immutable original Numba policy and graph-degree artifacts"
+
+on:
+  push:
+    branches: [experiment/numba-native-policy-cost-profile-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  strict-original-two-host-recheck:
+    name: "Strict frozen 108-cohort native timings and exact eight-state parity"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download actual original untouched Linux and Windows native archives
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42694136277
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-native-policy-original-raw-*
+          path: .cache/frozen-original-numba-by-host
+          merge-multiple: false
+      - name: Strict independent original source, graph, CPU timing and all-state audit
+        run: >-
+          python -m experiments.summarize_numba_native_policy_cost
+          .cache/frozen-original-numba-by-host
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-numba-policy-frozen-strict-report
+          path: |
+            numba_native_policy_cost_report.md
+            numba_native_policy_cost_decision.json
+          if-no-files-found: error
+          retention-days: 90
