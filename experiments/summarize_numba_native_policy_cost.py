@@ -66,8 +66,11 @@ def checked(doc):
                cohort["native_impl"]=="numba" and cohort["source_unchanged"],
                "original native graph/particle population invalid")
         demand(all(sha64(cohort[x]) for x in ("graph_sha","degree_sha",
-               "labels_sha","fixture_sha","true_numba_argmax_sha")),
-               "graph/output source fingerprint missing")
+               "labels_sha","fixture_sha")),
+               "original ordered graph/label source fingerprint missing")
+        # The original #228 post-argmax source proof is deliberately a
+        # dictionary of ALL eight state SHA256 hashes, not one scalar SHA.
+        check_state(cohort["true_numba_argmax_sha"])
         demand(cohort["batch_size"]==BATCH[cap] and
                len(cohort["pairs"])==REPS,"frozen 4 CPU pairs per cohort missing")
         demand(len(cohort["short"])==2 and
