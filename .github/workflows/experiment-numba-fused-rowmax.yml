@@ -1,8 +1,6 @@
 name: "Experiment: source-exact Numba dominance-rowmax fusion A/B"
 
 on:
-  push:
-    branches: [experiment/numba-fused-rowmax-corder-heldout-v1]
   workflow_dispatch:
 
 permissions:
