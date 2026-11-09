@@ -29,7 +29,7 @@ BASE = "bcf0fed83e64a753bf8ab01dba5124749931ebc2"
 PROTECTED = ("pcc.py", "pcc_graph.py", "pcc_numba.py", "pcc_numpy.py",
              "pcc_step.pyx", "pcc_validation.py", "setup.py")
 OLD = "node.label[unlabeled] = np.argmax(node.dominance[unlabeled, :], axis=1)"
-NEW = ("if propagate_fn is pcc_step_numba:\n"
+NEW = ("if propagate_fn is pcc_propagate_numba:\n"
        "            node.label[unlabeled] = np.argmax(node.dominance, axis=1)[unlabeled]\n"
        "        else:\n"
        "            node.label[unlabeled] = np.argmax(node.dominance[unlabeled, :], axis=1)")
@@ -71,13 +71,73 @@ def original_git_source():
 def source_derived_candidate(original):
     src = original.decode("utf-8")
     assert src.count(OLD) == 1
-    altered = src.replace(OLD, NEW, 1)
-    assert altered.replace(NEW, OLD, 1) == src
+    # The original top-level pcc_step_numba import is NOT the propagated
+    # dispatcher: _get_backend_fn returns pcc_propagate_numba.
+    original_import = "    from pcc_numba import pcc_step_numba"
+    changed_import = "    from pcc_numba import pcc_step_numba, pcc_propagate_numba"
+    original_except = "    pcc_step_numba = None"
+    changed_except = "    pcc_step_numba = None\n    pcc_propagate_numba = None"
+    for span in (original_import, original_except, OLD):
+        assert src.count(span) == 1, ("unexpected original Git source", span)
+    altered = src.replace(original_import, changed_import, 1)
+    altered = altered.replace(original_except, changed_except, 1)
+    altered = altered.replace(OLD, NEW, 1)
+    # Exact source-diff allowlist; no other production operations changed.
+    restored = altered.replace(NEW, OLD, 1)
+    restored = restored.replace(changed_except, original_except, 1)
+    restored = restored.replace(changed_import, original_import, 1)
+    assert restored == src, "candidate not a literal three-span Git source edit"
     module = types.ModuleType("_pcc_argmax_numba_only_original_source_candidate")
     module.__file__ = "source_exact/numba_only_argmax_candidate_pcc.py"
     sys.modules[module.__name__] = module
     exec(compile(altered, module.__file__, "exec"), module.__dict__)
+    assert module.pcc_propagate_numba is expected_backend("numba")
     return module.ParticleCompetitionAndCooperation, hashlib.sha256(altered.encode()).hexdigest()
+
+
+def actual_dispatch_branch_guard(candidate_class):
+    """Prove actual full-N×C argmax path is reached ONLY with true Numba."""
+    module = sys.modules[candidate_class.__module__]
+    assert module.pcc_propagate_numba is expected_backend("numba")
+    n, c = 40, 10
+    indices = np.arange(n, dtype=np.int64)
+    graph = np.column_stack(((indices-1) % n, (indices+1) % n))
+    degrees = np.full(n, 2, dtype=np.int64)
+    labels = np.full(n, -1, dtype=np.int64)
+    classes = 100 + 10 * np.arange(c, dtype=np.int64)
+    labels[:c] = classes
+    labels[20:20+c] = classes
+    unknown = int(np.count_nonzero(labels == -1))
+    assert unknown == 20
+    captured = {}
+    actual_argmax = np.argmax
+    for backend in BACKENDS:
+        candidate_model = make_model(candidate_class, backend, graph, degrees, 2)
+        original_model = make_model(PCC, backend, graph, degrees, 2)
+        real_selected = candidate_model._get_backend_fn()
+        assert real_selected is expected_backend(backend)
+        assert (real_selected is module.pcc_propagate_numba) == (backend == "numba")
+        # The optional Numba compilation is excluded from all timed CPU batches.
+        if backend == "numba":
+            fit(original_model, labels, 2, False)
+            fit(candidate_model, labels, 2, False)
+        shapes = []
+        def observed_argmax(array, *args, **kwargs):
+            if getattr(array, "ndim", None) == 2:
+                shapes.append(tuple(array.shape))
+            return actual_argmax(array, *args, **kwargs)
+        np.argmax = observed_argmax
+        try:
+            predicted = fit(candidate_model, labels, 0, False)
+        finally:
+            np.argmax = actual_argmax
+        original_predictions = fit(original_model, labels, 0, False)
+        assert fingerprints(actual_state(candidate_model, predicted)) == fingerprints(
+            actual_state(original_model, original_predictions)), "true branch guard lost state parity"
+        expected_shape = (n, c) if backend == "numba" else (unknown, c)
+        assert shapes == [expected_shape], (backend, expected_shape, shapes)
+        captured[backend] = shapes[0]
+    return captured
 
 
 def micro_functional():
@@ -350,6 +410,7 @@ def main():
     blob=original_git_source()
     candidate, candidate_sha=source_derived_candidate(blob)
     micro=micro_functional()
+    dispatch_shapes=actual_dispatch_branch_guard(candidate)
     cohorts=[]
     for case,backend,steps,stop in cases_and_modes(args.smoke):
         cohorts.append(one_cohort(candidate, case, backend, steps, stop, args.smoke))
@@ -360,7 +421,8 @@ def main():
     raw=dict(schema=1, source_base=BASE, original_sha=hashlib.sha256(blob).hexdigest(),
              candidate_sha=candidate_sha, os=sys.platform, platform=platform.platform(),
              python=sys.version, cases=CASES, micro_functional_checks=micro,
-             exact_production_source=True, pairs=1 if args.smoke else PAIRS,
+             exact_production_source=True, dispatch_branch_shapes=dispatch_shapes,
+             pairs=1 if args.smoke else PAIRS,
              cohorts=cohorts, memory=memory)
     path=Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
