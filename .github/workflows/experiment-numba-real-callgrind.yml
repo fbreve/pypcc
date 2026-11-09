@@ -1,8 +1,9 @@
 name: "Experiment: native Linux Numba Callgrind instruction hotspots"
 
+# The original four Callgrind samples are already running in
+# 42623887543. New code to strictly read or report the immutable native
+# artifact must NOT launch costly Callgrind profiling again.
 on:
-  push:
-    branches: [experiment/numba-real-callgrind-hotspots-v1]
   workflow_dispatch:
 
 permissions:
