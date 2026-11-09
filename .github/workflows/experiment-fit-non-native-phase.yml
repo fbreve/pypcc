@@ -1,0 +1,80 @@
+name: "Experiment: exact original PyPCC non-native fit phase attribution"
+
+on:
+  push:
+    branches: [experiment/fit-non-native-phase-attribution-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase-profile:
+    name: "Exact full PCC fit source + phase measurements (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install true unmodified PCC with all native backends
+        run: python -m pip install -e ".[numba]"
+      - name: Compile original-source scientific programs
+        run: >-
+          python -m py_compile
+          experiments/audit_fit_non_native_phase.py
+          experiments/summarize_fit_non_native_phase.py
+      - name: Original Git source, real backend and phase parity smoke test
+        run: >-
+          python -m experiments.audit_fit_non_native_phase
+          --smoke --output .cache/phase-original-smoke.json
+      - name: Full original 36-cohort exact source two-mask audit
+        run: >-
+          python -m experiments.audit_fit_non_native_phase
+          --output .cache/phase-original-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-original-raw-${{ matrix.os }}
+          path: .cache/phase-original-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  strict-two-os-aggregator:
+    runs-on: ubuntu-latest
+    name: "Independent full 36-cohort two-host phase and native parity"
+    needs: phase-profile
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: phase-original-raw-*
+          path: .cache/phase-by-os
+          merge-multiple: false
+      - name: Refuse missing exact states, masked graphs, RNG replays or phases
+        run: >-
+          python -m experiments.summarize_fit_non_native_phase
+          .cache/phase-by-os .cache/phase-final
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-fit-non-native-strict-science
+          path: .cache/phase-final
+          if-no-files-found: error
+          retention-days: 90
