@@ -186,8 +186,10 @@ def stage_case(spec, modules, sink):
     expected[mask]=neibs[mask]
     previous_hash=(digest(neibs),digest(q))
     def install():
-        m=PCC(impl="numpy")
-        m.set_graph(neibs,q,k_nn=k)
+        m=PCC(impl="numpy")  # constructor intentionally OUTSIDE timer
+        elapsed_ms,_=elapsed(lambda:m.set_graph(neibs,q,k_nn=k))
+        return elapsed_ms,m
+    def check_install(m):
         if (not np.array_equal(m.neib_list,expected)
                 or not np.array_equal(m.neib_qt,q)
                 or m.neib_list.dtype!=np.int64
@@ -196,26 +198,27 @@ def stage_case(spec, modules, sink):
                 or np.shares_memory(m.neib_list,neibs)
                 or np.shares_memory(m.neib_qt,q)):
             raise AssertionError("set_graph active neighbors, copy, or padding changed")
-        return m
     # Installation API 2: build_graph does NOT call set_graph; it directly
     # installs the original neighbor-array output and reuses its data object.
     def public_build():
-        m=PCC(impl="numpy")
-        m.build_graph(x,k_nn=k,n_jobs=1)
+        m=PCC(impl="numpy")  # constructor intentionally OUTSIDE timer
+        elapsed_ms,_=elapsed(lambda:m.build_graph(x,k_nn=k,n_jobs=1))
+        return elapsed_ms,m
+    def check_build(m):
         if not np.array_equal(m.neib_list,neibs) or not np.array_equal(m.neib_qt,q):
             raise AssertionError("public build_graph returned a different graph")
         if m.data is not x or m.k_nn!=k:
             raise AssertionError("public build_graph metadata changed")
-        return m
-    install(); public_build()
+    _,m=install(); check_install(m)
+    _,m=public_build(); check_build(m)
     set_times=[]; build_times=[]
     for i in range(INSTALL_REPS):
         if i%2:
-            a,_=elapsed(install)
-            b,_=elapsed(public_build)
+            a,ma=install(); check_install(ma)
+            b,mb=public_build(); check_build(mb)
         else:
-            b,_=elapsed(public_build)
-            a,_=elapsed(install)
+            b,mb=public_build(); check_build(mb)
+            a,ma=install(); check_install(ma)
         set_times.append(a)
         build_times.append(b)
     if previous_hash != (digest(neibs),digest(q)):
