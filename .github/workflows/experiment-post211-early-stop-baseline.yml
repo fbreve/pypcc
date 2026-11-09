@@ -1,0 +1,65 @@
+name: Experimental post211 master native early stopping full CPU baseline
+
+on:
+  push:
+    branches: [experiment/post211-native-early-stop-baseline-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-stop-versus-fixed:
+    name: Frozen original early-stop vs fixed (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install three original native PCC backends
+        run: python -m pip install -e ".[numba]"
+      - name: Preflight frozen source, unchanged backend, and exact workload plan
+        run: python -m unittest -v tests.test_post211_early_stop_protocol
+      - name: Run all original native modes and deterministic fixed-prefix checks
+        run: python experiments/audit_post211_early_stop.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post211-early-stop-${{ matrix.os }}
+          path: post211_early_stop_result.json
+          if-no-files-found: error
+
+  strict-two-os-aggregate:
+    name: Complete 216 native full-fit plus 36 seeded prefix checks
+    runs-on: ubuntu-latest
+    needs: original-stop-versus-fixed
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: post211-early-stop-*
+          path: reports
+          merge-multiple: false
+      - name: Strict native source, graph, stop, seed and phase audit across OS
+        run: python experiments/summarize_post211_early_stop.py reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post211-early-stop-scientific-report
+          path: post211_early_stop_report.md
+          if-no-files-found: error
