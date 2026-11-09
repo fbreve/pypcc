@@ -31,9 +31,13 @@ def compare(x,y,name):
     must(x==y,"native source/corpus/cache state changed "+name)
 
 
-def validate_fit(f,classes):
-    must(positive(f["cpu_ns"]) and positive(f["wall_ns"]),
-         "missing fresh process CPU/wall timer")
+def validate_fit(f,classes,require_cpu=True):
+    # Windows process CPU duration can round to 0 for a valid sub-ms
+    # already-JIT-loaded call; first compile CPU is always resolvable.
+    must(type(f["cpu_ns"]) is int and f["cpu_ns"]>=0 and
+         positive(f["wall_ns"]) and
+         (f["cpu_ns"]>0 or not require_cpu),
+         "missing first-process CPU or wall time")
     must(f["wall_ns"]>=f["cpu_ns"]*.6,
          "gross timer miscalibration")
     must(f["original_backend_name"]=="pcc_propagate_numba" and
@@ -138,11 +142,26 @@ def validate(doc):
                     must(record["cache_loaded_count"]>=1,
                          "new candidate Python process failed actual Numba cache data hit")
                 for kind in ("first","hot"):
-                    validate_fit(record[kind],expected_classes)
+                    validate_fit(record[kind],expected_classes,
+                                 require_cpu=(kind=="first"))
                     for state in ("state_hashes","native_rng_next",
                                   "stop_info","layout"):
                         compare(record[kind][state],original_ref[state],
                                 f"{variant}/{phase}/{kind}/{state}")
+                batch=record["hot_batch"]
+                must(batch["count"]==512 and
+                     positive(batch["cpu_ns"]) and
+                     positive(batch["wall_ns"]),
+                     "high-resolution 512-fit hot process CPU measurement missing")
+                compare(batch["last_native_state_hashes"],
+                        original_ref["state_hashes"],
+                        "512 repeated native fits last states")
+                compare(batch["last_numba_rng_next"],
+                        original_ref["native_rng_next"],
+                        "512 repeated native fits final Numba RNG")
+                compare(batch["last_stop_info"],
+                        original_ref["stop_info"],
+                        "512 repeated native fits original stop")
         cases[key]=case
     must(set(cases)=={(d,s) for d in DATASETS for s in SEEDS},
          "not all 6 independent fresh process case pairs present")
@@ -156,7 +175,10 @@ def decide(docs,valid):
         "Scientific completeness: **PASS**, 2 OS x 3 real sklearn datasets x",
         "2 label seeds x 2 Numba-source variants x 2 independent fresh",
         "processes = **48 brand-new Python interpreter launches**, each",
-        "with two full native PCC fits = **96 complete fits**.",
+        "with two original primary full fits = **96 complete fits**.",
+        "The high-resolution hot path independently repeats 512 original",
+        "PCC fits per interpreter: **24,576 additional hot fits** to avoid",
+        "Windows coarse sub-millisecond process CPU clock quantization.",
         "All original/cached first and hot seeded native results are identical:",
         "six state arrays, native Numba RNG endpoint, stopping counters,",
         "native Numba class C/F order, labels and undirected graph.",
@@ -180,9 +202,10 @@ def decide(docs,valid):
                 c["variants"]["candidate"]["cold"]["first"]["cpu_ns"]/
                 c["variants"]["original"]["cold"]["first"]["cpu_ns"]
                 for c in group)-1)
+            # High resolution: Windows single hot <1ms CPU rounds to 0.
             hot_delta=100*(statistics.median(
-                c["variants"]["candidate"]["fresh_reuse"]["hot"]["cpu_ns"]/
-                c["variants"]["original"]["fresh_reuse"]["hot"]["cpu_ns"]
+                c["variants"]["candidate"]["fresh_reuse"]["hot_batch"]["cpu_ns"]/
+                c["variants"]["original"]["fresh_reuse"]["hot_batch"]["cpu_ns"]
                 for c in group)-1)
             original_ms=statistics.median(
                 c["variants"]["original"]["fresh_reuse"]["first"]["cpu_ns"]/1e6
@@ -208,6 +231,10 @@ def decide(docs,valid):
                 f"{cold_overhead:+.2f}% | {hot_delta:+.2f}% | {disk_mb:.2f} |")
     lines+=["",
         f"**Frozen prospective verdict: {'GO' if go else 'NO-GO'}.**",
+        "",
+        "Hot native CPU regression is measured from the 512-fit batch",
+        "with source-identical models, not from a sub-ms single Windows",
+        "process CPU timer (which can validly be zero).",
         "",
         "GO requires >=25% reduced *first-fit process CPU* from the",
         "verified disk-cache new-process launch vs an uncached source on",
@@ -254,6 +281,8 @@ def main(path):
         json.dumps(dict(schema=1,complete=True,
                         verdict="GO" if go else "NO-GO",
                         python_processes=48,full_native_fits=96,
+                        additional_batched_hot_native_fits=24576,
+                        hot_batch_per_interpreter=512,
                         rows=rows),indent=2,allow_nan=False)+"\n",encoding="utf-8")
     Path("numba_persistent_cache_report.md").write_text(report,encoding="utf-8")
     print(report,flush=True)
