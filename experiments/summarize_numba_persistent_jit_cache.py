@@ -38,8 +38,8 @@ def validate_fit(f,classes,require_cpu=True):
          positive(f["wall_ns"]) and
          (f["cpu_ns"]>0 or not require_cpu),
          "missing first-process CPU or wall time")
-    must(f["wall_ns"]>=f["cpu_ns"]*.6,
-         "gross timer miscalibration")
+    # process_time_ns sums CPU used by all process threads: Numba/LLVM
+    # may legitimately report CPU > wall. No universal CPU/wall ratio bound.
     must(f["original_backend_name"]=="pcc_propagate_numba" and
          f["mode"]=="early_stopping" and f["iteration_cap"]==300,
          "not true Numba native production call")
