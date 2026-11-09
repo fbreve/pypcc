@@ -59,10 +59,11 @@ from pcc_graph import build_knn_graph
 from pcc_validation import validate_finite, validate_seed
 
 try:
-    from pcc_numba import pcc_step_numba
+    from pcc_numba import pcc_step_numba, pcc_propagate_numba
     _HAS_NUMBA = True
 except ImportError:
     pcc_step_numba = None
+    pcc_propagate_numba = None
     _HAS_NUMBA = False
 
 try:
@@ -450,7 +451,11 @@ class ParticleCompetitionAndCooperation:
         )
 
         unlabeled = node.label == -1
-        node.label[unlabeled] = np.argmax(node.dominance[unlabeled, :], axis=1)
+        if propagate_fn is pcc_propagate_numba:
+            # Numba's C-order dominance avoids a large masked-row copy.
+            node.label[unlabeled] = np.argmax(node.dominance, axis=1)[unlabeled]
+        else:
+            node.label[unlabeled] = np.argmax(node.dominance[unlabeled, :], axis=1)
 
         row_sums = np.sum(self.owndeg, axis=1, keepdims=True)
         row_sums[row_sums == 0.0] = 1.0
