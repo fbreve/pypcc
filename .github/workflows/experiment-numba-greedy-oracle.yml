@@ -1,8 +1,6 @@
 name: "Experiment: exact-trajectory original Numba greedy oracle CPU sensitivity"
 
 on:
-  push:
-    branches: [experiment/numba-greedy-oracle-replay-v1]
   workflow_dispatch:
 
 permissions:
