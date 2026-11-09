@@ -1,8 +1,6 @@
 name: "Experiment: source-exact argmax smoke"
 
 on:
-  push:
-    branches: [experiment/argmax-full-rows-v1]
   workflow_dispatch:
 
 permissions:
