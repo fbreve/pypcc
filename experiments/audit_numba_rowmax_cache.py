@@ -258,10 +258,14 @@ def run_case(case,arrays,original,candidate):
     graph_sha=[array_hash(arrays[n]) for n in ("neighbors","degrees")]
     for name,func in (("original",original.pcc_propagate_numba),
                       ("candidate",candidate.pcc_propagate_numba)):
-        # Compile C/F layouts before the complete-fit CPU timer.
-        data=model_fit(arrays,case,func,True,cap=2)
-        if data["iteration_cap"]!=2:raise AssertionError("warmup cap drift")
-        warmups.append(dict(variant=name,**data))
+        # Warm BOTH distinct compiled propagators per variant. The candidate
+        # uses cached specialization ON, original specialization OFF; omitting
+        # the fixed warmup would time the first Numba JIT and fake a speedup.
+        for mode in MODES:
+            data=model_fit(arrays,case,func,mode,cap=2)
+            if data["effective_iterations"]!=2:
+                raise AssertionError("warmup did not execute two original updates")
+            warmups.append(dict(variant=name,**data))
     for mode in MODES:
         first=None
         for rep in range(REPS):
@@ -367,7 +371,7 @@ def main():
     Path("numba_rowmax_results.json").write_text(
         json.dumps(output,indent=2,allow_nan=False)+"\n",encoding="utf-8")
     print("PASS 96 original/candidate full-fit CPU pairs, 48 tracemalloc pairs,"
-          " 8*201 bitwise potential checkpoints on this host, 8 warmup pairs",
+          " 8*201 bitwise potential checkpoints on this host, 16 warmup pairs",
           flush=True)
 
 
