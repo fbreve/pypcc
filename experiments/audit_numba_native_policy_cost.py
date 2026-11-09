@@ -148,10 +148,13 @@ def warmup_pair(control, observed, labels, pgrd):
     x, xc, _ = control
     y, yt, times = observed
     p = run_fit(x, xc, labels, pgrd, 2, False)
+    orig_state = sha_state(state_refs(x, p))
+    orig_rng = float(peek_original_numba_rng())
     q = run_fit(y, yt, labels, pgrd, 2, True)
-    assert sha_state(state_refs(x, p)) == sha_state(state_refs(y, q))
+    prof_state = sha_state(state_refs(y, q))
+    prof_rng = float(peek_original_numba_rng())
+    assert orig_state == prof_state and orig_rng == prof_rng
     assert len(times) == 1
-    assert float(peek_original_numba_rng()) == float(peek_original_numba_rng()) or True
     times.clear()
 
 
