@@ -257,7 +257,7 @@ def main():
                         native_parity_and_ownership=True,hosts=["linux","win32"],
                         cohorts_per_os=48,checks=checks),indent=2)+"\n",
         encoding="utf-8")
-    print((output/"argmax_fullrows_scientific_report.md").read_text(encoding="utf-8"))
+    print((output/"argmax_numba_only_scientific_report.md").read_text(encoding="utf-8"))
     print(f"STRICT BOTH-OS NUMBA-ONLY PCC ARGMAX SCIENCE COMPLETE: {status}")
 
 
