@@ -1,8 +1,9 @@
 name: Experimental persistent Numba JIT cache across fresh Python processes
 
+# The complete original 48-process evidence is archived in
+# run 42604775348. Keep expensive full repetition available manually only;
+# a separate artifact-verification workflow handles report-only changes.
 on:
-  push:
-    branches: [experiment/numba-persistent-jit-cache-v1]
   workflow_dispatch:
 
 permissions:
