@@ -1,0 +1,66 @@
+name: Experimental persistent Numba JIT cache across fresh Python processes
+
+on:
+  push:
+    branches: [experiment/numba-persistent-jit-cache-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-fresh-process-cpu:
+    name: Original vs disk-loaded Numba code (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install exact original native Numba and Cython PCC dependencies
+        run: python -m pip install -e ".[numba]"
+      - name: 24 genuine fresh native Python interpreters and original source guard
+        run: python -m experiments.audit_numba_persistent_jit_cache
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-persistent-jit-${{ matrix.os }}
+          path: numba_persistent_cache_results.json
+          if-no-files-found: warn
+
+  mandatory-both-host-source-decision:
+    name: Exact 48 Python processes and 96 native fit JIT-cache CPU verdict
+    needs: frozen-fresh-process-cpu
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-persistent-jit-*
+          path: inputs
+          merge-multiple: false
+      - name: Strict exact fresh-process Numba source, stop, RNG, cache hit and CPU decision
+        run: python -m experiments.summarize_numba_persistent_jit_cache inputs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numba-persistent-jit-scientific-decision
+          path: |
+            numba_persistent_cache_report.md
+            numba_persistent_cache_decision.json
+          if-no-files-found: error
