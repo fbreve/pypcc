@@ -200,14 +200,14 @@ def run():
                 for backend_index,backend in enumerate(order):
                     for mode_index,mode in enumerate(mode_order):
                         info,rng=native_measure(arrays,case,backend,mode)
-                        row=dict(case_id=case.case_id,dataset=dataset,
-                                 seed=label_seed,backend=backend,mode=mode,
-                                 rep=rep,backend_order=list(order),
-                                 mode_order=list(mode_order),
-                                 backend_order_index=backend_index,
-                                 mode_order_index=mode_index,
-                                 fixture_sha=fp,numpy_rng_sha=rng,
-                                 **info)
+                        row=dict(info)
+                        row.update(case_id=case.case_id,dataset=dataset,
+                                   seed=label_seed,backend=backend,mode=mode,
+                                   rep=rep,backend_order=list(order),
+                                   mode_order=list(mode_order),
+                                   backend_order_index=backend_index,
+                                   mode_order_index=mode_index,
+                                   fixture_sha=fp,numpy_rng_sha=rng)
                         key=(backend,mode)
                         compare=(info["state_hashes"],info["effective_iterations"],
                                  info["stop_reason"],info["checks"],
