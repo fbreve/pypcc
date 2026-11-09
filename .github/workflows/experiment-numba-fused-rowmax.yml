@@ -1,0 +1,82 @@
+name: "Experiment: source-exact Numba dominance-rowmax fusion A/B"
+
+on:
+  push:
+    branches: [experiment/numba-fused-rowmax-corder-heldout-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-native:
+    name: "Source-exact Numba full-fit fused maximum (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build original NumPy/Numba/Cython from pinned source
+        run: python -m pip install -e ".[numba]"
+      - name: Check Python science scripts
+        run: >-
+          python -m py_compile
+          experiments/audit_numba_fused_rowmax.py
+          experiments/summarize_numba_fused_rowmax.py
+      - name: Source-exact real Numba smoke, original post-argmax path and RNG parity
+        run: >-
+          python -m experiments.audit_numba_fused_rowmax
+          --smoke --output .cache/numba-rowmax-smoke.json
+      - name: Frozen 20-cohort full original-source CPU and state campaign
+        run: >-
+          python -m experiments.audit_numba_fused_rowmax
+          --output .cache/numba-fused-rowmax-native-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-fused-rowmax-native-raw-${{ matrix.os }}
+          path: .cache/numba-fused-rowmax-native-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-two-host:
+    name: "Strict original-source Numba CPU and eight-state two-OS gate"
+    needs: original-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-fused-rowmax-native-raw-*
+          path: .cache/numba-rowmax-original-raw
+          merge-multiple: false
+      - name: Independently require exact source, graph, states, RNG and prospective CPU gate
+        run: >-
+          python -m experiments.summarize_numba_fused_rowmax
+          .cache/numba-rowmax-original-raw
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-fused-rowmax-strict-decision
+          path: |
+            numba_fused_rowmax_report.md
+            numba_fused_rowmax_decision.json
+          if-no-files-found: error
+          retention-days: 90
