@@ -1,0 +1,80 @@
+name: "Experiment: repeated original PCC fit initialization and ownership"
+
+on:
+  push:
+    branches: [experiment/repeated-fit-initialization-profile-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-fit-profile:
+    name: "Original vs observed repeated fits (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install unchanged full native PCC distribution
+        run: python -m pip install -e ".[numba]"
+      - name: Validate scientific programs
+        run: >-
+          python -m py_compile
+          experiments/audit_repeated_fit_initialization.py
+          experiments/summarize_repeated_fit_initialization.py
+      - name: Verify source, instrumentation, and actual native backends
+        run: >-
+          python -m experiments.audit_repeated_fit_initialization
+          --smoke --output .cache/repeated-fit-smoke.json
+      - name: Measure 60 original-source cohorts and exact same-model replay
+        run: >-
+          python -m experiments.audit_repeated_fit_initialization
+          --output .cache/repeated-fit-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repeated-fit-raw-${{ matrix.os }}
+          path: .cache/repeated-fit-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-aggregate:
+    name: "Strict independent both-OS original repeated-fit profile"
+    runs-on: ubuntu-latest
+    needs: original-fit-profile
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: repeated-fit-raw-*
+          path: .cache/paired-profiles
+          merge-multiple: false
+      - name: Verify every source, graph, mask, state, RNG, fit and phase
+        run: >-
+          python -m experiments.summarize_repeated_fit_initialization
+          .cache/paired-profiles .cache/repeated-fit-science
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repeated-fit-strict-observation
+          path: .cache/repeated-fit-science
+          if-no-files-found: error
+          retention-days: 90
