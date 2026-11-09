@@ -1,0 +1,41 @@
+name: "Experiment: revalidate frozen native phase artifacts without rerunning fits"
+
+on:
+  push:
+    branches: [experiment/fit-non-native-phase-attribution-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  strict-frozen-artifact-recheck:
+    name: "Independent strict two-OS original 36-cohort artifact aggregation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download ORIGINAL successful Linux and Windows native source run
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42667018276
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: phase-original-raw-*
+          path: .cache/original-frozen-raw
+          merge-multiple: false
+      - name: Verify original source control and all exact 2-OS state/phase evidence
+        run: >-
+          python -m experiments.summarize_fit_non_native_phase
+          .cache/original-frozen-raw .cache/original-frozen-final
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-fit-non-native-frozen-strict-decision
+          path: .cache/original-frozen-final
+          if-no-files-found: error
+          retention-days: 90
