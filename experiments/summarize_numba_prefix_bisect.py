@@ -228,7 +228,8 @@ def report(scores,checks,decision):
              " batches, separate OS and untrimmed pairs were retained.",
              " Memory peaks are traced Python/NumPy only, not native RSS.",
              " Raw Actions archive ZIPs expire under provider retention."]
-    return "\n".join(lines)+"\n
+    return "\n".join(lines)+"\n"
+
 
 def main(root):
     files=sorted(Path(root).rglob("numba-prefix-bisect-native-*.json"))
