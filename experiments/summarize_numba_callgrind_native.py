@@ -19,7 +19,7 @@ def check(cond,reason):
         raise AssertionError(reason)
 
 
-def read_ir(path):
+def read_ir(path, native_entries):
     contents=Path(path).read_text(encoding="utf-8",errors="replace").splitlines()
     mapped={}
     events=None
@@ -69,7 +69,28 @@ def read_ir(path):
           "exclusive instruction count != actual Callgrind global totals "
           +repr((accounted,total)))
     check(total>1000000,"instrumentation apparently did not include a real kernel")
-    top=sorted(counters.items(),key=lambda p:(-p[1],p[0]))
+    # Callgrind labels native Numba LLVM anonymous JIT code by hex entry
+    # address. Resolve ONLY exact same-process LLVM native entry pointers.
+    exact_addresses={}
+    for source_name, entries in native_entries.items():
+        for entry in entries:
+            address=int(entry["address"],16)
+            symbol=source_name
+            if address in exact_addresses and exact_addresses[address]!=symbol:
+                raise AssertionError("non-unique original Numba LLVM entry provenance")
+            exact_addresses[address]=symbol
+    resolved={}
+    for name,count in counters.items():
+        label=name
+        if re.fullmatch(r"0x[0-9a-fA-F]+",name):
+            label=exact_addresses.get(int(name,16),name)
+        resolved[label]=resolved.get(label,0)+count
+    top=sorted(resolved.items(),key=lambda p:(-p[1],p[0]))
+    matched_entries=sum(
+        count for address,count in (
+            (int(name,16),cost) for name,cost in counters.items()
+            if re.fullmatch(r"0x[0-9a-fA-F]+",name))
+        if address in exact_addresses)
     groups={
         "numba_step":("pcc_step_numba_sequential",),
         "numba_propagate":("pcc_propagate_numba_sequential",),
@@ -89,7 +110,9 @@ def read_ir(path):
         top_functions=[dict(name=name,instructions=count,
                             percentage=round(100*count/total,4))
                        for name,count in top[:50]],
-        function_count=len(top))
+        function_count=len(top),
+        exact_native_entry_ir=matched_entries,
+        native_source_entries=exact_addresses.__len__())
 
 
 def main(path):
@@ -134,13 +157,17 @@ def main(path):
               stop["checks"]==0 and
               stop["stalled_checks"]==0,
               "not exact frozen 1000-step original fixed propagation")
-        check(case["original_compiled_step_signatures"],
-              "no compiled Numba native step signed proof")
+        check(case["original_compiled_propagation_signatures"],
+              "no compiled original Numba propagator signature")
+        entries=case["native_jit_exact_entry_addresses"]
+        check("_pcc_propagate_numba_sequential" in entries and
+              entries["_pcc_propagate_numba_sequential"],
+              "missing same-process original LLVM native entry pointer")
         raw_files=list(case_file.parent.glob(
             f"callgrind.out.{case['callgrind_pid']}"))
         check(len(raw_files)==1,
               "native Callgrind profile was not archived for actual source PID")
-        profile=read_ir(raw_files[0])
+        profile=read_ir(raw_files[0],entries)
         observations.append(dict(
             dataset=ds,seed=seed,fixture_sha=case["fixture_sha"],
             graph_sha=case["graph_sha"],
@@ -189,7 +216,7 @@ def main(path):
         for f in r["top_functions"][:12]:
             lines.append(
                 f"- {f['percentage']:.2f}%  — {f['instructions']:,} Ir — "
-                f"\`{f['name'][:140]}\`")
+                f"`{f['name'][:140]}`")
     lines.extend([
         "",
         f"**Strict diagnostic verdict: {verdict}**. All four original",
