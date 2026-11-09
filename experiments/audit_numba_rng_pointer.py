@@ -167,7 +167,7 @@ def fit_args(cap,mode,seed,pgrd):
                 p_grd=pgrd,delta_v=.1,deltap=1.,dexp=2.,es_chk=2000)
 
 
-def state(model,pred,metric,cap,mode,seed):
+def state(model,pred,metric,cap,mode,seed,read_rng=True):
     if cap==0:
         check(metric["effective_iterations"]==0,
               "zero-iteration original Numba stop contract changed")
@@ -191,14 +191,14 @@ def state(model,pred,metric,cap,mode,seed):
         "distances":array_hash(model.part.dist_table),
         "owndeg":array_hash(model.owndeg),
     }
-    return dict(state_hashes=states,rng_next=float(rng_peek()),
+    return dict(state_hashes=states,
+                rng_next=float(rng_peek()) if read_rng else None,
                 mapped_labels_hash=array_hash(model.mapped_labels),
                 effective_iterations=metric["effective_iterations"],
                 stop_reason=metric["stop_reason"],
                 checks=metric["checks"],stalled_checks=metric["stalled_checks"],
                 stop_max=metric["stop_max"],
                 cap=cap,mode="monitored" if mode else "fixed",
-                p_grd=seed if False else None,
                 native_dominance_layout="C" if expected_c else "F")
 
 
@@ -222,27 +222,34 @@ def one_fit(arrays,func,mode,cap=30000,seed=0,
 
 def batched_cpu(arrays,func,mode):
     models=[fresh_model(arrays,func) for _ in range(BATCH_FITS)]
+    predictions=[None]*BATCH_FITS
     start_cpu=time.process_time_ns()
     start_wall=time.perf_counter_ns()
-    for model,metric in models:
-        pred=model.fit_predict(arrays["labels"],**fit_args(30000,mode,0,.5))
+    for i,(model,metric) in enumerate(models):
+        predictions[i]=model.fit_predict(
+            arrays["labels"],**fit_args(30000,mode,0,.5))
     wall=time.perf_counter_ns()-start_wall
     cpu=time.process_time_ns()-start_cpu
     check(cpu>0 and wall>0,"original true 8-fit CPU/wall batch not measured")
+    # The original Numba MT state contains the FINAL eighth seeded fit.
+    # Probe it ONCE after the clock; probing after earlier results would
+    # change RNG state and would corrupt the next-native-sample criterion.
     observed=[]
-    for model,metric in models:
-        observed.append(state(model,model.node.label,metric,30000,mode,0))
-    # The actual prediction from each original public fit is not stored by
-    # PCC; reconstruction of inverse mapping must preserve returned labels.
-    # We use a new result array from the model's mapped labels here and
-    # validate exact native state otherwise.
+    for i,((model,metric),pred) in enumerate(zip(models,predictions)):
+        observed.append(state(model,pred,metric,30000,mode,0,
+                              read_rng=(i==BATCH_FITS-1)))
+    invariant=("state_hashes","mapped_labels_hash",
+               "effective_iterations","stop_reason","checks",
+               "stalled_checks","stop_max","native_dominance_layout")
+    same=all(all(row[key]==observed[0][key] for key in invariant)
+             for row in observed)
     return dict(total_cpu_ns=cpu,total_wall_ns=wall,
                 mean_fit_cpu_ns=cpu/BATCH_FITS,
                 mean_fit_wall_ns=wall/BATCH_FITS,
                 sample_count=BATCH_FITS,
                 final=observed[-1],
-                all_same=all(o==observed[0] for o in observed),
-                replayed_hashes=[o["state_hashes"] for o in observed])
+                all_same=same,
+                each_fit_full_state_hashes=[o["state_hashes"] for o in observed])
 
 
 def identical(x,y,context):
