@@ -1,0 +1,7 @@
+# Prospective clarification to frozen Numba rowmax V1 — JIT warmup counts
+
+This addendum is committed **before any native timing or GitHub Actions experiment run**. It does not alter the immutable original protocol, the CPU, memory or exact parity gates, workloads, seeds, or number of timed/peak/checkpoint samples.
+
+The original protocol expected 16 original/candidate *warmup pairs* across two OS, one per dataset×label-mask×host. Source review exposed that the Numba baseline **fixed** propagation and the candidate **cached monitored** propagation are separate lazy-compiled `@njit` kernels; warming only one mode would place a first JIT compilation inside one of the timed original-vs-candidate pairs. Therefore we require **one 2-iteration warmup original/candidate pair for EACH mode** and each dataset×seed×OS, i.e. **32 warmup pairs / 64 fresh warmup fits** total (16 pairs / 32 warmup fits per host), not 16 pairs. Warming both modes is necessary for unbiased native CPU comparison. All warmup outcomes are retained and strictly audited; they do not enter any CPU median or observed full-fit result. Both original and candidate kernels, including the original compiled sequential path, are JIT-precompiled separately on actual C/F layouts.
+
+The **frozen 192 paired full-fit CPU trials, 96 paired tracked memory trials, 16 separate 201-check original-vs-verified candidate parity trials, same six-array+RNG+stop semantics, original graph corpus and unchanged CPU/RAM GO criteria remain exactly as preregistered**. No production source file changes.
