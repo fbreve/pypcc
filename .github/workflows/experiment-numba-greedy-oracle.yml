@@ -1,0 +1,102 @@
+name: "Experiment: exact-trajectory original Numba greedy oracle CPU sensitivity"
+
+on:
+  push:
+    branches: [experiment/numba-greedy-oracle-replay-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  true-source-oracle:
+    name: "Original / recorded / RNG-exact oracle native PCC (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual original source / Numba and Cython
+        run: python -m pip install -e ".[numba]"
+      - name: Compile scientific source-derived clone and strict independent report
+        run: >-
+          python -m py_compile
+          experiments/audit_numba_greedy_oracle.py
+          experiments/summarize_numba_greedy_oracle.py
+      - name: Exact original weighted-path/tape/RNG Digits smoke and zero/five controls
+        run: >-
+          python -m experiments.audit_numba_greedy_oracle
+          --smoke --output .cache/numba-greedy-oracle-smoke.json
+      - name: Frozen 48-cohort original unmodified vs identical-trajectory oracle full-fit CPU
+        run: >-
+          python -m experiments.audit_numba_greedy_oracle
+          --output .cache/numba-greedy-oracle-native-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-greedy-oracle-native-raw-${{ matrix.os }}
+          path: .cache/numba-greedy-oracle-native-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-oracle-audit:
+    name: "Strict 2-host 48-cohort exact source/RNG + archived #231/#232 replay"
+    needs: true-source-oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download this-run original recorder and replay JSON
+        uses: actions/download-artifact@v4
+        with:
+          pattern: numba-greedy-oracle-native-raw-*
+          path: .cache/oracle-two-host/new
+          merge-multiple: false
+      - name: Download frozen real-original #231 Linux/Windows native source data
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42694136277
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-native-policy-original-raw-*
+          path: .cache/oracle-two-host/prior231
+          merge-multiple: false
+      - name: Download frozen original-path-counter #232 Linux/Windows data
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42703206929
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-path-counts-native-raw-*
+          path: .cache/oracle-two-host/prior232
+          merge-multiple: false
+      - name: Refuse all source/graph/tape/native draw/stop/old-result mismatches
+        run: >-
+          python -m experiments.summarize_numba_greedy_oracle
+          .cache/oracle-two-host
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-greedy-oracle-scientific-strict-report
+          path: |
+            numba_greedy_oracle_report.md
+            numba_greedy_oracle_decision.json
+          if-no-files-found: error
+          retention-days: 90
