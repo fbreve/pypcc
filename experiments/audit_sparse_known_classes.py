@@ -39,9 +39,10 @@ BACKENDS=("numpy","numba","cython")
 CPU_PAIRS_MICRO=25
 PEAK_PAIRS_MICRO=5
 FULL_PAIRS_REAL=2
-FULL_FITS_REAL=4
+FULL_FITS_REAL={"numpy":4,"numba":32,"cython":64}
 FULL_PAIRS_RING=2
-FULL_FITS_RING=8
+FULL_FITS_RING=32
+FULL_FITS_DENSE=128
 RING_SIZES=(30000,100000)
 RING_CLASSES=(2,10,50)
 RING_CAPS=(0,5)
@@ -360,7 +361,7 @@ def real_native_trials(classes):
                             results[variant]=run_batch(
                                 classes[variant],arr["neighbors"],
                                 arr["degrees"],10,arr["labels"],
-                                backend,1000,mode,FULL_FITS_REAL)
+                                backend,1000,mode,FULL_FITS_REAL[backend])
                         exact_pair(results["original"],results["candidate"],
                                    (ds,seed,backend,mode,rep))
                         rows.append(dict(dataset=ds,seed=seed,kind="real",
@@ -419,10 +420,10 @@ def sparse_and_dense_control(classes):
         for variant in ("candidate","original"):
             results[variant]=run_batch(
                 classes[variant],neighbors,degrees,2,labels,
-                "numba",0,False,FULL_FITS_RING)
+                "numba",0,False,FULL_FITS_DENSE)
         exact_pair(results["original"],results["candidate"],
                    ("small-dense",n))
-        rows.append(dict(n=n,kind="dense",count=FULL_FITS_RING,
+        rows.append(dict(n=n,kind="dense",count=FULL_FITS_DENSE,
                          graph_sha=[array_hash(neighbors),array_hash(degrees)],
                          labels_sha=array_hash(labels),**results))
     # Original no-fit must return SAME user's labels object, warn exactly
