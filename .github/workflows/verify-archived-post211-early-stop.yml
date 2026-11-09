@@ -1,0 +1,49 @@
+name: Verify archived post211 native early-stop CPU evidence
+
+on:
+  push:
+    branches: [experiment/post211-native-early-stop-baseline-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reuse-exact-native-results:
+    name: Verify frozen 216 complete original native fits without rerunning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require same original production and experiment runner Git blobs
+        shell: bash
+        run: |
+          git diff --exit-code d25d5446b7fa51cc0264a496b7eea87dbb11f1fc HEAD -- \
+            pcc.py pcc_graph.py pcc_numpy.py pcc_numba.py pcc_step.pyx \
+            pcc_validation.py setup.py benchmarks/
+          git diff --exit-code a1171f08e51ba5ed54d802d2308aad405cf1838f HEAD -- \
+            experiments/audit_post211_early_stop.py \
+            tests/test_post211_early_stop_protocol.py
+          git cat-file -e a1171f08e51ba5ed54d802d2308aad405cf1838f^{commit}
+      - name: Download untouched complete Linux/Windows native results from run 42557056732
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 42557056732
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: post211-early-stop-*
+          path: reports
+          merge-multiple: false
+      - name: Strict full two-host corpus, repeated states, original stopping and seed parity
+        run: python experiments/summarize_post211_early_stop.py reports
+      - name: Upload original full two-host report with source-pinned verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: post211-early-stop-strict-archived-report
+          path: post211_early_stop_report.md
+          if-no-files-found: error
