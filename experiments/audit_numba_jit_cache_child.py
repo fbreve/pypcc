@@ -71,8 +71,8 @@ def native_fit(arrays,backend,classes,cap):
         raise AssertionError("true native Numba dominance layout changed")
     if metrics.get("effective_iterations")!=cap or metrics.get("stop_reason")!="max_iter":
         raise AssertionError("short native no-stop compilation sample changed")
-    if not 0<cpu_ns or not 0<wall_ns:
-        raise AssertionError("missing timed native CPU")
+    if cpu_ns < 0 or wall_ns <= 0:
+        raise AssertionError("negative CPU or absent wall time; Windows sub-ms CPU may round to zero")
     rng_next=float(next_original_numba_rng_draw())
     if not 0<=rng_next<1:
         raise AssertionError("invalid Numba next native RNG sample")
@@ -86,6 +86,55 @@ def native_fit(arrays,backend,classes,cap):
                 layout=got_layout,mode="early_stopping",
                 iteration_cap=cap,
                 original_backend_name=actual.__name__)
+
+
+HOT_BATCH_REPETITIONS=512
+
+
+def high_resolution_already_hot_cpu(arrays,backend,classes,expected,cap=300):
+    """Amortize coarse Windows CPU clock ticks across 512 real native fits."""
+    model=PCC(impl="numba")
+    model.set_graph(arrays["neighbors"],arrays["degrees"],k_nn=10)
+    source_fn=backend.pcc_propagate_numba
+    observed={}
+
+    def same_native_fn(*args,**kwargs):
+        kwargs["return_info"]=True
+        observed.update(source_fn(*args,**kwargs))
+        return None
+
+    same_native_fn.__name__="pcc_propagate_numba"
+    model._get_backend_fn=lambda:same_native_fn
+
+    before_cpu=time.process_time_ns()
+    before_wall=time.perf_counter_ns()
+    for _ in range(HOT_BATCH_REPETITIONS):
+        predicted=model.fit_predict(
+            arrays["labels"],max_iter=cap,early_stop=True,seed=0,
+            p_grd=.5,delta_v=.1,deltap=1.0,dexp=2.0,es_chk=2000)
+    elapsed_wall=time.perf_counter_ns()-before_wall
+    elapsed_cpu=time.process_time_ns()-before_cpu
+    if elapsed_cpu<=0 or elapsed_wall<=0:
+        raise AssertionError("512 original Numba fits still lack measurable CPU time")
+    hashes={k:array_hash(v) for k,v in dict(
+        predictions=predicted,dominance=model.node.dominance,
+        positions=model.part.curnode,strengths=model.part.strength,
+        distances=model.part.dist_table,owndeg=model.owndeg).items()}
+    actual_rng=float(next_original_numba_rng_draw())
+    stop_info=dict(
+        (key,observed[key]) for key in (
+            "effective_iterations","stop_reason","checks",
+            "stalled_checks","stop_max"))
+    if (hashes!=expected["state_hashes"] or
+            actual_rng!=expected["native_rng_next"] or
+            stop_info!=expected["stop_info"]):
+        raise AssertionError("reused-model high-resolution hot batch changed original native PCC")
+    layout="C" if model.node.dominance.flags.c_contiguous else "F"
+    if layout!=expected["layout"]:
+        raise AssertionError("hot batch changed native C/F memory layout")
+    return dict(count=HOT_BATCH_REPETITIONS,cpu_ns=elapsed_cpu,
+                wall_ns=elapsed_wall,last_native_state_hashes=hashes,
+                last_numba_rng_next=actual_rng,last_stop_info=stop_info)
 
 
 def main():
@@ -111,6 +160,7 @@ def main():
     first=native_fit(arrays,backend,classes,cap=300)
     # Hot call: all native specializations have already been compiled/loaded.
     second=native_fit(arrays,backend,classes,cap=300)
+    batch=high_resolution_already_hot_cpu(arrays,backend,classes,first,cap=300)
     for field in ("state_hashes","native_rng_next","stop_info","layout"):
         if first[field]!=second[field]:
             raise AssertionError("same native module repeated seeded fits changed "+
@@ -127,12 +177,13 @@ def main():
             array_hash(arrays["neighbors"]),array_hash(arrays["degrees"])],
         labels_sha=array_hash(arrays["labels"]),
         real_nodes=nodes,classes=classes,
-        first=first,hot=second)
+        first=first,hot=second,hot_batch=batch)
     Path(a.out).write_text(json.dumps(output,indent=2,allow_nan=False)+"\n",
                            encoding="utf-8")
     print(f"NATIVE-FIRST-FIT {a.variant} {a.phase} {case.case_id}: "
           f"first process CPU {first['cpu_ns']/1e6:.3f} ms; "
-          f"hot CPU {second['cpu_ns']/1e6:.3f} ms",
+          f"hot CPU (single) {second['cpu_ns']/1e6:.3f} ms; "
+          f"hot batch per fit CPU {batch['cpu_ns']/batch['count']/1e6:.3f} ms",
           flush=True)
 
 
