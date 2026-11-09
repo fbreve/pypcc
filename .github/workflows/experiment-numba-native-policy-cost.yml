@@ -1,0 +1,82 @@
+name: "Experiment: original Numba policy and undirected degree native-wall profile"
+
+on:
+  push:
+    branches: [experiment/numba-native-policy-cost-profile-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-native:
+    name: "Original Numba policy / degree full fit (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual NumPy/Numba/Cython PCC package
+        run: python -m pip install -e ".[numba]"
+      - name: Compile scientific original source observer and strict report
+        run: >-
+          python -m py_compile
+          experiments/audit_numba_native_policy_cost.py
+          experiments/summarize_numba_native_policy_cost.py
+      - name: Prove current master Numba dispatch and 0/5 native parity on a real Digits smoke case
+        run: >-
+          python -m experiments.audit_numba_native_policy_cost
+          --smoke --output .cache/original-policy-smoke.json
+      - name: Complete 108-cohort original native policy and graph-degree CPU campaign
+        run: >-
+          python -m experiments.audit_numba_native_policy_cost
+          --output .cache/numba-native-policy-original-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-native-policy-original-raw-${{ matrix.os }}
+          path: .cache/numba-native-policy-original-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  original-two-host-audit:
+    name: "Strict independent 108-cohort source, 8-state and RNG audit"
+    needs: original-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-native-policy-original-raw-*
+          path: .cache/original-numba-policy-by-os
+          merge-multiple: false
+      - name: Enforce exact both-host source, 108 cohorts, CPU timings and state parity
+        run: >-
+          python -m experiments.summarize_numba_native_policy_cost
+          .cache/original-numba-policy-by-os
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-numba-policy-degree-scientific-report
+          path: |
+            numba_native_policy_cost_report.md
+            numba_native_policy_cost_decision.json
+          if-no-files-found: error
+          retention-days: 90
