@@ -1,0 +1,93 @@
+name: "Experiment: original Numba particle-movement path counters"
+
+on:
+  push:
+    branches: [experiment/numba-native-path-counters-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  actual-numba:
+    name: "Original vs countered native Numba eight-state/RNG (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual original Numba and native Cython
+        run: python -m pip install -e ".[numba]"
+      - name: Compile both scientific scripts, do not edit production
+        run: >-
+          python -m py_compile
+          experiments/audit_numba_path_counters.py
+          experiments/summarize_numba_path_counters.py
+      - name: Require original full-row Numba argmax, 0/5 steps and Digits smoke exactness
+        run: >-
+          python -m experiments.audit_numba_path_counters
+          --smoke --output .cache/numba-path-counters-smoke.json
+      - name: Run all 162 preregistered genuine original/counted native PCC pairs
+        run: >-
+          python -m experiments.audit_numba_path_counters
+          --output .cache/numba-path-counts-native-${{ runner.os }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-path-counts-native-raw-${{ matrix.os }}
+          path: .cache/numba-path-counts-native-${{ runner.os }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  strict-immutable-original-audit:
+    name: "Two-host 162 native counter cohorts plus 108 frozen #231 replay checks"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: actual-numba
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download original and science sidecar evidence from this run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: numba-path-counts-native-raw-*
+          path: .cache/numba-counter-two-os/native
+          merge-multiple: false
+      - name: Download original source frozen native CPU output for independent prior-run replay
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42694136277
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-native-policy-original-raw-*
+          path: .cache/numba-counter-two-os/prior-231
+          merge-multiple: false
+      - name: Require real 162-cohort eight-state and exact prior 108-case source replay
+        run: >-
+          python -m experiments.summarize_numba_path_counters
+          .cache/numba-counter-two-os
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-native-path-counter-mechanism-strict-report
+          path: |
+            numba_path_counters_report.md
+            numba_path_counters_decision.json
+          if-no-files-found: error
+          retention-days: 90
