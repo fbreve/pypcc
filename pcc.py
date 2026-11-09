@@ -357,8 +357,16 @@ class ParticleCompetitionAndCooperation:
             # Optimization: Use Fortran order for tables often indexed by [neighbors, column]
             # This makes the columns contiguous in memory (better cache locality)
             self.mapped_labels = np.full(self.labels.shape, -1, dtype=np.int64)
-            for lbl, idx in self.label_to_idx.items():
-                self.mapped_labels[self.labels == lbl] = idx
+            if self.labels.size < 1024:
+                for lbl, idx in self.label_to_idx.items():
+                    self.mapped_labels[self.labels == lbl] = idx
+            else:
+                # Scan once for known homes; map only those labels in sorted
+                # unique_labels. The padded graph and fit backends stay intact.
+                known_rows = np.flatnonzero(self.labels != -1)
+                self.mapped_labels[known_rows] = np.searchsorted(
+                    self.unique_labels, self.labels[known_rows]
+                )
 
             self.p_grd = p_grd
             self.delta_v = delta_v
