@@ -71,7 +71,7 @@ def native_fit(arrays,backend,classes,cap):
         raise AssertionError("true native Numba dominance layout changed")
     if metrics.get("effective_iterations")!=cap or metrics.get("stop_reason")!="max_iter":
         raise AssertionError("short native no-stop compilation sample changed")
-    if not 0<cpu_ns and not 0<wall_ns:
+    if not 0<cpu_ns or not 0<wall_ns:
         raise AssertionError("missing timed native CPU")
     rng_next=float(next_original_numba_rng_draw())
     if not 0<=rng_next<1:
