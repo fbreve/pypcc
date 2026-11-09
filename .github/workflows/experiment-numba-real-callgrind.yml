@@ -1,9 +1,9 @@
 name: "Experiment: native Linux Numba Callgrind instruction hotspots"
 
-# Full collection rerun after frozen JIT-cache attribution addendum.
+# Four original native workloads are recorded in run 42625092167.
+# Only explicit manual dispatch may rerun expensive instruction profiling.
+# Report-only amendments should verify its immutable artifacts separately.
 on:
-  push:
-    branches: [experiment/numba-real-callgrind-hotspots-v1]
   workflow_dispatch:
 
 permissions:
