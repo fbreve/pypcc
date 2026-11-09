@@ -33,7 +33,7 @@ def read_ir(path):
     counters=defaultdict(int)
     current=None
     pending_call=False
-    position=re.compile(r"^(?:\d+|[+\\-*]\d*|\*)$")
+    position=re.compile(r"^(?:\d+|[+\-*]\d*|\*)$")
     for line in contents:
         value=line.strip()
         if not value or value.startswith("#"):
