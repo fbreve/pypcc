@@ -127,9 +127,6 @@ def source_clone():
     candidate=replace_one(candidate,
         "                                   dist_weights)\n        \n        if early_stop",
         "                                   dist_weights, science_counts)\n        \n        if early_stop")
-    candidate=replace_one(candidate,
-        "    return _pcc_step_numba_sequential(neib_list, neib_qt,",
-        "    return _pcc_step_numba_sequential(neib_list, neib_qt,")
     # The original pcc_step_numba is preserved for provenance but its
     # direct one-step call needs a private scratch counter to compile.
     candidate=replace_one(candidate,
@@ -202,7 +199,7 @@ def assert_counters(raw,iterations,n_particles):
     assert a[4]==a[6]+a[7],("weighted attempt/fallback",a)
     assert a[20]==a[9]+a[14],("destination",a)
     assert a[9]==a[10]+a[15]==a[12]+a[13],("destination category/acceptance",a)
-    assert a[11]<=a[9] and a[11]==a[9]-a[6]+(a[6]-a[9]+a[11]) if False else True
+    assert a[11]<=a[9],("non-greedy owner increments bounded by valid visits",a)
     assert a[12]==a[18]+a[19],("accepted branch composition",a)
     assert a[17]<=a[12] and a[16]<=a[9],("movement/distance bounds",a)
     assert a[5]<=a[4] and a[18]<=a[6] and a[19]<=a[7]+a[8]
@@ -291,10 +288,21 @@ def run_cohort(ds,k,seed,pgrd,mode,cap,stop,source,preparer):
     orig=make_model(graph,degree,k,ORIGINAL)
     counted=make_model(graph,degree,k,source,np.zeros(len(STAT),dtype=np.int64))
     results=[]
+    previous_refs=None
     for trial in range(2 if ds in ("digits","ring_8192_32") and
                        mode=="fixed_10000" else 1):
         oa=one_fit(*orig,labels,pgrd,cap,stop)
         cb=one_fit(*counted,labels,pgrd,cap,stop)
+        if previous_refs is not None:
+            for model,oldref,oldsha in previous_refs:
+                current=refs(model,model.node.label)
+                assert all(oldref[i] is not current[i] for i in range(1,len(STATE)))
+                assert [array_hash(x) for x in oldref[1:]]==oldsha, "old fitted arrays mutated"
+        previous_refs=[
+            (model,list(refs(model,model.node.label)),
+             [array_hash(x) for x in refs(model,model.node.label)[1:]])
+            for model in (orig[0],counted[0])
+        ]
         for field in ("state","stop","next_rng"):
             assert oa[field]==cb[field],(ds,k,seed,pgrd,mode,trial,field)
         results.append(dict(original=oa,counter=cb))
