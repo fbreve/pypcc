@@ -1,0 +1,71 @@
+name: Experimental complete fresh Python process Numba disk-cache benefit
+
+on:
+  push:
+    branches: [experiment/post216-full-process-numba-cache-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complete-data-to-first-result:
+    name: Real new-process application CPU and wall (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install merged production PCC and genuine NumPy/Numba/Cython
+        run: python -m pip install -e ".[numba]"
+      - name: Validate three source-pinned scientific scripts before expensive CPU tests
+        run: >-
+          python -m py_compile
+          experiments/run_post216_full_process_child.py
+          experiments/audit_post216_full_process_cache.py
+          experiments/summarize_post216_full_process_cache.py
+      - name: First Python spawn to first output; genuine 48 native full apps
+        run: python -m experiments.audit_post216_full_process_cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post216-full-process-numba-cache-${{ matrix.os }}
+          path: post216_full_app_cache_results.json
+          if-no-files-found: error
+
+  mandatory-two-os-scientific-verification:
+    name: Strict original vs production complete 96-process CPU and wall verdict
+    needs: complete-data-to-first-result
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: post216-full-process-numba-cache-*
+          path: collected
+          merge-multiple: false
+      - name: Demand two real OS 96 interpreter state, Numba cache and CPU/wall provenance
+        run: python -m experiments.summarize_post216_full_process_cache collected
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post216-full-process-numba-cache-scientific-verdict
+          path: |
+            post216_full_app_cache_report.md
+            post216_full_app_cache_decision.json
+          if-no-files-found: error
