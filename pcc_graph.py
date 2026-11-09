@@ -85,8 +85,9 @@ def build_knn_graph(data, k_nn=10, metric="minkowski", p=2, n_jobs=None):
     ones = np.ones(len(rows), dtype=np.int8)
     adj = csr_matrix((ones, (rows, cols)), shape=(n_nodes, n_nodes), dtype=np.int8)
     adj = adj + adj.T                       # symmetric
-    adj.setdiag(0)                          # remove self-loops (safety)
-    adj.eliminate_zeros()
+    if np.any(rows == cols):
+        adj.setdiag(0)                      # remove actual self-loops
+        adj.eliminate_zeros()
     adj.data[:] = 1                         # binarize
 
     # Convert back to dense neighbor lists
