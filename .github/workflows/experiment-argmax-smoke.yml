@@ -1,0 +1,42 @@
+name: "Experiment: source-exact argmax smoke"
+
+on:
+  push:
+    branches: [experiment/argmax-full-rows-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-smoke:
+    name: "Exact original PCC argmax source smoke (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install all original native PCC backends
+        run: python -m pip install -e ".[numba]"
+      - name: Syntax-validate science and independent aggregator
+        run: >-
+          python -m py_compile
+          experiments/audit_argmax_fullrows.py
+          experiments/summarize_argmax_fullrows.py
+      - name: Source derived original vs single-line argmax candidate
+        run: >-
+          python -m experiments.audit_argmax_fullrows
+          --smoke --output .cache/argmax-native-smoke.json
