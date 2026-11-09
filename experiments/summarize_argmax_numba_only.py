@@ -51,6 +51,10 @@ def rows_by_host(d):
     require(d["source_base"] == BASE and d["exact_production_source"], "pinned real original source")
     require(d["pairs"] == 6 and d["micro_functional_checks"] == 200,
             "prospective pairs/independent argmax semantics")
+    # Source-derived dispatcher identity must be exercised, not just present.
+    require(d.get("dispatch_branch_shapes") == {
+        "numba": [40, 10], "cython": [20, 10], "numpy": [20, 10]},
+        "actual Numba-only optimization branch never executed")
     require(tuple(d["cases"]) == CASES, "changed corpus")
     parsed={}
     for r in d["cohorts"]:
