@@ -98,12 +98,24 @@ def source_pair():
     assert candidate != original
     # Ensure the ONLY full-file edit is one JIT step and no altered wrapper
     assert candidate.replace(new, step, 1) == original
-    original_mod = types.ModuleType("_pcc_original_numba_frozen_rowmax")
-    candidate_mod = types.ModuleType("_pcc_scientific_fused_numba_rowmax")
-    exec(compile(original, BASE + ":pcc_numba.py", "exec"),
-         original_mod.__dict__)
-    exec(compile(candidate, BASE + ":fused_numba_rowmax", "exec"),
-         candidate_mod.__dict__)
+    # Production #216 explicitly uses @njit(cache=True). Numba requires a
+    # REAL on-disk Python source path as its disk-cache locator; a synthetic
+    # Git-blob compile filename is invalid (initial smoke erratum in PR #230).
+    # Only the scientific runner writes these two exact source copies.
+    staging = Path(".cache/numba_fused_rowmax_source").resolve()
+    def load_source(name, contents):
+        directory = staging / name
+        directory.mkdir(parents=True, exist_ok=True)
+        file = directory / "pcc_numba.py"
+        file.write_bytes(contents.encode("utf-8"))
+        mod_name = "_pcc_science_fused_rowmax_" + name
+        mod = types.ModuleType(mod_name)
+        mod.__file__ = str(file)
+        sys.modules[mod_name] = mod
+        exec(compile(contents, str(file), "exec"), mod.__dict__)
+        return mod
+    original_mod = load_source("original", original)
+    candidate_mod = load_source("candidate", candidate)
     assert original_mod.pcc_propagate_numba.__name__ == "pcc_propagate_numba"
     assert candidate_mod.pcc_propagate_numba.__name__ == "pcc_propagate_numba"
     return (original_mod.pcc_propagate_numba,
