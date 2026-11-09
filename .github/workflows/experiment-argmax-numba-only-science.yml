@@ -1,6 +1,8 @@
 name: "Experiment: frozen Numba-only argmax heldout CPU A/B"
 
 on:
+  push:
+    branches: [experiment/argmax-numba-only-v1]
   workflow_dispatch:
 
 permissions:
