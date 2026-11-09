@@ -454,6 +454,41 @@ def sparse_and_dense_control(classes):
     return rows,no_class
 
 
+def preflight():
+    """Cheap structural and actual native smoke check before full campaign."""
+    original,candidate=guard_source()
+    source_funcs={"original":compiled_phase(original),
+                  "candidate":compiled_phase(candidate)}
+    for n,c,kind in ((24,2,"sparse"),(1023,2,"sparse"),
+                     (1024,10,"sparse"),(1024,10,"unlabeled"),
+                     (1024,10,"single")):
+        values=deterministic_labels(n,c,kind)
+        seen={}
+        for name,block in source_funcs.items():
+            env=dict(np=np,prepared_labels=values)
+            exec(block,env)
+            seen[name]=env["prepared_classes"]
+        ensure(np.array_equal(seen["original"],seen["candidate"]),
+               "source-derived sparse class microphase smoke mismatch")
+    with tempfile.TemporaryDirectory(prefix="pypcc_classes_smoke_") as tmp:
+        modules={}
+        for name,source in (("original",original),("candidate",candidate)):
+            path=Path(tmp)/(name+".py")
+            path.write_text(source,encoding="utf-8",newline="\n")
+            modules[name]=load_true_pcc(path,"science_smoke_"+name)
+        adj,degree=ring_graph(24)
+        labels=deterministic_labels(24,2,"sparse")
+        for backend in BACKENDS:
+            pair={}
+            for name,PCC in modules.items():
+                pair[name]=run_batch(PCC,adj,degree,2,labels,backend,2,
+                                     False,1)
+            exact_pair(pair["original"],pair["candidate"],
+                       ("smoke",backend))
+    print("SMOKE ORIGINAL GIT PCC SOURCE PAIR and real 3-backend "
+          "two-iteration six native states/RNG/stop PASS",flush=True)
+
+
 def main():
     root=Path(__file__).resolve().parents[1]
     os.chdir(root)
@@ -502,4 +537,7 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    if "--smoke-only" in sys.argv:
+        preflight()
+    else:
+        main()
