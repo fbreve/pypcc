@@ -1,0 +1,85 @@
+name: "Experiment: native Linux Numba Callgrind instruction hotspots"
+
+on:
+  push:
+    branches: [experiment/numba-real-callgrind-hotspots-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-callgrind:
+    name: Frozen production Linux Numba native instruction profiling
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Exact original master source guard
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e b4c100bd22eeff1979a1a581bc73682b8c3705b8^{commit}
+          git diff --exit-code b4c100bd22eeff1979a1a581bc73682b8c3705b8 HEAD -- \
+            pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx \
+            pcc_validation.py setup.py benchmarks/
+          test "$(git rev-parse b4c100bd22eeff1979a1a581bc73682b8c3705b8:pcc_numba.py)" = \
+               "$(git hash-object pcc_numba.py)"
+      - name: Install original Numba/Cython/scikit-learn and Linux Callgrind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[numba]"
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind
+          valgrind --version
+          callgrind_control --version
+      - name: Four complete original 1000-step native Numba Callgrind snapshots
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile \
+            experiments/profile_numba_callgrind_case.py \
+            experiments/summarize_numba_callgrind_native.py
+          for dataset in wine digits; do
+            for seed in 73013 73117; do
+              folder="native_callgrind_evidence/${dataset}_${seed}"
+              mkdir -p "$folder"
+              valgrind --tool=callgrind \
+                --instr-atstart=no \
+                --cache-sim=no \
+                --branch-sim=no \
+                --collect-jumps=no \
+                --callgrind-out-file="$folder/callgrind.out.%p" \
+                --log-file="$folder/valgrind.stderr.txt" \
+                python -m experiments.profile_numba_callgrind_case \
+                --dataset "$dataset" --seed "$seed" \
+                --out "$folder/numba_callgrind_case_${dataset}_${seed}.json" \
+                > "$folder/native_stdout.txt" 2> "$folder/native_stderr.txt"
+              cat "$folder/native_stdout.txt"
+              find "$folder" -maxdepth 1 -type f -printf '%f %s bytes\n'
+            done
+          done
+      - name: Independent true Numba native instruction accounting and source/stop/RNG audit
+        run: python -m experiments.summarize_numba_callgrind_native native_callgrind_evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-real-callgrind-native-instruction-evidence
+          path: |
+            native_callgrind_evidence/
+            numba_callgrind_profile_report.md
+            numba_callgrind_profile_decision.json
+          if-no-files-found: warn
