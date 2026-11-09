@@ -1,9 +1,9 @@
 name: "Experiment: native Linux Numba Callgrind instruction hotspots"
 
-# The original four Callgrind samples are already running in
-# 42623887543. New code to strictly read or report the immutable native
-# artifact must NOT launch costly Callgrind profiling again.
+# Full collection rerun after frozen JIT-cache attribution addendum.
 on:
+  push:
+    branches: [experiment/numba-real-callgrind-hotspots-v1]
   workflow_dispatch:
 
 permissions:
@@ -58,7 +58,10 @@ jobs:
             for seed in 73013 73117; do
               folder="native_callgrind_evidence/${dataset}_${seed}"
               mkdir -p "$folder"
-              valgrind --tool=callgrind \
+              # Prevent cross-fixture JIT disk deserialization: independently
+              # compile the real original native step signature before profiling.
+              mkdir -p "$folder/private_jit_cache"
+              NUMBA_CACHE_DIR="$PWD/$folder/private_jit_cache" valgrind --tool=callgrind \
                 --instr-atstart=no \
                 --cache-sim=no \
                 --branch-sim=no \
