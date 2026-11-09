@@ -319,6 +319,45 @@ def run_cohort(ds,k,seed,pgrd,mode,cap,stop,source,preparer):
                 results=results,rollback_exact=True,post_argmax_active=True)
 
 
+def edge_and_post_argmax_probe(preparer,source):
+    """Confirm #228 actual full-row argmax and native 0/5-step parity."""
+    outcomes=[]
+    old_argmax=prod.np.argmax
+    for dataset,k,seed in (("digits",10,89021),
+                           ("ring_8192_32",2,89119),
+                           ("iris",10,89021)):
+        graph,degree,labels,fx=fixture(dataset,k,seed,preparer)
+        n=len(labels)
+        c=len(np.unique(labels[labels!=-1]))
+        for pgrd in POLICIES:
+            for cap in (0,5):
+                a=make_model(graph,degree,k,ORIGINAL)
+                b=make_model(graph,degree,k,source,
+                             np.zeros(len(STAT),dtype=np.int64))
+                shapes=[]
+                def spy(arr,*args,**kwargs):
+                    if getattr(arr,"ndim",0)==2 and (
+                        (args and args[0]==1) or kwargs.get("axis")==1
+                    ):
+                        shapes.append(tuple(arr.shape))
+                    return old_argmax(arr,*args,**kwargs)
+                prod.np.argmax=spy
+                try:
+                    original=one_fit(*a,labels,pgrd,cap,False)
+                    observed=one_fit(*b,labels,pgrd,cap,False)
+                finally:
+                    prod.np.argmax=old_argmax
+                assert shapes==[(n,c),(n,c)],("true #228 full argmax inactive",shapes)
+                for field in ("state","stop","next_rng"):
+                    assert original[field]==observed[field]
+                outcomes.append(dict(dataset=dataset,k=k,seed=seed,
+                    p_grd=pgrd,cap=cap,graph_sha=array_hash(graph),
+                    label_sha=array_hash(labels),original=original,
+                    counter=observed,full_row_argmax_verified=True))
+    assert len(outcomes)==3*3*2
+    return outcomes
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--smoke",action="store_true")
@@ -330,6 +369,7 @@ def main():
     clone,protected,candidate_sha=source_clone()
     next_rng()  # JIT compile outside science replay.
     prep=FixturePreparer(prepare_fixture)
+    probes=edge_and_post_argmax_probe(prep,clone)
     allcases=[(ds,k,seed,pgrd,mode,cap,stop)
               for ds,k in GEOM for seed in SEEDS for pgrd in POLICIES
               for mode,cap,stop in MODES]
@@ -352,7 +392,7 @@ def main():
         platform=sys.platform,environment=platform.platform(),
         source_hashes=protected,candidate_sha=candidate_sha,
         sidecar=STAT,scoped_identity=True,no_native_timing=True,
-        cohort_count=len(rows),cohorts=rows)
+        edge_probes=probes,cohort_count=len(rows),cohorts=rows)
     dest=Path(args.output)
     dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,indent=2,allow_nan=False)+"\n",
