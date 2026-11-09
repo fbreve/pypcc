@@ -345,9 +345,10 @@ def batch(model,wrapped,events,labels,policy,stop,tape_count):
     states=[hashes(z) for z in refs]
     for old,new in zip(refs,refs[1:]):
         assert all(old[i] is not new[i] for i in range(1,len(STATES)))
-        assert all(hashlib.sha256(np.ascontiguousarray(old[i]).tobytes()).hexdigest()
-                   ==hashlib.sha256(np.ascontiguousarray(old[i]).tobytes()).hexdigest()
-                   for i in (1,2,3,4,5,6,7))
+        assert all(not np.shares_memory(old[i],new[i])
+                   for i in range(1,len(STATES)))
+    assert all(state == states[0] for state in states), (
+        "same native seed on reused graph yielded different retained states")
     return dict(cpu_ns=cpu,wall_ns=wall,states=states,
                 stops=[x["info"] for x in events[-BATCH:]],
                 next_rng=float(after_rng()))
@@ -396,6 +397,10 @@ def one(ds,k,seed,policy,stop,record_fn,oracle_fn,preparer,smoke=False):
             a=batch(*control,labels,policy,stop,None)
         for key in ("states","stops","next_rng"):
             assert a[key]==b[key],(ds,k,seed,policy,stop,r,key)
+        assert all(x==initial["state"] for x in a["states"]), (
+            "pre-timed original full state differs from later retained arrays")
+        assert all(x==initial["stop"] for x in a["stops"]), (
+            "actual original native stop changed in repeated fit")
         measurements.append(dict(rep=r,original=a,oracle=b))
         print(ds,k,seed,policy,stop,r,
               "original_cpu_fit_ms",round(a["cpu_ns"]/BATCH/1e6,3),
