@@ -1,0 +1,66 @@
+name: Experimental Numba direct dense neighbor CPU and exact parity
+
+on:
+  push:
+    branches: [experiment/numba-direct-neighbor-row-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-vs-direct-access:
+    name: Frozen Numba neighbor row (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install actual original native Numba/NumPy/Cython PCC
+        run: python -m pip install -e ".[numba]"
+      - name: Source-pinned exact full-fit CPU, memory, short-prefix and forced choices
+        run: python -m experiments.audit_numba_direct_neighbor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-direct-neighbor-${{ matrix.os }}
+          path: numba_neighbor_direct_results.json
+          if-no-files-found: warn
+
+  mandatory-exact-two-os-verdict:
+    name: Full direct Numba neighbor source CPU and state decision
+    needs: original-vs-direct-access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-direct-neighbor-*
+          path: collected
+          merge-multiple: false
+      - name: Require both source-paired host corpora and full native RNG parity
+        run: python -m experiments.summarize_numba_direct_neighbor collected
+      - uses: actions/upload-artifact@v4
+        with:
+          name: numba-direct-neighbor-scientific-decision
+          path: |
+            numba_neighbor_direct_report.md
+            numba_neighbor_direct_decision.json
+          if-no-files-found: error
