@@ -86,8 +86,32 @@ def main():
     # Warm up all actual native JIT signatures BEFORE Callgrind is enabled.
     warm=make_model(arrays)
     fit(warm,arrays["labels"],count=2)
-    if not pcc_numba._pcc_step_numba_sequential.signatures:
-        raise AssertionError("original Numba native step signature wasn't JIT compiled")
+    if not pcc_numba._pcc_propagate_numba_sequential.signatures:
+        raise AssertionError("original Numba propagator was not JIT compiled")
+    # Only exact LLVM machine-code entry addresses from THIS profiled Python
+    # interpreter may resolve anonymous Valgrind function start addresses.
+    # Disallow heuristics based on neighboring addresses or source names.
+    native_entries={}
+    native_signatures={}
+    for name,dispatcher in (
+        ("_seed_numba_rng",pcc_numba._seed_numba_rng),
+        ("_pcc_step_numba_sequential",pcc_numba._pcc_step_numba_sequential),
+        ("_pcc_calc_mmpot_sequential",pcc_numba._pcc_calc_mmpot_sequential),
+        ("_pcc_propagate_numba_sequential",pcc_numba._pcc_propagate_numba_sequential),
+    ):
+        entries=[]
+        for signature,compiled in dispatcher.overloads.items():
+            address=compiled.library.get_pointer_to_function(
+                compiled.fndesc.llvm_func_name)
+            if not isinstance(address,int) or address<=0:
+                raise AssertionError("Numba reported a non-address LLVM native entry")
+            entries.append(dict(signature=str(signature),
+                                address=hex(address),
+                                llvm_symbol=compiled.fndesc.llvm_func_name))
+        native_entries[name]=entries
+        native_signatures[name]=[str(signature) for signature in dispatcher.signatures]
+    if not native_entries["_pcc_propagate_numba_sequential"]:
+        raise AssertionError("original complete Numba native JIT was not materialized")
     model=make_model(arrays)
     invoke_command(True)
     try:
@@ -126,8 +150,11 @@ def main():
         numpy=np.__version__,numba=numba.__version__,python=sys.version,
         machine=platform.machine(),system=platform.platform(),
         numba_jit_profiling=True,
-        original_compiled_step_signatures=[
-            str(s) for s in pcc_numba._pcc_step_numba_sequential.signatures],
+        original_compiled_step_signatures=native_signatures[
+            "_pcc_step_numba_sequential"],
+        native_jit_exact_entry_addresses=native_entries,
+        original_compiled_propagation_signatures=native_signatures[
+            "_pcc_propagate_numba_sequential"],
         graph_sha=[
             array_hash(arrays["neighbors"]),array_hash(arrays["degrees"])],
         labels_sha=array_hash(arrays["labels"]),
