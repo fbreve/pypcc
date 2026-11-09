@@ -68,9 +68,11 @@ def row_valid(row):
         if mode=="fixed":
             must(inf["effective_iterations"]==CAP and
                  inf["stop_reason"]=="max_iter","fixed path not full cap")
-    for k in ("state","stop","next_rng"):
-        must(row["baseline"][k]==row["recorder"][k]==row["oracle"][k],
-             "oracle or recorder changed original full fit / MT state: "+k)
+    # Keep the source kNN neighborhood degree 'k' unchanged while
+    # checking the actual full state/stop/native RNG fields.
+    for field in ("state","stop","next_rng"):
+        must(row["baseline"][field]==row["recorder"][field]==row["oracle"][field],
+             "oracle or recorder changed original full fit / MT state: "+field)
     tape=row["tape"]
     must(type(tape["events"]) is int and type(tape["weighted"]) is int and
          type(tape["fallback"]) is int and
