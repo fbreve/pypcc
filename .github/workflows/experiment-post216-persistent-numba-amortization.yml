@@ -1,4 +1,4 @@
-name: Experiment post216 Numba cache: one graph reused for 20 fits
+name: "Experiment post216 Numba cache: one graph reused for 20 fits"
 
 on:
   push:
