@@ -1,5 +1,7 @@
 """Low-cost checks of frozen current-master stop-on/fixed schedule and provenance."""
 import unittest
+import subprocess
+from pathlib import Path
 
 from benchmarks.fixtures import Case, REAL_DATASETS
 from benchmarks.runner import PARAMETERS
@@ -47,6 +49,15 @@ class Post211EarlyStopProtocolTests(unittest.TestCase):
                                  for r in range(REPS)),1)
 
     def test_source_guard_identifies_experiment_only_changes(self):
+        # The full-history SCIENTIFIC checkout enforces an exact diff against
+        # BASE. Standard package regression deliberately uses Git's default
+        # shallow checkout; missing history there is not a source regression.
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            ["git", "cat-file", "-e", BASE + "^{commit}"], cwd=root,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if result.returncode:
+            self.skipTest("shallow standard CI: source-pinned audit uses fetch-depth=0")
         original_source_guard()
 
 
