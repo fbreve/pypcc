@@ -193,9 +193,19 @@ def model_fit(arrays,case,fn,mode,cap=MAX_ITER,trace=False):
     model.set_graph(arrays["neighbors"],arrays["degrees"],k_nn=10)
     # Inject ONLY this instance's direct compiled-from-frozen-Git native
     # backend. No module-wide monkeypatch and no kernel observer.
-    model._get_backend_fn=lambda:fn
     if fn.__name__ not in ("pcc_propagate_numba","pcc_propagate_numba_verified"):
         raise AssertionError("not original Numba source native function")
+    observed={}
+    def native_info_wrapper(*args,**kwargs):
+        kwargs["return_info"]=True
+        begin=time.perf_counter_ns()
+        info=fn(*args,**kwargs)
+        observed.update(info)
+        observed["propagation_elapsed_ns"]=time.perf_counter_ns()-begin
+        return None
+    # Preserve actual Numba C-order selection with >=8 classes (#203).
+    native_info_wrapper.__name__="pcc_propagate_numba"
+    model._get_backend_fn=lambda:native_info_wrapper
     if trace:
         gc.collect()
         tracemalloc.start()
@@ -210,8 +220,16 @@ def model_fit(arrays,case,fn,mode,cap=MAX_ITER,trace=False):
         if trace:
             tracemalloc.stop()
     dom=model.node.dominance
-    if not dom.flags.c_contiguous or dom.flags.f_contiguous and dom.shape[1]>=8:
-        raise AssertionError("Numba native C-order dominates 10-class source")
+    expected_layout=(dom.flags.c_contiguous if case.classes>=8
+                     else dom.flags.f_contiguous)
+    if not expected_layout:
+        raise AssertionError("Numba dominance layout differs from production native policy")
+    if not 0<observed["effective_iterations"]<=cap:
+        raise AssertionError("invalid original Numba stop cap")
+    if not mode and observed["effective_iterations"]!=cap:
+        raise AssertionError("fixed path truncated early")
+    if observed["stop_reason"] not in ("early_stop","max_iter"):
+        raise AssertionError("Numba stop reason absent")
     state=dict(predictions=predictions,
                dominance=dom,positions=model.part.curnode,
                strengths=model.part.strength,
@@ -220,6 +238,11 @@ def model_fit(arrays,case,fn,mode,cap=MAX_ITER,trace=False):
     states={name:array_hash(data) for name,data in state.items()}
     return dict(elapsed_ns=elapsed_ns,peak_bytes=peak,
                 iteration_cap=cap,mode="monitored" if mode else "fixed",
+                effective_iterations=observed["effective_iterations"],
+                stop_reason=observed["stop_reason"],checks=observed["checks"],
+                stalled_checks=observed["stalled_checks"],
+                stop_max=observed["stop_max"],
+                propagation_elapsed_ns=observed["propagation_elapsed_ns"],
                 state_hashes=states,
                 predicted_hash=array_hash(predictions),
                 rng_next=digest_rng(),
@@ -256,9 +279,11 @@ def run_case(case,arrays,original,candidate):
                     first=reference
                 if key=="original" and reference!=first:
                     raise AssertionError("repeated original native fit not deterministic")
-            for key in ("state_hashes","rng_next","mapped_labels_hash"):
+            for key in ("state_hashes","rng_next","mapped_labels_hash",
+                        "effective_iterations","stop_reason","checks",
+                        "stalled_checks","stop_max"):
                 if pair["original"][key]!=pair["candidate"][key]:
-                    raise AssertionError("source-paired full Numba state/RNG differs "+
+                    raise AssertionError("source-paired full Numba state/RNG/stop differs "+
                                          repr((case.case_id,mode,rep,key)))
             timings.append(dict(case_id=case.case_id,mode="monitored" if mode else "fixed",
                                 repetition=rep,order=list(pair),
