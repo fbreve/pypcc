@@ -13,12 +13,12 @@ from pcc_validation import (validate_step_inputs, validate_buffers,
                             validate_kernel_scalars, validate_fractional_buffers,
                             validate_mutable_arrays, validate_seed, validate_propagation_controls)
 
-@njit
+@njit(cache=True)
 def _seed_numba_rng(seed):
     np.random.seed(seed)
 
 
-@njit
+@njit(cache=True)
 def _pcc_step_numba_sequential(neib_list, neib_qt,
                                labels, p_grd, delta_v, c, zerovec,
                                part_curnode, part_label, part_strength, dist_table,
@@ -134,7 +134,7 @@ def _pcc_step_numba_sequential(neib_list, neib_qt,
             if dominance[next_node, label] == max_dom:
                 part_curnode[p_i] = next_node
 
-@njit
+@njit(cache=True)
 def _pcc_calc_mmpot_sequential(dominance, n_nodes, c):
     """
     Sequential version of mean amax.
@@ -148,7 +148,7 @@ def _pcc_calc_mmpot_sequential(dominance, n_nodes, c):
         total_max += row_max
     return total_max / n_nodes
 
-@njit
+@njit(cache=True)
 def _pcc_propagate_numba_sequential(neib_list, neib_qt,
                         labels, p_grd, delta_v, c, zerovec,
                         part_curnode, part_label, part_strength, dist_table,
