@@ -1,8 +1,6 @@
 name: "Experiment: exact original PyPCC non-native fit phase attribution"
 
 on:
-  push:
-    branches: [experiment/fit-non-native-phase-attribution-v1]
   workflow_dispatch:
 
 permissions:
