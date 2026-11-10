@@ -1,8 +1,7 @@
-"""Original-source Numba particle path counters: separate untimed science copy.
+"""Original-source Numba greedy-weight composition: 41 event counters.
 
-This script does NOT change production pcc_numba.py or benchmark counter time.
-It runs true original PCC.fit_predict twice (original vs compiled Numba clone
-with pure int64 counter side effects), enforcing eight-state/RNG/stop parity.
+Extends the exact #232 source observer, without touching any production source.
+Never measure CPU of instrumented paths or claim a candidate performance GO.
 """
 import argparse
 import hashlib
@@ -39,7 +38,16 @@ STAT = ("attempts","invalid_current","no_degree","invalid_label",
         "greedy_fallback","direct_random","valid_dest","unlabeled_update",
         "owndeg_random_increment","accepted","rejected","invalid_dest",
         "labeled_dest","distance_relax","position_changed",
-        "weighted_greedy_accepted","random_accepted","eligible")
+        "weighted_greedy_accepted","random_accepted","eligible",
+        "candidate_weight_evaluations","valid_weight_neighbor",
+        "invalid_weight_neighbor","dominance_zero_valid",
+        "dominance_one_valid","dominance_strict_fraction_valid",
+        "dominance_other_valid","distance_saturated255_valid",
+        "distance_zero_valid","distance_1_to_254_valid",
+        "distance_weight_zero_valid","distance_weight_other_valid",
+        "product_zero_any","product_other_any","product_zero_valid",
+        "product_other_valid","distance255_dominance_zero",
+        "distance255_dominance_other","prefix_stall","greedy_degree_sum")
 STATE = ("predictions","dominance","positions","strengths","distances",
          "owndeg","node_labels","mapped_labels")
 ARGS = dict(seed=29,p_grd=.5,delta_v=.1,deltap=1.,dexp=2.,
@@ -131,7 +139,7 @@ def source_clone():
     # direct one-step call needs a private scratch counter to compile.
     candidate=replace_one(candidate,
         "                                       dist_weights)\n\n\ndef pcc_propagate_numba(",
-        "                                       dist_weights, np.zeros(21, dtype=np.int64))\n\n\ndef pcc_propagate_numba(")
+        "                                       dist_weights, np.zeros(41, dtype=np.int64))\n\n\ndef pcc_propagate_numba(")
     candidate=replace_one(candidate,
         "                        max_iter, early_stop, es_chk, stop_max, return_info=False, seed=None):",
         "                        max_iter, early_stop, es_chk, stop_max, return_info=False, seed=None, science_counts=None):")
@@ -141,11 +149,11 @@ def source_clone():
 
     # Guarantee source edit fully reversible by replacing the complete
     # modified original step plus the four modified dispatch spans.
-    assert candidate.count("science_counts[20]") == 1
-    out=root/".cache"/"numba_path_counter_original_source"/"pcc_numba.py"
+    assert candidate.count("science_counts[20]") == 1 and candidate.count("science_counts[40]") == 1
+    out=root/".cache"/"numba_weight_composition_original_source"/"pcc_numba.py"
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_bytes(candidate.encode("utf-8"))
-    name="_scientific_numba_path_counter_clone"
+    name="_scientific_numba_weight_composition_clone"
     module=types.ModuleType(name)
     module.__file__=str(out)
     sys.modules[name]=module
@@ -204,6 +212,16 @@ def assert_counters(raw,iterations,n_particles):
     assert a[17]<=a[12] and a[16]<=a[9],("movement/distance bounds",a)
     assert a[5]<=a[4] and a[18]<=a[6] and a[19]<=a[7]+a[8]
     assert a[11]<=a[9] and a[11]<=a[7]+a[8],("ownership updates",a)
+    assert a[21]==a[22]+a[23]==a[33]+a[34],("candidate partition",a)
+    assert a[21]==a[40],("greedy degree sum",a)
+    assert a[22]==a[24]+a[25]+a[26]+a[27],("dominance classes",a)
+    assert a[22]==a[28]+a[29]+a[30],("distance classes",a)
+    assert a[22]==a[31]+a[32],("distance weight categories",a)
+    assert a[22]==a[35]+a[36],("valid product categories",a)
+    assert a[28]==a[37]+a[38],("saturated distance-dominance categories",a)
+    assert a[35]<=a[33] and a[36]<=a[34],("valid product subsets",a)
+    assert a[39]<=a[21],("prefix stall count",a)
+    assert a[21]>=a[4],("at least one neighbor per greedy attempt",a)
     return dict(zip(STAT,a))
 
 
@@ -382,10 +400,12 @@ def main():
         cnt=trial["counts"]
         print(f"{ds} k={k} seed={seed} p={pgrd} mode={mode} "
               f"iter={trial['stop']['effective_iterations']} "
-              f"greedy={cnt['greedy_attempt']} weighted={cnt['greedy_weighted']} "
-              f"fallback={cnt['greedy_fallback']} "
-              f"unlabeled={cnt['unlabeled_update']} "
-              f"accepted={cnt['accepted']}",flush=True)
+              f"greedy={cnt['greedy_attempt']} "
+              f"candidates={cnt['candidate_weight_evaluations']} "
+              f"dom_zero={cnt['dominance_zero_valid']} "
+              f"dist255={cnt['distance_saturated255_valid']} "
+              f"product_zero={cnt['product_zero_any']} "
+              f"prefix_stall={cnt['prefix_stall']}",flush=True)
     root=Path(__file__).resolve().parents[1]
     report=dict(schema=1,base=BASE,head=subprocess.check_output(
         ["git","rev-parse","HEAD"],cwd=root,text=True).strip(),
@@ -397,7 +417,7 @@ def main():
     dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,indent=2,allow_nan=False)+"\n",
                     encoding="utf-8")
-    print("SOURCE-EXACT NUMBA PATH COUNTERS COMPLETE",sys.platform,len(rows),flush=True)
+    print("SOURCE-EXACT NUMBA WEIGHT COMPOSITION COMPLETE",sys.platform,len(rows),flush=True)
 
 
 if __name__=="__main__":
