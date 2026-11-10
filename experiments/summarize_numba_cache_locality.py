@@ -74,7 +74,13 @@ def parse_profile(path,native_entries):
             continue
         elif fn is not None and events is not None:
             fields=val.split()
-            if len(fields)==len(events)+1 and position.fullmatch(fields[0]):
+            # Callgrind v3.22 compresses cost rows by OMITTING *trailing
+            # zero event fields*: e.g. "+1 6" means Ir=6, every other
+            # event=0. Earlier requiring nine explicit costs silently
+            # discarded most raw rows. Preserve original event order,
+            # accept only a nonempty numeric PREFIX and implicit ZERO suffix.
+            if (2<=len(fields)<=len(events)+1 and
+                    position.fullmatch(fields[0])):
                 if pending_call:
                     pending_call=False
                     continue
@@ -83,10 +89,15 @@ def parse_profile(path,native_entries):
                 for metric,raw in zip(events,fields[1:]):
                     exclusive[fn][metric]+=int(raw)
                 counts+=1
+            elif fields and position.fullmatch(fields[0]):
+                raise AssertionError("unsupported original Callgrind native cost row: "+val[:180])
     check(totals is not None and all(totals[k]>0 for k in ("Ir","Dr","Dw")),
           "real native code/memory operations not included in isolated profile")
     check(counts>100 and len(exclusive)>5,"no native profiled functions/rows")
     sums={key:sum(c[key] for c in exclusive.values()) for key in events}
+    # Strictly do NOT normalize missing events post hoc. If this does
+    # not sum to the original vendor raw totals for *each* metric, the
+    # original corpus is not scientific evidence.
     check(sums==totals,
           "exclusive cost sum disagrees with raw Valgrind totals: "+
           str({k:(sums[k],totals[k]) for k in events if sums[k]!=totals[k]}))
