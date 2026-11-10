@@ -1,0 +1,152 @@
+name: "Experiment: original Numba dynamic references and simulated D1 LL cache locality"
+on:
+  push:
+    branches: [experiment/numba-original-cachegrind-locality-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-source-cachegrind:
+    name: "12 original Numba simulated-cache Callgrind cases (Linux)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Protect original code and graph fixture
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx pcc_validation.py benchmarks/fixtures.py
+      - name: Install original Numba and native Valgrind simulator
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[numba]"
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind
+          valgrind --version
+          callgrind_control --version
+          python -m py_compile experiments/profile_numba_cache_locality_case.py experiments/summarize_numba_cache_locality.py
+      - name: Twelve isolated original full fits with simulated-cache event collection
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for dataset in wine digits; do
+            for seed in 89021 89119; do
+              for policy in 0.0 0.5 1.0; do
+                case_id="${dataset}_${seed}_p${policy}"
+                folder="numba_cache_locality/linux/${case_id}"
+                mkdir -p "$folder/private_cache"
+                NUMBA_CACHE_DIR="$PWD/$folder/private_cache" valgrind \
+                  --tool=callgrind --instr-atstart=no \
+                  --cache-sim=yes --branch-sim=no \
+                  --D1=32768,8,64 --LL=8388608,16,64 \
+                  --collect-jumps=no \
+                  --callgrind-out-file="$folder/callgrind.out.%p" \
+                  --log-file="$folder/valgrind.stderr.txt" \
+                  python -m experiments.profile_numba_cache_locality_case \
+                  --dataset "$dataset" --seed "$seed" --policy "$policy" \
+                  --out "$folder/numba_cache_locality_linux_${case_id}.json" \
+                  > "$folder/native_stdout.txt" 2> "$folder/native_stderr.txt"
+                cat "$folder/native_stdout.txt"
+                test -s "$folder"/callgrind.out.*
+              done
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-cache-original-raw-linux
+          path: numba_cache_locality/linux/
+          if-no-files-found: error
+          retention-days: 90
+  windows-original-source-replay:
+    name: "12 uninstrumented original Numba Windows state/RNG/stop replays"
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install original Numba and verify audit syntax
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m py_compile experiments/profile_numba_cache_locality_case.py experiments/summarize_numba_cache_locality.py
+      - name: Twelve genuine original fits WITHOUT Windows cache profiling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          foreach ($dataset in @("wine", "digits")) {
+            foreach ($seed in @(89021, 89119)) {
+              foreach ($policy in @("0.0", "0.5", "1.0")) {
+                $caseId = "${dataset}_${seed}_p${policy}"
+                $folder = "numba_cache_locality/windows/$caseId"
+                New-Item -ItemType Directory -Force -Path $folder | Out-Null
+                $env:NUMBA_CACHE_DIR = Join-Path (Get-Location) "$folder/private_cache"
+                $arguments = @("-m", "experiments.profile_numba_cache_locality_case",
+                  "--dataset", $dataset, "--seed", [string]$seed,
+                  "--policy", $policy, "--reference-only",
+                  "--out", "$folder/numba_cache_locality_windows_$caseId.json")
+                & python @arguments
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              }
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-cache-original-raw-windows
+          path: numba_cache_locality/windows/
+          if-no-files-found: error
+          retention-days: 90
+  strict-actual-and-modelled-data-audit:
+    name: "12 Linux cache profiles plus 12 Windows exact original native replays"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [linux-source-cachegrind, windows-original-source-replay]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-cache-original-raw-*
+          path: .cache/original-numba-cache-two-hosts
+          merge-multiple: false
+      - name: Verify real original Valgrind event totals and cross-host state
+        run: >-
+          python -m experiments.summarize_numba_cache_locality
+          .cache/original-numba-cache-two-hosts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-cachegrind-independent-strict-report
+          path: |
+            numba_cache_locality_report.md
+            numba_cache_locality_decision.json
+          if-no-files-found: error
+          retention-days: 90
