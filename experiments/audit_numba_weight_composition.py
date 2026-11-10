@@ -124,7 +124,79 @@ def source_clone():
     changed=step
     for old,new in changes:
         changed=replace_one(changed,old,new)
-    assert changed != step and changed.count("science_counts[") >= 20
+
+    # Additional ORIGINAL weight read-only observations. No actual load,
+    # multiply, summation or random draw is removed or reordered.
+    extras=(
+      ("            # greedy: retain two passes, but use only one scratch array.\n"
+       "            for i in range(k):\n                next_node",
+       "            science_counts[40] += k\n"
+       "            # greedy: retain two passes, but use only one scratch array.\n"
+       "            for i in range(k):\n"
+       "                science_counts[21] += 1\n                next_node"),
+      ("                if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:\n"
+       "                    dom = dominance[next_node, label]",
+       "                if next_node >= 0 and next_node < n_nodes and label >= 0 and label < c:\n"
+       "                    science_counts[22] += 1\n"
+       "                    dom = dominance[next_node, label]\n"
+       "                    if dom == 0.0:\n"
+       "                        science_counts[24] += 1\n"
+       "                    elif dom == 1.0:\n"
+       "                        science_counts[25] += 1\n"
+       "                    elif 0.0 < dom < 1.0:\n"
+       "                        science_counts[26] += 1\n"
+       "                    else:\n"
+       "                        science_counts[27] += 1"),
+      ("                else:\n                    dom = 0.0\n\n"
+       "                if next_node >= 0 and next_node < n_nodes:\n",
+       "                else:\n                    science_counts[23] += 1\n"
+       "                    dom = 0.0\n\n"
+       "                if next_node >= 0 and next_node < n_nodes:\n"),
+      ("                    d_idx = dist_table[next_node, p_i]\n"
+       "                    weight = dist_weights[d_idx]",
+       "                    d_idx = dist_table[next_node, p_i]\n"
+       "                    if d_idx == 255:\n"
+       "                        science_counts[28] += 1\n"
+       "                        if dom == 0.0:\n"
+       "                            science_counts[37] += 1\n"
+       "                        else:\n"
+       "                            science_counts[38] += 1\n"
+       "                    elif d_idx == 0:\n"
+       "                        science_counts[29] += 1\n"
+       "                    else:\n"
+       "                        science_counts[30] += 1\n"
+       "                    weight = dist_weights[d_idx]\n"
+       "                    if weight == 0.0:\n"
+       "                        science_counts[31] += 1\n"
+       "                    else:\n"
+       "                        science_counts[32] += 1"),
+      ("                prob[i] = dom * weight\n",
+       "                prob[i] = dom * weight\n"
+       "                if prob[i] == 0.0:\n"
+       "                    science_counts[33] += 1\n"
+       "                    if next_node >= 0 and next_node < n_nodes:\n"
+       "                        science_counts[35] += 1\n"
+       "                else:\n"
+       "                    science_counts[34] += 1\n"
+       "                    if next_node >= 0 and next_node < n_nodes:\n"
+       "                        science_counts[36] += 1\n"),
+      ("            total = 0.0\n"
+       "            for i in range(k):\n"
+       "                total += prob[i]\n"
+       "                slices[i] = total\n",
+       "            total = 0.0\n"
+       "            prior_total = 0.0\n"
+       "            for i in range(k):\n"
+       "                total += prob[i]\n"
+       "                slices[i] = total\n"
+       "                if total == prior_total:\n"
+       "                    science_counts[39] += 1\n"
+       "                prior_total = total\n"),
+    )
+    for old,new in extras:
+        changed=replace_one(changed,old,new)
+
+    assert changed != step and changed.count("science_counts[") >= 41
     candidate=replace_one(source,step,changed)
 
     # Thread the private 21-int sidecar ONLY through the science clone,
