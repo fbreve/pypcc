@@ -1,0 +1,58 @@
+name: "Experiment: immutable Numba JIT instruction cache 3-case strict recheck"
+on:
+  push:
+    branches: [experiment/numba-original-instruction-locality-probe-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-three-case-exact-artifact-recheck:
+    name: "STRICT original 3 machine-instruction Callgrind + frozen #236 Linux/Windows full state"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reuse EXACT three native JIT instruction original RAW archives, never new fits
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42850960443
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-jit-original-instruction-3-profile-raw
+          path: .cache/numba-instruction-immutable/new
+          merge-multiple: false
+      - name: Reuse frozen genuine original #236 Linux source and state
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/numba-instruction-immutable/prior-linux
+          merge-multiple: false
+      - name: Reuse frozen genuine original #236 Windows source and state
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/numba-instruction-immutable/prior-windows
+          merge-multiple: false
+      - name: Check 9 raw cost totals, true source JIT pointer, all 8 states, real native MT and stop
+        run: >-
+          python -m experiments.summarize_numba_instruction_probe
+          .cache/numba-instruction-immutable
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-instruction-frozen-three-case-final-decision
+          path: |
+            numba_jit_instruction_probe_report.md
+            numba_jit_instruction_probe_decision.json
+          if-no-files-found: error
+          retention-days: 90
