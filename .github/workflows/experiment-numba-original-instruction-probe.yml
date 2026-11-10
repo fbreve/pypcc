@@ -1,7 +1,5 @@
 name: "Experiment: original Numba 3-case JIT instruction cache-position feasibility"
 on:
-  push:
-    branches: [experiment/numba-original-instruction-locality-probe-v1]
   workflow_dispatch:
 permissions:
   contents: read
