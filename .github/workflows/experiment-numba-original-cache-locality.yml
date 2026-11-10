@@ -1,7 +1,5 @@
 name: "Experiment: original Numba dynamic references and simulated D1 LL cache locality"
 on:
-  push:
-    branches: [experiment/numba-original-cachegrind-locality-v1]
   workflow_dispatch:
 permissions:
   contents: read
