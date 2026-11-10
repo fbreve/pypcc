@@ -1,0 +1,127 @@
+name: "Experiment: original live Numba JIT bytes + exact Callgrind instruction disassembly"
+on:
+  push:
+    branches: [experiment/numba-live-jit-disassembly-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-original-native-jit-byte-capture:
+    name: "ONE genuine original Digits Numba full-fit with SAME PROCESS executable bytes and cache-sim"
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refuse any mutation of original production and graph fixture
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx pcc_validation.py benchmarks/fixtures.py
+      - name: Install exact original Numba and scientific Capstone disassembler / Valgrind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install -e ".[numba]"
+          python -m pip install capstone==5.0.6
+          python -m py_compile experiments/profile_numba_live_disassembly.py experiments/numba_original_instruction_reader.py experiments/summarize_numba_live_disassembly.py
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind
+          valgrind --version
+          callgrind_control --version
+      - name: Capture exactly one original source JIT executable snapshot from the actual profiled process
+        shell: bash
+        run: |
+          set -euxo pipefail
+          folder=numba_live_jit_original/linux/digits_89021_p0.5
+          mkdir -p "$folder/private_cache"
+          NUMBA_CACHE_DIR="$PWD/$folder/private_cache" valgrind \
+            --tool=callgrind --instr-atstart=no \
+            --cache-sim=yes --branch-sim=no --collect-jumps=no \
+            --D1=32768,8,64 --LL=8388608,16,64 \
+            --dump-instr=yes --dump-line=no --compress-pos=no \
+            --callgrind-out-file="$folder/callgrind.out.%p" \
+            --log-file="$folder/valgrind.stderr.txt" \
+            python -m experiments.profile_numba_live_disassembly \
+            --dataset digits --seed 89021 --policy 0.5 \
+            --out "$folder/numba_live_disasm_original_digits_89021_p0.5.json" \
+            --asm-out "$folder/numba_live_jit_assembly.json" \
+            > "$folder/native_stdout.txt" 2> "$folder/native_stderr.txt"
+          cat "$folder/native_stdout.txt"
+          test -s "$folder/numba_live_jit_assembly.json"
+          test -s "$folder/original_numba_jit_step.bin"
+          test -s "$folder"/callgrind.out.*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-live-jit-native-byte-raw-linux
+          path: numba_live_jit_original/linux/
+          if-no-files-found: error
+          retention-days: 90
+  independent-live-original-byte-audit:
+    name: "Original live JIT bytes vs 9 genuine cache events + frozen #237 / #236 true state RNG"
+    needs: real-original-native-jit-byte-capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install independent original machine-byte disassembler
+        run: python -m pip install capstone==5.0.6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-original-live-jit-native-byte-raw-linux
+          path: .cache/original-live-jit/new
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42850960443
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-jit-original-instruction-3-profile-raw
+          path: .cache/original-live-jit/archive237
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/original-live-jit/archive236linux
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/original-live-jit/archive236windows
+          merge-multiple: false
+      - name: Re-decode exact native image and enforce 9 raw totals and full original source state/MT equivalence
+        run: >-
+          python -m experiments.summarize_numba_live_disassembly
+          .cache/original-live-jit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-live-jit-disassembly-scientific-strict-decision
+          path: |
+            numba_live_jit_disassembly_report.md
+            numba_live_jit_disassembly_decision.json
+          if-no-files-found: error
+          retention-days: 90
