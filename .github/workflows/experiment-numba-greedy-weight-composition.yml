@@ -39,11 +39,11 @@ jobs:
           experiments/summarize_numba_weight_composition.py
       - name: Require original full-row Numba argmax, 0/5 steps and Digits smoke exactness
         run: >-
-          python -m experiments.audit_numba_path_counters
+          python -m experiments.audit_numba_weight_composition
           --smoke --output .cache/numba-weight-composition-smoke.json
       - name: Run 162 frozen original/counted greedy weight/zero/distance cohorts
         run: >-
-          python -m experiments.audit_numba_path_counters
+          python -m experiments.audit_numba_weight_composition
           --output .cache/numba-weight-composition-native-${{ runner.os }}.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -80,7 +80,7 @@ jobs:
           merge-multiple: false
       - name: Require all 41 event fields, state/RNG and exact frozen #232 162-case replay
         run: >-
-          python -m experiments.summarize_numba_path_counters
+          python -m experiments.summarize_numba_weight_composition
           .cache/numba-weight-composition-two-os
       - uses: actions/upload-artifact@v4
         if: always()
