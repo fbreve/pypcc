@@ -1,0 +1,124 @@
+name: "Experiment: one same-process original Numba live-opcode audit"
+on:
+  push:
+    branches: [experiment/numba-same-process-assembly-probe-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  one-live-native-profile:
+    name: "ONE actual original Digits fit, exact in-process Numba code and Callgrind"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require original production bytes identical to frozen master
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx pcc_validation.py benchmarks/fixtures.py
+      - name: Compile all research scripts, install original Numba and profiler
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile experiments/profile_numba_instruction_case.py experiments/summarize_numba_instruction_probe.py experiments/profile_numba_live_assembly_case.py experiments/summarize_numba_same_process_assembly.py
+          python -m pip install -e ".[numba]"
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind
+          valgrind --version
+      - name: One frozen native original Digits full-fit code-and-profile capture
+        shell: bash
+        run: |
+          set -euxo pipefail
+          folder="numba_live_opcode_probe/linux/digits_89021_p0.5"
+          mkdir -p "$folder/private_cache"
+          NUMBA_CACHE_DIR="$PWD/$folder/private_cache" valgrind \
+            --tool=callgrind --instr-atstart=no \
+            --cache-sim=yes --branch-sim=no --collect-jumps=no \
+            --D1=32768,8,64 --LL=8388608,16,64 \
+            --dump-instr=yes --dump-line=no --compress-pos=no \
+            --callgrind-out-file="$folder/callgrind.out.%p" \
+            --log-file="$folder/valgrind.stderr.txt" \
+            python -m experiments.profile_numba_live_assembly_case \
+            --dataset digits --seed 89021 --policy 0.5 \
+            --out "$folder/numba_instr_probe_digits_89021_p0.5.json" \
+            > "$folder/native_stdout.txt" 2> "$folder/native_stderr.txt"
+          cat "$folder/native_stdout.txt"
+          test -s "$folder"/callgrind.out.*
+          test -s "$folder/original_step_code.bin"
+          test -s "$folder/numba_live_assembly_snapshot.json"
+          test -s "$folder/numba_instr_probe_digits_89021_p0.5.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-live-opcode-one-case-raw
+          path: numba_live_opcode_probe/linux/
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-provenance-and-decode:
+    name: "Audit exact in-process native bytes, 9 Callgrind events and frozen Linux/Windows states"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: one-live-native-profile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "capstone>=5,<6"
+      - uses: actions/download-artifact@v4
+        with:
+          name: numba-original-live-opcode-one-case-raw
+          path: .cache/live_opcode/new
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42850960443
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-jit-original-instruction-3-profile-raw
+          path: .cache/live_opcode/original237
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/live_opcode/original236linux
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/live_opcode/original236windows
+          merge-multiple: false
+      - name: Require exact native pointer, bytes, source+graph+8 states/MT RNG/stop and opcode boundaries
+        run: >-
+          python -m experiments.summarize_numba_same_process_assembly
+          .cache/live_opcode
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-live-opcode-one-case-audit-decision
+          path: |
+            numba_same_process_assembly_report.md
+            numba_same_process_assembly_decision.json
+          if-no-files-found: error
+          retention-days: 90
