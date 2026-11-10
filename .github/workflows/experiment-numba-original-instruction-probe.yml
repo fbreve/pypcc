@@ -1,0 +1,118 @@
+name: "Experiment: original Numba 3-case JIT instruction cache-position feasibility"
+on:
+  push:
+    branches: [experiment/numba-original-instruction-locality-probe-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-native-instruction-profiles:
+    name: "Three actual original Numba machine-instruction Callgrind cache simulations"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reject mutation of protected original production/fixture code
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx pcc_validation.py benchmarks/fixtures.py
+      - name: Compile verifier, install original Numba and Valgrind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile experiments/profile_numba_instruction_case.py experiments/summarize_numba_instruction_probe.py
+          python -m pip install -e ".[numba]"
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind
+          valgrind --version
+          callgrind_control --version
+      - name: Capture only three preregistered genuine original full Numba fits
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for case in digits:0.0 digits:0.5 wine:0.5; do
+            IFS=: read -r dataset policy <<< "$case"
+            printf -v id '%s_89021_p%s' "$dataset" "$policy"
+            folder="numba_instruction_probe/linux/$id"
+            mkdir -p "$folder/private_cache"
+            NUMBA_CACHE_DIR="$PWD/$folder/private_cache" valgrind \
+              --tool=callgrind --instr-atstart=no \
+              --cache-sim=yes --branch-sim=no --collect-jumps=no \
+              --D1=32768,8,64 --LL=8388608,16,64 \
+              --dump-instr=yes --dump-line=no --compress-pos=no \
+              --callgrind-out-file="$folder/callgrind.out.%p" \
+              --log-file="$folder/valgrind.stderr.txt" \
+              python -m experiments.profile_numba_instruction_case \
+              --dataset "$dataset" --seed 89021 --policy "$policy" \
+              --out "$folder/numba_instr_probe_$id.json" \
+              > "$folder/native_stdout.txt" 2> "$folder/native_stderr.txt"
+            cat "$folder/native_stdout.txt"
+            test -s "$folder"/callgrind.out.*
+            test -s "$folder/numba_instr_probe_$id.json"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-jit-original-instruction-3-profile-raw
+          path: numba_instruction_probe/linux/
+          if-no-files-found: error
+          retention-days: 90
+  independent-original-source-instruction-audit:
+    name: "Strict three original JIT instruction sources + frozen 12+12 #236 source replays"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: original-native-instruction-profiles
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: numba-jit-original-instruction-3-profile-raw
+          path: .cache/instruction-feasibility/new
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/instruction-feasibility/original236linux
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/instruction-feasibility/original236windows
+          merge-multiple: false
+      - name: Check nine native raw instruction event totals, JIT ptr and original source/8-state/MT
+        run: >-
+          python -m experiments.summarize_numba_instruction_probe
+          .cache/instruction-feasibility
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-instruction-3-case-independent-scientific-result
+          path: |
+            numba_jit_instruction_probe_report.md
+            numba_jit_instruction_probe_decision.json
+          if-no-files-found: error
+          retention-days: 90
