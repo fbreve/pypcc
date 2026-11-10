@@ -131,12 +131,16 @@ def read_profile(path,pointer):
             # instruction position should be absolute. Never manufacture
             # an address if Callgrind emits a compressed/relative position.
             token=parts[0]
-            addr=int(token,0) if not token.isdigit() else int(token)
-            if token[0] in "+-*" or addr==0:
+            if token[0] in "+-*":
                 unmapped+=1
                 addr=None
             else:
-                named+=1
+                addr=int(token,16) if token.startswith("0x") else int(token)
+                if addr==0:
+                    unmapped+=1
+                    addr=None
+                else:
+                    named+=1
             cost=dict(zip(EVENTS,map(int,parts[1:])))
             for metric,value in cost.items():
                 functions[current][metric]+=value
@@ -194,14 +198,20 @@ def read_profile(path,pointer):
 
 def extract_profiles(path,prefix):
     files=sorted(Path(path).rglob(prefix+"*.json"))
-    must(len(files)==3,"require exactly three original raw profiles "+prefix)
+    required=3 if prefix=="numba_instr_probe_" else 12
+    must(len(files)==required,
+         "missing exact raw profiles "+prefix+": "+str(len(files)))
     indexed={}
     for file in files:
         d=json.loads(file.read_text(encoding="utf-8"))
-        k=source_valid(d)
-        must(k not in indexed,"duplicate fixed original graph/policy")
-        indexed[k]=(d,file)
-    must(set(indexed)==CASES,"missing exact original 3-case corpus")
+        key=(d["dataset"],d["seed"],d["policy"])
+        if key not in CASES:
+            must(prefix!="numba_instr_probe_","unexpected new case")
+            continue  # Frozen #236 has nine OTHER original cases.
+        key=source_valid(d)
+        must(key not in indexed,"duplicate fixed original graph/policy")
+        indexed[key]=(d,file)
+    must(set(indexed)==CASES,"missing required original 3-case subset")
     return indexed
 
 
