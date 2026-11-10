@@ -144,7 +144,13 @@ def read_profile(path,pointer):
             cost=dict(zip(EVENTS,map(int,parts[1:])))
             for metric,value in cost.items():
                 functions[current][metric]+=value
-                if current.startswith("0x") and int(current,16)==pointer:
+                # Callgrind also names unrelated functions e.g.
+                # "0x0000000004950c20'2" (disambiguation suffix).
+                # NEVER coerce such a noncanonical name into a real
+                # compiled JIT pointer; only a FULL hexadecimal match is
+                # eligible for native-step attribution.
+                if (re.fullmatch(r"0x[0-9a-fA-F]+",current) and
+                        int(current,16)==pointer):
                     if addr is not None:
                         instructions[addr][metric]+=value
                     elif value:
