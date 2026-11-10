@@ -1,0 +1,52 @@
+name: "Experiment: verify immutable original Numba simulated-cache artifacts only"
+
+on:
+  push:
+    branches: [experiment/numba-original-cachegrind-locality-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  frozen-12-source-cache-audit:
+    name: "STRICT: original 12 Linux D1/LL profiles and 12 Windows source-replay SHA"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reuse immutable Linux original Callgrind simulated-cache data (NO new profiling)
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/frozen-original-numba-cache/previous-linux
+          merge-multiple: false
+      - name: Reuse immutable Windows original unprofiled exact reference (NO new fits)
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/frozen-original-numba-cache/previous-windows
+          merge-multiple: false
+      - name: Require 12 actual original Dr/Dw/D1/LL raw totals and cross-OS original state/MT
+        run: >-
+          python -m experiments.summarize_numba_cache_locality
+          .cache/frozen-original-numba-cache
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-cache-original-immutable-12-two-host-scientific-decision
+          path: |
+            numba_cache_locality_report.md
+            numba_cache_locality_decision.json
+          if-no-files-found: error
+          retention-days: 90
