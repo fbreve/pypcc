@@ -33,7 +33,21 @@ COHORTS = tuple(
     )
     for count in counts for monitored in modes
 )
-BATCH = 8
+# Frozen per-family counts, preregistered in the resolution addendum BEFORE
+# new complete native Linux/Windows measurements. Equal across both arms/hosts.
+BATCH_BY_NAME = {
+    "ring100k50": 16,
+    "ring30k50": 64,
+    "digits": 128,
+    "wine": 256,
+    "breast_cancer": 256,
+}
+
+
+def batch_for_cohort(cohort):
+    return BATCH_BY_NAME[cohort[0]]
+
+
 BLOCKS_PER_PROCESS = 3
 SEQ = ("original", "candidate", "candidate", "original")
 
@@ -380,7 +394,7 @@ def run_measure(opts):
         gc.collect()
         t0 = time.perf_counter_ns()
         cpu0 = time.process_time_ns()
-        for repeat in range(BATCH):
+        for repeat in range(batch_for_cohort(cohort)):
             prediction = fit(model)
         cpu1 = time.process_time_ns()
         t1 = time.perf_counter_ns()
@@ -389,7 +403,7 @@ def run_measure(opts):
         ensure(block_state == smoke_hashes,
                "unobserved true public fit changed final state or output")
         samples.append({
-            "block": block, "fit_count": BATCH,
+            "block": block, "fit_count": batch_for_cohort(cohort),
             "cpu_ns": cpu1-cpu0, "wall_ns": t1-t0,
             "last_state_hashes": block_state,
         })
@@ -418,7 +432,7 @@ def run_measure(opts):
         "previous_fit_ownership_and_invalid_rollback": True,
         "compiled_real_cython_backend": True,
         "new_fast_path_only_in_candidate_highlevel_cached": True,
-        "batch_size": BATCH, "cpu_batches": samples,
+        "batch_size": batch_for_cohort(cohort), "cpu_batches": samples,
         "python_traced_peak_bytes": int(peak_bytes),
         "not_native_rss": True,
         "pid": os.getpid(),
