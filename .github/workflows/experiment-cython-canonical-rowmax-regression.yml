@@ -1,4 +1,4 @@
-name: Experiment: Cython canonical rowmax source-unchanged 4-platform regression
+name: "Experiment: Cython canonical rowmax source-unchanged 4-platform regression"
 on:
   push:
     branches: [experiment/cython-canonical-rowmax-init-v1]
