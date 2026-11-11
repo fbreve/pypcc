@@ -49,10 +49,19 @@ compatible MSVC toolchain, Linux requires a C compiler and development headers.
 See the [installation guidance](README.md#installation-and-compatibility),
 [testing guide](docs/testing.md) and actual
 [regression workflow](.github/workflows/pcc-regression.yml).
-For an isolated installed-distribution check, run
-`python tools/check_installation.py --require-all` **outside** the checkout
-after building/installing the wheel; that prevents local-source imports from
-masking a packaging issue.
+For an isolated installed-distribution check, **change to a working
+directory outside the source checkout** and invoke the checker by its absolute
+path after installing the wheel. For example, on Linux:
+
+```sh
+cd /tmp
+python /absolute/path/to/pypcc/tools/check_installation.py --require-all
+```
+
+On Windows, use an external directory and the corresponding absolute path
+to `tools/check_installation.py`. This prevents source-checkout imports
+from masking missing installed modules; the CI workflow uses exactly this
+separation.
 
 A wheel/source-archive build can be checked with `python -m build` after
 installing the `build` package. Note that packaging tests use `PCC_DIST_DIR`
