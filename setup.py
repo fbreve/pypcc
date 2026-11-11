@@ -34,6 +34,8 @@ setup(
     name="pcc_step",
     version=Path(__file__).with_name("VERSION").read_text(encoding="utf-8").strip(),
     python_requires=">=3.10",
+    license="MIT",
+    license_files=["LICENSE"],
     py_modules=["pcc", "pcc_graph", "pcc_numpy", "pcc_numba", "pcc_validation", "pcc_metrics"],
     install_requires=["numpy>=2,<3", "scipy", "scikit-learn"],
     extras_require={"numba": ["numba"]},
