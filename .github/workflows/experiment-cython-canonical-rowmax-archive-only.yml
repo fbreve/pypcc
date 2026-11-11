@@ -1,0 +1,45 @@
+name: "Experiment: immutable Cython rowmax source-native CPU archive-only recheck"
+on:
+  push:
+    branches: [experiment/cython-canonical-rowmax-init-v1]
+    paths:
+      - experiments/cython_canonical_rowmax_archive_recheck_ready.md
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recheck-immutable-native-archives:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download original immutable Linux/Windows CPU archives, NEVER rerun fits
+        uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 43023683759
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: "*-latest"
+          path: .cache/cython_native_verdict
+          merge-multiple: false
+      - name: Require immutable two-host artifact and strict exact-source native CPU verdict
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f experiments/cython_canonical_rowmax_archive_recheck_ready.md
+          python -m py_compile experiments/audit_cython_canonical_rowmax_init.py
+          python -m experiments.audit_cython_canonical_rowmax_init \
+             .cache/cython_native_verdict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cython-canonical-rowmax-frozen-archive-only-decision
+          path: |
+            cython_canonical_rowmax_cpu_report.md
+            cython_canonical_rowmax_cpu_decision.json
+          if-no-files-found: warn
+          retention-days: 90
