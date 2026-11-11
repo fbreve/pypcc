@@ -1,0 +1,47 @@
+name: "Audit: pinned current PyPCC source line authorship, no package execution"
+on:
+  push:
+    branches: [audit/pypcc-current-line-authorship-2026-11-11]
+    paths:
+      - experiments/audit_current_source_authors.py
+      - .github/workflows/audit-current-pypcc-authorship.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  current-line-attribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Confirm source files match frozen real production commit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 8d5f5aa9061a51ec5c4cd782b8ca10a0365049da^{commit}
+          git diff --exit-code 8d5f5aa9061a51ec5c4cd782b8ca10a0365049da HEAD -- \
+             pcc.py pcc_numpy.py pcc_numba.py pcc_step.pyx \
+             pcc_graph.py pcc_validation.py pcc_metrics.py \
+             setup.py pyproject.toml example.py benchmark.py
+      - name: Git blame all seven original current module files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile experiments/audit_current_source_authors.py
+          python -m experiments.audit_current_source_authors | tee current_line_authorship_summary.log
+          test -s current_pypcc_code_line_provenance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-current-pcc-source-blame-verification
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            current_pypcc_code_line_provenance.json
+            current_line_authorship_summary.log
