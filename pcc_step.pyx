@@ -70,6 +70,21 @@ cdef double _pcc_calc_mmpot_from_rowmax(
     return total_max / n_nodes
 
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+cdef void _pcc_initialize_rowmax_from_canonical_labels(
+    np.int64_t[:] labels, Py_ssize_t n_nodes, double uniform_value,
+    double[:] row_max_cache
+) noexcept nogil:
+    cdef Py_ssize_t i
+    for i in range(n_nodes):
+        if labels[i] == -1:
+            row_max_cache[i] = uniform_value
+        else:
+            row_max_cache[i] = 1.0
+
 cpdef pcc_propagate(
     np.int64_t[:, :] neib_list,
     np.int64_t[:]    neib_qt,
@@ -100,7 +115,8 @@ cpdef pcc_propagate(
     bint             return_info = False,
     object           seed = None,
     bint             experimental_rowmax_cache = True,
-    bint             experimental_verify_rowmax_cache = False
+    bint             experimental_verify_rowmax_cache = False,
+    bint             experimental_canonical_rowmax_init = False
 ):
     cdef Py_ssize_t it = -1, i, n_nodes = neib_list.shape[0]
     cdef double mmpot, max_mmpot = 0.0
@@ -134,7 +150,12 @@ cpdef pcc_propagate(
     if cache_enabled:
         row_max_cache = np.empty(n_nodes, dtype=np.float64)
         with nogil:
-            _pcc_initialize_rowmax_cache(dominance, n_nodes, c, row_max_cache)
+            if experimental_canonical_rowmax_init:
+                _pcc_initialize_rowmax_from_canonical_labels(
+                    labels, n_nodes, 1.0 / c, row_max_cache)
+            else:
+                _pcc_initialize_rowmax_cache(
+                    dominance, n_nodes, c, row_max_cache)
 
     with nogil:
         for it in range(max_iter):
