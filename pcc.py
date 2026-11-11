@@ -438,6 +438,16 @@ class ParticleCompetitionAndCooperation:
             from functools import partial
             propagate_fn = partial(propagate_fn, update_mode="synchronous")
         
+        canonical_init_kwargs = {}
+        # Only this exact class just created canonical one-hot/uniform dominance.
+        # Direct low-level callers and custom subclass states remain unchanged.
+        if (type(self) is ParticleCompetitionAndCooperation and
+                self.early_stop and self.update_mode == "sequential" and
+                _HAS_CYTHON):
+            from pcc_step import pcc_propagate as actual_cython_propagate
+            if propagate_fn is actual_cython_propagate:
+                canonical_init_kwargs["experimental_canonical_rowmax_init"] = True
+
         propagate_fn(
             self.neib_list, self.neib_qt,
             self.mapped_labels, self.p_grd, self.delta_v, self.c, self.zerovec,
@@ -447,7 +457,8 @@ class ParticleCompetitionAndCooperation:
             self.buf_dist_list, self.buf_prob, self.buf_slices,
             self.dist_weights,
             self.max_iter, self.early_stop, self.es_chk, stop_max,
-            **({"seed": seed} if seed is not None else {})
+            **({"seed": seed} if seed is not None else {}),
+            **canonical_init_kwargs
         )
 
         unlabeled = node.label == -1
