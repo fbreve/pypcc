@@ -1,11 +1,11 @@
 # Particle Competition and Cooperation
-Python code for the semi-supervised learning method "Particle Competition and Cooperation". 
+Python implementation of the semi-supervised learning method "Particle Competition and Cooperation" (PCC).
 
-This project is a fork of Caio Carneloz’s original implementation, available at
-https://github.com/caiocarneloz/pycc
+The PCC method predates this Python package; see the [original scientific publication](https://doi.org/10.1109/TKDE.2011.119) and an earlier [MATLAB/MEX implementation by Fabricio Breve](https://github.com/fbreve/Particle-Competition-and-Cooperation).
 
-This fork has a few bug fixes and several optimizations for faster execution. 
-It also includes the early stopping criterion from the original article.
+This repository originated as a fork of [Caio Carneloz's 2019 Python implementation](https://github.com/caiocarneloz/pycc), which implemented the previously published PCC model. That historical contribution remains credited here. The current package has since been substantially rewritten, with redesigned graph construction, typed particle/node state, a separate validation layer, early stopping, and new Cython, Numba, and NumPy propagation backends. It is not simply the old Python script with a few optimizations.
+
+The [source-provenance and authorship audit](docs/current_code_authorship_license_recommendation_2026-11-11.md) distinguishes the current code from both the original Python implementation and the earlier mathematical model.
 
 For Python, there are three implementations available: **cython**, **numba**, and pure **numpy**.  \
 **cython** and **numba** are much faster than **numpy**.
