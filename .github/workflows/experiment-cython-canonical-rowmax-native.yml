@@ -3,9 +3,7 @@ on:
   push:
     branches: [experiment/cython-canonical-rowmax-init-v1]
     paths:
-      - experiments/cython_canonical_rowmax_init_protocol.md
       - experiments/cython_canonical_rowmax_init_probe.py
-      - experiments/audit_cython_canonical_rowmax_init.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -51,7 +49,7 @@ jobs:
           python -m py_compile experiments/cython_canonical_rowmax_init_probe.py \
             experiments/audit_cython_canonical_rowmax_init.py
           python -c "import pcc, pcc_step, numpy, Cython; print('ORIGINAL_CYTHON_IMPORTED', pcc_step.__file__, Cython.__version__)"
-      - name: Compiled native baseline/candidate, 20 frozen cohorts and 6 paired CPU batches each
+      - name: Compiled native baseline/candidate, 20 frozen cohorts and 6 paired CPU batches each (16-256 fits/batch)
         shell: bash
         run: |
           set -euxo pipefail
