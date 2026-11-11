@@ -39,11 +39,12 @@ cross-backend bitwise identity. Tests check:
    predictions and all captured-array hashes, including a zero-iteration
    path and postprocessed state.
 3. Reading the snapshot does not alter the **Python NumPy global RNG
-   state**, although the preceding fit itself may have consumed RNG.
-   This is not yet a complete independent probe of the Numba internal
-   RNG nor Cython's hidden native seed state; those require stronger
-   separate source-aware within-backend continuation tests before a
-   *live milestone observer* is proposed.
+   state** or **Numba's separate native RNG state**, both tested before and
+   after the post-fit capture; the preceding fit itself may have consumed
+   random draws. Cython's internal xorshift state is local to its native
+   call and is not exposed here. Stronger within-backend continuation
+   tests for each backend are still required before proposing a *live*
+   intermediate-milestone observer.
 4. A strict pre-copy byte budget, unfitted model/invalid type rejection,
    and isolation from future modifications to source model arrays.
 
