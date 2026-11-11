@@ -31,8 +31,12 @@ def git(*argv):
     ).stdout
 
 
-def blame(filepath):
-    stdout = git("blame", "-w", "-M", "-C", "-C", "--line-porcelain",
+def blame(filepath, *, aggressive_copy_tracking=False):
+    # Ordinary Git blame is primary attribution. Copy/move detection is a
+    # secondary sensitivity diagnostic only; generic "else:" may falsely
+    # match snippets in other files and is not proof of code reuse.
+    opts = ("-w", "-M", "-C", "-C") if aggressive_copy_tracking else ()
+    stdout = git("blame", *opts, "--line-porcelain",
                  BASE, "--", filepath)
     # --line-porcelain always emits full metadata for each output source line.
     rows = []
@@ -69,7 +73,8 @@ def main():
         raise AssertionError("research branch modified original production files")
     report = {
         "source_production_sha": BASE,
-        "method": "git blame -w -M -C -C --line-porcelain <original SHA> -- path",
+        "method": "ordinary git blame --line-porcelain <original SHA> -- path",
+        "copy_sensitivity": "git blame -w -M -C -C (secondary, may attribute generic copied lines)",
         "source_sha_frozen": True,
         "files": {},
         "total": {},
@@ -87,6 +92,7 @@ def main():
     all_nonmaintainer = []
     for filepath in FILES:
         rows = blame(filepath)
+        copied = blame(filepath, aggressive_copy_tracking=True)
         totals = Counter(r["author"] for r in rows)
         codes = Counter(r["author"] for r in rows
                         if r["text"].strip() and not r["text"].lstrip().startswith("#"))
@@ -104,6 +110,10 @@ def main():
             "authors_nonempty_noncomment": dict(codes),
             "nonmaintainer_line_sample": candidates[:70],
             "nonmaintainer_line_count": len(candidates),
+            "aggressive_copy_heuristic_authors_nonempty_noncomment": dict(
+                Counter(r["author"] for r in copied
+                        if r["text"].strip() and not r["text"].lstrip().startswith("#"))
+            ),
         }
         all_code.update(codes)
         all_total.update(totals)
@@ -130,7 +140,8 @@ def main():
         "source_files": {k: {
             "nonempty_noncomment_lines": v["nonempty_noncomment_lines"],
             "authors": v["authors_nonempty_noncomment"],
-            "nonmaintainer_lines": v["nonmaintainer_line_count"]
+            "nonmaintainer_lines": v["nonmaintainer_line_count"],
+            "copy_heuristic_authors": v["aggressive_copy_heuristic_authors_nonempty_noncomment"],
         } for k, v in report["files"].items()},
         "authorship_only_not_copyright": True,
     }, indent=2, ensure_ascii=False), flush=True)
