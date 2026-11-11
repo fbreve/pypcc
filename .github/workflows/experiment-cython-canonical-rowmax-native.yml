@@ -2,6 +2,10 @@ name: "Experiment: source-exact Cython canonical row-max initialization 2-OS CPU
 on:
   push:
     branches: [experiment/cython-canonical-rowmax-init-v1]
+    paths:
+      - experiments/cython_canonical_rowmax_init_protocol.md
+      - experiments/cython_canonical_rowmax_init_probe.py
+      - experiments/audit_cython_canonical_rowmax_init.py
   workflow_dispatch:
 permissions:
   contents: read
