@@ -144,9 +144,18 @@ def prepare(work):
            "refusing to overwrite compiled native sources")
     # Verify every current production source matches the pinned original Git.
     for file in SOURCE_FILES:
-        actual = Path(file).read_bytes()
+        # Windows Git checkout may contain CRLF while the immutable Git blob
+        # uses LF. Compare canonical Git bytes, and separately use Git's own
+        # worktree-normalized diff for unstaged local production modifications.
         expected = git_object(file)
-        ensure(actual == expected, "protected production source drift: " + file)
+        actual = subprocess.run(
+            ["git", "show", "HEAD:" + file], check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ).stdout
+        ensure(actual == expected, "protected production Git blob drift: " + file)
+        clean = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", file],
+                               check=False).returncode
+        ensure(clean == 0, "protected production Git worktree changed: " + file)
     records = {}
     for variant in ("original", "candidate"):
         folder = work / variant
