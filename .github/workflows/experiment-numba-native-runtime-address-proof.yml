@@ -41,8 +41,7 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gdb
           gdb --version
-          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH gdb --batch --quiet --nx \\
-            -ex "python import sys, math, json; print('GDB_EMBEDDED_SYSTEM_PYTHON_STDLIB_PASS', sys.version, sys.prefix, math.pi)"
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH gdb --batch --quiet --nx -ex "python import sys, math, json; print('GDB_EMBEDDED_SYSTEM_PYTHON_STDLIB_PASS', sys.version, sys.prefix, math.pi)"
       - name: One original native public PCC fit and exactly 48 GDB register samples
         shell: bash
         run: |
@@ -50,8 +49,7 @@ jobs:
           folder="numba_native_gdb_probe/linux/digits_89021_p0.5"
           mkdir -p "$folder/private_cache"
           export NUMBA_CACHE_DIR="$PWD/$folder/private_cache"
-          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH \\
-            PCC_NATIVE_GDB_PROBE="$PWD/$folder" gdb --batch --quiet --nx \
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH PCC_NATIVE_GDB_PROBE="$PWD/$folder" gdb --batch --quiet --nx \
              -x experiments/gdb_numba_runtime_addresses.py \
              --args python -m experiments.trace_numba_native_runtime_case \
              --out "$PWD/$folder" > "$folder/gdb_stdout.txt" 2> "$folder/gdb_stderr.txt" || {
