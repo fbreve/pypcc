@@ -1,0 +1,30 @@
+# PyPCC software licensing and upstream provenance — verification preflight (2026-11-11)
+
+**Status: EVIDENCE FOUND, GRANT SCOPE UNCONFIRMED; NO LICENSE CHANGE AUTHORIZED.**
+
+This is a preliminary **source/provenance decision memo**, not legal advice, a legal determination, an actual license grant, an automatic relicensing operation or a JOSS-ready submission. The original research/optimization production code remains unchanged.
+
+## Confirmed direct-source facts
+
+1. The live GitHub repository metadata for [`fbreve/pypcc`](https://github.com/fbreve/pypcc) identifies it as a real GitHub fork (`fork=true`) of [`caiocarneloz/pycc`](https://github.com/caiocarneloz/pycc). The fork's current root README expressly attributes the original implementation to Caio Carneloz and links the same upstream repository.
+2. The upstream `master` root presently contains **only three files**: `README.md`, `demo.py` and `pcc.py`. The README and those two Python sources have no visible `LICENSE` file or explicit permission/copyright grant text; live GitHub repository metadata reports `license=null`. This is a statement about the **present GitHub tree**, not proof that no license was ever granted in another distribution or earlier revision.
+3. The fork's GitHub repository metadata likewise reports `license=null`, and a current `master` root inventory found no `LICENSE`, `LICENSE.md`, `COPYING` or other recognizably named license document. The earlier preliminary [#170 software-paper audit](https://github.com/fbreve/pypcc/pull/170) accurately reported this **limited** root observation but should not be read as a global historical no-license finding.
+4. **Important additional contemporary publisher evidence:** [Caio Carneloz's original `pypcc` project on PyPI](https://pypi.org/project/pypcc/) explicitly lists `Author: Caio Carneloz` and **`License: MIT License`** in its *publisher-supplied, PyPI-unverified project metadata*. Its latest 0.0.6 source release was published **2020-04-11**, predating creation of the fork (2020-08-27). The PyPI release page lists the exact source distribution `pypcc-0.0.6.tar.gz` with **SHA256 `cc807593f9c809158d3fc1473b0087090fe84417a84bf5e0294d9cb8a0802c28`**.
+5. **Critical scope limit:** an attempt to obtain that upstream source-distribution tarball from the current runtime did not succeed due network/DNS restrictions. Its exact `LICENSE*`, `PKG-INFO`, `setup.py`, package source and copyright notices have **not** been examined here, and the PyPI metadata line alone has not been shown to apply to every original GitHub commit/source file currently incorporated into this fork.
+
+## Why the distinction matters
+
+GitHub's [licensing guidance](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository) distinguishes public visibility and fork availability from explicit reusable-distribution permissions; repository metadata `license=null` is a license-recognition observation, **not** proof of absence of an out-of-band grant. MIT is an OSI-approved open-source license, but a statement in registry metadata is less complete evidence than the publisher's actual accompanying license text, matching source revision and retained original copyright/notice terms.
+
+[JOSS submission requirements](https://joss.readthedocs.io/en/latest/submitting.html), [JOSS review checklist](https://joss.readthedocs.io/en/latest/review_checklist.html), and [review criteria](https://joss.readthedocs.io/en/latest/review_criteria.html) require source access, an actual OSI-approved license file, appropriate authorship and research use, public open development, runnable tests/documentation and an actual software paper. Neither an absent root `LICENSE` nor the existence of an upstream PyPI MIT classifier alone resolves eligibility. The scientific PCC papers and published algorithm are not themselves a code software-license instrument.
+
+## Safe next steps — do not silently publish a LICENSE yet
+
+1. **Verify the publisher's distribution:** obtain `pypcc-0.0.6.tar.gz` directly from the linked original PyPI project (not another package named `pycc`), verify SHA256 **before inspection**, and inspect every actual `LICENSE*`/`COPYING*`/`NOTICE*`, `PKG-INFO`, `setup.py` and original source file. Preserve a checksum and an inventory, not the archived copyrighted source in a PR unnecessarily.
+2. **Bind the grant to source and people:** compare the licensed PyPI code and time/revision with upstream GitHub `master` history and this actual `fork` lineage. Confirm the original publisher/author's identity and license permissions for redistribution, derivative modification and inherited source code. Identify any other contributors with rights to inherited portions.
+3. **Retain appropriate attribution:** if the proper grant is established, prepare a small, explicit, **separately reviewed** `LICENSE` and any necessary upstream attribution/`NOTICE` for inherited work and new contributions, accurately reflecting the copyright holders and applicable terms. If the actual sdist leaves scope or wording ambiguous, request written confirmation/permission from Caio before adding or changing license declarations.
+4. **Treat journal readiness separately:** only then address a `CITATION.cff`, JOSS `paper.md`, research-use evidence specifically using this implementation, reproducible install/test instructions and author list. The existing original algorithm paper citation is not, by itself, evidence of adoption of the **software fork**.
+
+**Decision:** [PR #170](https://github.com/fbreve/pypcc/pull/170) remains OPEN/DRAFT/UNMERGED as a separate paper/license review. No guessed MIT text, unilateral source relicensing, contributor-rights assertion or JOSS submission is made by this documentation-only preflight.
+
+**Evidence snapshot:** GitHub upstream and fork metadata/root/source inspected on 2026-11-11; original PyPI published project page 2020-04-11; standards-linked source pages consulted in November 2026. A later change in these external pages does not retroactively establish source coverage as of this audit.
