@@ -56,3 +56,39 @@ The archive contains `README.md`, `setup.py`, `setup.cfg`, `pypcc/__init__.py`, 
 - **Narrow next action:** request or locate **Caio's original MIT license text and preferred copyright notice** covering the verified exact `pypcc/model.py` / `pycc:pcc.py` code. With a confirmed grant and copyright holder(s), independently review a minimal `LICENSE` plus attribution/notice file if needed, and separately check authorship and contributions to the fork. This evidence does not change PCC computation, benchmark outcomes, or any earlier scientific PR disposition.
 
 Raw GitHub Actions artifacts are finite-retention. This committed evidence summary, the SHA-pinned unmerged script/protocol branch, the upstream exact Git SHA and original PyPI package SHA allow a future independent inspection without trusting a copied executable.
+
+## Independent current-code versus original-Python similarity analysis — later 2026-11-11
+
+**This section supersedes the earlier recommendation that requesting explicit permission from Caio is an automatic prerequisite for choosing a license for the *current* Python/Cython/Numba implementation.** The earlier source-distribution MIT verification remains valid evidence of upstream intent, but present source ancestry and rights are a **separate question**. The project maintainer clarified that they authored an earlier PCC MATLAB implementation and supervised Caio's master's work; Caio's 2019 Python was an implementation of the preexisting particle model, not the source of the mathematical algorithm itself.
+
+### Reproducible pinned-source comparison
+
+Original source: [`caiocarneloz/pycc:pcc.py`](https://github.com/caiocarneloz/pycc/blob/a0a12cae2607c01eb2f5ffab7a52540fa721234b/pcc.py) at immutable upstream SHA `a0a12cae2607c01eb2f5ffab7a52540fa721234b`, **5,976 bytes, 215 total lines** (133 nonblank non-comment trimmed lines, 101 candidate lines of >=18 characters with letters, 1,574 simple lexical tokens).
+
+Current production source: [`fbreve/pypcc` at `d457a70`](https://github.com/fbreve/pypcc/tree/d457a7021740222ed90433c51312fbeb80c0d413), **all seven core modules together** `pcc.py`, `pcc_numpy.py`, `pcc_numba.py`, `pcc_step.pyx`, `pcc_graph.py`, `pcc_validation.py`, `pcc_metrics.py`: **80,017 bytes / 1,924 total lines / 14,109 simple lexical tokens**.
+
+| Literal clone indicator, computed on original source against the union of all 7 current core modules | Outcome |
+|---|---|
+| Distinct original trimmed nonblank/non-comment line occurrences | **12/133** original source lines occur literally anywhere in the new modules |
+| Original lines at least 18 characters and containing letters | **5/101** occur literally |
+| Specific five longer surviving lines | Generic `import numpy as np`, `self.delta_v = delta_v`, `self.max_iter = max_iter`, `self.c = len(self.unique_labels)`, `self.__labelPropagation()` |
+| Original lexical 8-token n-grams found in new code | 12 n-grams, touching **4.32%** of original lexical tokens; short generic initialization/calls and `np.random.random() < p_grd` logic |
+| Original lexical 10-token n-grams found | One generic `self.c = len(self.unique_labels)` expression |
+| Original lexical **12-token** contiguous n-grams found | **None** across all seven current modules |
+
+**Method:** line comparison uses `.trim()` on each line and discards empty and full-line `#` comments. Simple tokens are identifiers, numbers, comparison/augmented assignment operators and remaining non-whitespace punctuation, with inline `#` comments discarded. N-gram indicators are superficial clone indicators **not a comprehensive AST/dataflow/software-copyright test**. The counts are neither a legally accepted percentage of original code nor proof of no historical derivative lineage. They are reported only to make the empirical source-comparison argument reproducible and falsifiable.
+
+### Structural and historical check
+
+- The current `pcc.py` provides graph handling, backend dispatch and `fit_predict`; the original offers monolithic `fit`, `predict`, `__greedyWalk`, `__randomWalk`, `__update`, `__genGraph` in pure Python. The native Cython and Numba kernel implementations do not exist in the original upstream.
+- The original graph construction computes pairwise distances in nested Python loops and stores adjacency in dictionary/set lists; the current implementation uses scikit-learn kNN, SciPy sparse **graph construction**, reciprocal graph symmetrization and subsequently deliberately CPU-efficient **dense padded int64 neighbor arrays** for native particle loops. It is not converting the PCC hotloop to CSR.
+- The original particle state is a four-column integer array; the current has typed `Particles`/`Nodes` structures, separately owned native arrays, saturated `uint8` particle-distance table, robust preflight/RNG ownership and early-stopping behavior, and exact native compiled implementations. Some mathematical update rules are naturally similar because both implement the *same published PCC model*.
+- The maintainer's separate [MATLAB/MEX/C model implementation](https://github.com/fbreve/Particle-Competition-and-Cooperation) repository was created on **2019-01-21**; its `pcc.m` header reads `by Fabricio Breve - 21/01/2019`, and `pccloop.c` already supplies a native particle algorithm. The original Caio [`caiocarneloz/pycc`](https://github.com/caiocarneloz/pycc) GitHub repository was created **2019-05-22**. The original PCC publication was in 2012 (with multiple named coauthors), predating both implementations. This chronology establishes an independent preexisting model and code implementation; it does **not** by itself prove that no line of code ever passed between projects.
+
+### Corrected scope of license review
+
+**Conclusion: materially rewritten source, negligible long literal-expression overlap.** It was too strong to demand Caio's written consent before considering any license for this *current* implementation. The original published Python code and its author remain historically attributable in README, and the 2020 PyPI `MIT License` declaration is a useful additional provenance record. But authorship of the published mathematical PCC method (which predates Caio's Python) is separate from copyright in a particular software expression; similarly, original source-copyright questions should not be presumed to cover independently authored later Cython/Numba/NumPy source.
+
+**Practical next action:** audit ownership and contributions to the *present* files, retain truthful upstream attribution and the 2012 model citation, then select a precise OSI-approved `LICENSE` applicable to code for which the maintainer/contributors hold rights. Do not invent or overwrite Caio's original copyright notice, and do not assert clean-room independence as a legal fact solely from lexical comparison. A new minimal `LICENSE`/attribution PR is a **separate explicit maintainer decision**; it has NOT been made by this documentation change. [Preliminary software paper/license PR #170](https://github.com/fbreve/pypcc/pull/170) remains the focused review item rather than a requirement to contact Caio automatically.
+
+The outgoing institutional Gmail **Sent** folder was checked after the earlier draft outreach attempt; no message to Caio matching the proposed subject or sent to his known address on 2026-11-11 was found. No new message will be sent as part of this audit.
