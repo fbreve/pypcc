@@ -206,6 +206,17 @@ Python versions and operating systems. Optional long experiments under `docs/`
 are not part of installation or CI. Archived stopping data are downloaded
 separately; see [reproduction instructions](docs/benchmarks/stopping_patience/REPRODUCIBILITY.md).
 
+## License
+
+The current PyPCC implementation is released under the [MIT License](LICENSE).
+Copyright (c) 2026 Fabricio Aparecido Breve. The original Python implementation
+by [Caio Carneloz](https://github.com/caiocarneloz/pycc), from which this
+repository was forked, remains credited above. The underlying PCC method was
+developed and published separately; please cite the original research below.
+
+Third-party dependencies (including NumPy, SciPy, scikit-learn and optional
+Numba) retain their respective licenses.
+
 ## Citation
 If you use PyPCC in your research, please cite the original PCC paper:
 
