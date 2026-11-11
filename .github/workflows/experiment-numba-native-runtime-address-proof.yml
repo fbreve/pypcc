@@ -1,0 +1,121 @@
+name: "Experiment: one original Numba native GDB allocation-address proof"
+on:
+  push:
+    branches: [experiment/numba-native-runtime-address-proof-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-native-bounded-register-samples:
+    name: "ONE original Digits native full fit, 3x16 read-only GDB address samples"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      NUMBA_ENABLE_PROFILING: "1"
+      NUMBA_DEBUGINFO: "1"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require original production files byte-identical to pinned master
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- pcc.py pcc_numba.py pcc_numpy.py pcc_graph.py pcc_step.pyx pcc_validation.py benchmarks/fixtures.py
+      - name: Check independent audit scripts and install exact original backend and native GDB
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile experiments/trace_numba_native_runtime_case.py experiments/gdb_numba_runtime_addresses.py experiments/audit_numba_native_runtime_addresses.py
+          python -m pip install -e ".[numba]"
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gdb
+          gdb --version
+      - name: One original native public PCC fit and exactly 48 GDB register samples
+        shell: bash
+        run: |
+          set -euxo pipefail
+          folder="numba_native_gdb_probe/linux/digits_89021_p0.5"
+          mkdir -p "$folder/private_cache"
+          export NUMBA_CACHE_DIR="$PWD/$folder/private_cache"
+          PCC_NATIVE_GDB_PROBE="$PWD/$folder" gdb --batch --quiet --nx \
+             -x experiments/gdb_numba_runtime_addresses.py \
+             --args python -m experiments.trace_numba_native_runtime_case \
+             --out "$PWD/$folder" > "$folder/gdb_stdout.txt" 2> "$folder/gdb_stderr.txt" || {
+              cat "$folder/gdb_stdout.txt" "$folder/gdb_stderr.txt"
+              exit 1
+             }
+          cat "$folder/gdb_stdout.txt"
+          test -s "$folder/native_live_array_ranges.json"
+          test -s "$folder/numba_native_gdb_address_samples.json"
+          test -s "$folder/numba_native_gdb_full_fit_source.json"
+          grep -q 'GDB_NATIVE_EFFECTIVE_ADDRESSES_OBSERVED_48_PASS' "$folder/gdb_stdout.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-native-runtime-gdb-48-addresses-raw
+          path: numba_native_gdb_probe/linux/
+          if-no-files-found: error
+          retention-days: 90
+
+  independent-original-source-and-address-audit:
+    name: "Strict 48 original register/array addresses and frozen #239/#236 Linux+Windows source"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: original-native-bounded-register-samples
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: numba-original-native-runtime-gdb-48-addresses-raw
+          path: .cache/native_gdb/new
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42867623234
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-original-live-opcode-one-case-raw
+          path: .cache/native_gdb/original239
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-linux
+          path: .cache/native_gdb/original236linux
+          merge-multiple: false
+      - uses: actions/download-artifact@v4
+        with:
+          repository: fbreve/pypcc
+          run-id: 42735104018
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: numba-cache-original-raw-windows
+          path: .cache/native_gdb/original236windows
+          merge-multiple: false
+      - name: Fail-closed independent source/arrays/MT/stop and observed addresses audit
+        run: >-
+          python -m experiments.audit_numba_native_runtime_addresses
+          .cache/native_gdb
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numba-original-native-runtime-allocation-decision
+          path: |
+            numba_native_gdb_allocation_report.md
+            numba_native_gdb_allocation_decision.json
+          if-no-files-found: error
+          retention-days: 90
