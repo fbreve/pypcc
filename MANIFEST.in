@@ -1,5 +1,6 @@
 include pcc_step.pyx
 include README.md
 include VERSION
+include LICENSE
 prune docs/benchmarks
 prune .cache
