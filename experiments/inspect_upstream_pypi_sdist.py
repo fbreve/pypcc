@@ -146,6 +146,22 @@ def main():
             "explicit_MIT_grant": b"Permission is hereby granted" in b
             and b"without restriction" in b,
         })
+    # Independently inspect EVERY archive member for a full permission grant or
+    # copyright notice, not just paths conventionally named LICENSE/NOTICE.
+    grant_patterns = (
+        b"Permission is hereby granted",
+        b"THE SOFTWARE IS PROVIDED \"AS IS\"",
+        b"Copyright (c)",
+        b"copyright (c)",
+    )
+    archive_grant_matches = [
+        {"path": path, "patterns": [
+            pattern.decode("ascii") for pattern in grant_patterns
+            if pattern in raw
+        ]}
+        for path, raw in sorted(files.items())
+        if any(pattern in raw for pattern in grant_patterns)
+    ]
     upstream = {}
     for fn in ("pcc.py", "demo.py", "README.md"):
         raw = download(UPSTREAM_ROOT + fn, limit=MAX_SOURCE_BYTES)
@@ -186,6 +202,7 @@ def main():
         "publisher_metadata": pkg_metadata,
         "setup_py_license_lines": setup_evidence,
         "license_or_notice_files": license_details,
+        "grant_or_copyright_text_matches_anywhere": archive_grant_matches,
         "python_source_comparisons": py_comparisons,
         "upstream_git_sources": upstream,
         "no_source_executed": True,
@@ -195,6 +212,10 @@ def main():
             "separate_actual_license_document_present": bool(license_names),
             "literal_MIT_grant_present_in_license_document": any(
                 x["explicit_MIT_grant"] for x in license_details
+            ),
+            "literal_full_permission_grant_found_anywhere": any(
+                "Permission is hereby granted" in x["patterns"]
+                for x in archive_grant_matches
             ),
             "upstream_source_exactly_matched": any(
                 x["exact"]
@@ -244,6 +265,7 @@ def main():
     print("PACKAGE_METADATA", json.dumps(pkg_metadata))
     print("LICENSE_FILE_FINDINGS", json.dumps(license_details))
     print("SETUP_META_LINES", json.dumps(setup_evidence))
+    print("LICENSE_COPYRIGHT_PATTERNS_ACROSS_ALL_ARCHIVE_FILES", json.dumps(archive_grant_matches))
     print("MODULE_COMPARISONS", json.dumps(py_comparisons))
     print("CONCLUSIONS", json.dumps(result["conclusions"]))
     print("SUCCESS: ORIGINAL TARBALL INSPECTED WITHOUT RUNNING UNTRUSTED CODE")
