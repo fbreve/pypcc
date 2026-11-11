@@ -9,7 +9,7 @@ from statistics import median
 import sys
 
 from experiments.cython_canonical_rowmax_init_probe import (
-    BASE, COHORTS, MASKS, SEQ, BATCH, BLOCKS_PER_PROCESS, cohort_id
+    BASE, COHORTS, MASKS, SEQ, BLOCKS_PER_PROCESS, cohort_id, batch_for_cohort
 )
 
 
@@ -70,14 +70,14 @@ def check(root):
                             x["compiled_real_cython_backend"] is True and
                             x["new_fast_path_only_in_candidate_highlevel_cached"] is True and
                             x["previous_fit_ownership_and_invalid_rollback"] is True and
-                            x["batch_size"]==BATCH and
+                            x["batch_size"]==batch_for_cohort(cohort) and
                             x["source_hashes"]["pcc.py"]==manifest["files"][variant]["pcc.py"] and
                             x["source_hashes"]["pcc_step.pyx"]==manifest["files"][variant]["pcc_step.pyx"],
                             "original native source/fixture mismatch "+key)
                     require(len(x["cpu_batches"])==BLOCKS_PER_PROCESS,
                             "missing original native paired CPU blocks "+key)
                     for i,block in enumerate(x["cpu_batches"]):
-                        require(block["block"]==i and block["fit_count"]==BATCH and
+                        require(block["block"]==i and block["fit_count"]==batch_for_cohort(cohort) and
                                 block["cpu_ns"]>0 and block["wall_ns"]>0 and
                                 block["last_state_hashes"]==x["state"],
                                 "missing or non-equivalent whole original Cython fit")
