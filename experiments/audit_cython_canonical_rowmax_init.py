@@ -49,7 +49,11 @@ def check(root):
             require((oldsha!=newsha)==(filename in ("pcc.py","pcc_step.pyx")),
                     "source differences are not the precise two permitted files")
         hashes[host]=manifest["files"]
-        rows=list((p/"measurements").glob("*.json"))
+        measurement_dirs = sorted(x for x in p.rglob("measurements") if x.is_dir())
+        require(len(measurement_dirs)==1,
+                "not one original ZIP measurement directory in "+host)
+        measured = measurement_dirs[0]
+        rows=list(measured.glob("*.json"))
         require(len(rows)==completed["runs"],"wrong actual source-native case count "+host)
         results[host]={}
         for cohort in COHORTS:
@@ -58,7 +62,7 @@ def check(root):
                 key=cid+"_mask"+str(mask)
                 seq=[]
                 for round_no, variant in enumerate(SEQ):
-                    file=p/"measurements"/(cid+"_mask"+str(mask)+"_round"+
+                    file=measured/(cid+"_mask"+str(mask)+"_round"+
                         str(round_no)+"_"+variant+".json")
                     require(file.is_file(),"missing frozen native source "+str(file))
                     x=json.loads(file.read_text(encoding="utf-8"))
@@ -154,8 +158,8 @@ def check(root):
         cid=cohort_id(cohort)
         for mask in MASKS:
             k=cid+"_mask"+str(mask)
-            left=read_one(root/"ubuntu-latest"/"measurements",k+"_round0_original.json")
-            right=read_one(root/"windows-latest"/"measurements",k+"_round0_original.json")
+            left=read_one(root/"ubuntu-latest",k+"_round0_original.json")
+            right=read_one(root/"windows-latest",k+"_round0_original.json")
             for field in ("inputs","state","stop","direct_canonical_cache_verifier",
                           "direct_noncanonical_default_cache_verifier"):
                 require(left[field]==right[field],
