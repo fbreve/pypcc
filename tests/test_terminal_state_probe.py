@@ -111,6 +111,16 @@ class TerminalStateProbeTests(unittest.TestCase):
         finally:
             np.random.set_state(previous_rng)
 
+    def test_numba_internal_rng_state_unchanged_by_postfit_probe(self):
+        # This verifies Numba's native RNG state independently of global
+        # NumPy RNG state, as used by the existing PCC safety regression.
+        from numba import _helperlib
+        model, _ = run("numba")
+        pointer = _helperlib.rnd_get_np_state_ptr()
+        before = _helperlib.rnd_get_state(pointer)
+        capture_terminal_state(model, include_distances=True)
+        self.assertEqual(before, _helperlib.rnd_get_state(pointer))
+
     def test_invalid_and_unfitted_rejected_without_mutation(self):
         model = small_model("numpy")
         with self.assertRaisesRegex(ValueError, "completed fitted state"):
