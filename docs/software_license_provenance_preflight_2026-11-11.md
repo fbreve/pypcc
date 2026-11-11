@@ -28,3 +28,31 @@ GitHub's [licensing guidance](https://docs.github.com/en/repositories/managing-y
 **Decision:** [PR #170](https://github.com/fbreve/pypcc/pull/170) remains OPEN/DRAFT/UNMERGED as a separate paper/license review. No guessed MIT text, unilateral source relicensing, contributor-rights assertion or JOSS submission is made by this documentation-only preflight.
 
 **Evidence snapshot:** GitHub upstream and fork metadata/root/source inspected on 2026-11-11; original PyPI published project page 2020-04-11; standards-linked source pages consulted in November 2026. A later change in these external pages does not retroactively establish source coverage as of this audit.
+
+## Verified original source distribution — independent follow-up, later 2026-11-11
+
+**This section updates the earlier preliminary observation that the source archive could not yet be inspected. The earlier evidence limitation is now resolved; historical statements above remain as dated observations rather than current blockers.** An isolated read-only [GitHub Actions inspection 43070546416](https://github.com/fbreve/pypcc/actions/runs/43070546416) **PASSED** using only Python stdlib downloads, archive reading and source-hash comparisons. The runnable [prospectively recorded protocol and exact source-only inspector](https://github.com/fbreve/pypcc/tree/audit/upstream-pypi-mit-sdist-2026-11-11) remain on a **separate unmerged audit branch**, with its [original JSON/text artifact 13878905328](https://github.com/fbreve/pypcc/actions/runs/43070546416/artifacts/13878905328). **No original code was executed, installed, imported or extracted to disk.**
+
+### Authenticated package ↔ upstream source connection
+
+| Evidence | Independently verified outcome |
+|---|---|
+| [Original release](https://pypi.org/project/pypcc/0.0.6/) | `pypcc==0.0.6`, published 2020-04-11 by Caio Carneloz |
+| Downloaded archive SHA-256 | **`cc807593f9c809158d3fc1473b0087090fe84417a84bf5e0294d9cb8a0802c28`** — exactly the PyPI-recorded file hash |
+| Original `setup.py` | Line 6 links `https://github.com/caiocarneloz/pycc`; line 7: `license='MIT License'`; line 8 identifies Caio Carneloz as author |
+| Both `PKG-INFO` copies | `Name: pypcc`, `Version: 0.0.6`, `Author: Caio Carneloz`, **`License: MIT License`** |
+| Original source comparison | Published `pypcc/model.py` is **exact byte match** to `caiocarneloz/pycc:pcc.py` at immutable Git SHA `a0a12cae2607c01eb2f5ffab7a52540fa721234b` |
+| Matching code SHA-256 | Both source copies **`ad67c77678b6d104eb25a2f98bef4b500dd542cbb1adf6b5d54458917fa2d0d5`**, 5,976 bytes |
+| License text/copyright notice in archive | No `LICENSE`, `LICENCE`, `COPYING`, `COPYRIGHT`, `NOTICE`, `License-File` metadata, or standalone text of the MIT permission conditions |
+| Code execution or package installation | **None** (archive members inspected in bounded memory, read-only) |
+
+The archive contains `README.md`, `setup.py`, `setup.cfg`, `pypcc/__init__.py`, **`pypcc/model.py`**, two `PKG-INFO` copies and other `pypcc.egg-info` metadata files. The source identity and publisher's explicit setup metadata together constitute **direct, strong historical evidence of an intended MIT license for Caio's exact original PCC code**, not merely a third-party catalog guess or a similarly named package. At the same time, the sdist demonstrably **omits the actual complete MIT grant text and copyright notice**, so it cannot independently answer what exact attribution/notice text should be maintained in derivative redistributions.
+
+### Updated decision (supersedes the unresolved-archive step above)
+
+- **Proven:** exact PyPI file identity, origin/author declaration, MIT publisher metadata, immutable GitHub upstream source code identity.
+- **Not yet proven:** a complete MIT license instrument/copyright notice for this source, whether later independently copyrighted fork contributions follow the same intended terms, and any third-party contribution obligations. Do not claim the registry's one-line metadata is a substitute for every required notice.
+- **No automatic production licensing:** do not invent a copyright line, assign copyright for Caio's code to the fork maintainer, silently remove upstream attribution, or merge a new `LICENSE` solely on this metadata. Retain [#170](https://github.com/fbreve/pypcc/pull/170) as the focused unresolved licensing paper-readiness review.
+- **Narrow next action:** request or locate **Caio's original MIT license text and preferred copyright notice** covering the verified exact `pypcc/model.py` / `pycc:pcc.py` code. With a confirmed grant and copyright holder(s), independently review a minimal `LICENSE` plus attribution/notice file if needed, and separately check authorship and contributions to the fork. This evidence does not change PCC computation, benchmark outcomes, or any earlier scientific PR disposition.
+
+Raw GitHub Actions artifacts are finite-retention. This committed evidence summary, the SHA-pinned unmerged script/protocol branch, the upstream exact Git SHA and original PyPI package SHA allow a future independent inspection without trusting a copied executable.
