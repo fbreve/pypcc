@@ -4,6 +4,7 @@ on:
     branches: [audit/upstream-pypi-mit-sdist-2026-11-11]
     paths:
       - .github/workflows/audit-upstream-pypi-sdist-license.yml
+      - experiments/inspect_upstream_pypi_sdist.py
   workflow_dispatch:
 permissions:
   contents: read
