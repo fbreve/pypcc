@@ -1,0 +1,104 @@
+name: "Experiment: source-exact Cython canonical row-max initialization 2-OS CPU gate"
+on:
+  push:
+    branches: [experiment/cython-canonical-rowmax-init-v1]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  frozen-original-and-candidate-native:
+    name: "Real original/candidate Cython full-fit CPU, state and stop (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify original production Git source was not changed
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git cat-file -e 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2^{commit}
+          git diff --exit-code 4c1c410d8eb04547421f72ee1d3ca2eeb5763ff2 HEAD -- \
+            pcc.py pcc_step.pyx pcc_graph.py pcc_numpy.py pcc_numba.py \
+            pcc_validation.py pcc_metrics.py setup.py pyproject.toml VERSION
+      - name: Install original production native toolchain and validate experiment scripts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install "Cython>=3.2,<4" "setuptools>=61" wheel "numpy>=2,<3" build
+          python -m pip install -e ".[numba]"
+          python -m py_compile experiments/cython_canonical_rowmax_init_probe.py \
+            experiments/audit_cython_canonical_rowmax_init.py
+          python -c "import pcc, pcc_step, numpy, Cython; print('ORIGINAL_CYTHON_IMPORTED', pcc_step.__file__, Cython.__version__)"
+      - name: Compiled native baseline/candidate, 20 frozen cohorts and 6 paired CPU batches each
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m experiments.cython_canonical_rowmax_init_probe orchestrate \
+             --out "$PWD/.cache/cython_native_rowmax" > cython_native_summary.log 2>&1 || {
+                tail -n 200 cython_native_summary.log
+                exit 1
+             }
+          tail -n 30 cython_native_summary.log
+          test -s .cache/cython_native_rowmax/complete.json
+          test -s .cache/cython_native_rowmax/native_sources/native_source_manifest.json
+          test "$(find .cache/cython_native_rowmax/measurements -name '*.json' | wc -l)" -eq 80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.os }}
+          path: |
+            .cache/cython_native_rowmax/complete.json
+            .cache/cython_native_rowmax/native_sources/native_source_manifest.json
+            .cache/cython_native_rowmax/measurements/*.json
+            cython_native_summary.log
+          if-no-files-found: warn
+          retention-days: 90
+
+  independent-frozen-cpu-and-exact-source-verdict:
+    name: "Independent strict Windows/Linux original source+state+stopping+CPU decision"
+    needs: frozen-original-and-candidate-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-latest"
+          path: .cache/cython_native_verdict
+          merge-multiple: false
+      - name: Strict 2-OS untrimmed CPU, input, 10 array SHA, native stop and Cython direct-call parity
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m experiments.audit_cython_canonical_rowmax_init \
+            .cache/cython_native_verdict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cython-canonical-rowmax-2os-independent-scientific-decision
+          path: |
+            cython_canonical_rowmax_cpu_report.md
+            cython_canonical_rowmax_cpu_decision.json
+          if-no-files-found: warn
+          retention-days: 90
