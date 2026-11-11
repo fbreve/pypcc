@@ -1,0 +1,37 @@
+name: "Audit: original SHA-verified PyPI 0.0.6 license and upstream source"
+on:
+  push:
+    branches: [audit/upstream-pypi-mit-sdist-2026-11-11]
+    paths:
+      - .github/workflows/audit-upstream-pypi-sdist-license.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-upstream-license-inspection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read-only download original SHA-verified PyPI release and pinned upstream files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m py_compile experiments/inspect_upstream_pypi_sdist.py
+          python -m experiments.inspect_upstream_pypi_sdist 2>&1 | tee upstream_original_inspection.log
+          test -s upstream_pypi_0_0_6_inspection.json
+          test -s upstream_pypi_0_0_6_inspection.md
+      - name: Preserve original immutable source license inspection, no package installed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-pypcc-original-0-0-6-metadata-and-license
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            upstream_pypi_0_0_6_inspection.json
+            upstream_pypi_0_0_6_inspection.md
+            upstream_original_inspection.log
