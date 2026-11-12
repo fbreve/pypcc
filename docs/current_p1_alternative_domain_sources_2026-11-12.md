@@ -33,3 +33,35 @@ After verifying both source files, record exact **raw ZIP SHA-256, selected memb
 - If an independent reviewer recommends three domains, the prospective choices could include the clinical-origin Vertebral source, **one of** Rice/Raisin, and a distinct-domain candidate like Wholesale. This is a **review option**, **not** a dataset selection or new frozen P1 protocol.
 - **No P1 scientific approval, no P2 execution preflight digest, and no real-data PCC model fits.** Keep all research PRs DRAFT/UNMERGED, production unchanged.
 
+
+## Source-only results on the real official UCI archives
+
+The independent audit [GitHub Actions #43305443733](https://github.com/fbreve/pypcc/actions/runs/43305443733) retrieved both datasets directly by HTTPS from the official UCI archive and verified the actual source names and class counts. An initial strict import intentionally refused UCI 379 because the original ARFF spells one field **`popUpWidnow`** rather than the documentation's `popUpWindow`; the verifier was corrected to accept *only* the observed original spelling. All subsequent source checks passed. Raw ZIPs, user/customer observations and website feature rows were not committed.
+
+The complete source-quality evidence is [`current_p1_alternative_domain_quality_results_2026-11-12.json`](current_p1_alternative_domain_quality_results_2026-11-12.json).
+
+| Exact source metric | Wholesale UCI 292 | Website Phishing UCI 379 |
+| --- | ---: | ---: |
+| Number of rows | **440** | **1,353** |
+| Candidate feature dimensions | **6 continuous expenditure fields** | **9 categorical integer codes** |
+| Class support | Channel 1: **298**, Channel 2: **142** | Result -1: **702**, 0: **103**, +1: **548** |
+| Distinct source feature patterns | **440** | **676** |
+| Extra occurrences of repeated feature patterns | **0** | **677** |
+| Extra duplicate full records (features plus target) | **0** | **629** |
+| **Feature patterns mapped to more than one class** | **0** | **48** |
+
+Observed official ZIP SHA-256:
+- Wholesale: `647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8`
+- Website Phishing: `fa029c3b079b6bfb4f0833c0ec94a778a20522161b028273e81ac3b93ee8bfee`
+
+Selected official data-member SHA-256:
+- Wholesale `Wholesale customers data.csv`: `c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef`
+- Website Phishing `PhishingData.arff`: `ec1c4594cb152e99bd0820855b19eff78a367d623ac5e7f419e6ba3c47dd2432`
+
+The **48** Website Phishing collisions are *distinct feature-description patterns containing conflicting class labels*, not 48 mislabeled objects and not an assertion that there are only 48 unavoidable errors. The counts arise from nine coarse categorical codes and do **not** demonstrate identical source URLs. Nevertheless, any deterministic predictor using *only* those identical feature codes must assign the same class to conflicting rows, so these records limit how completely that representation can explain the labels, regardless of the PCC backend. No classification accuracy, uncertainty or propagation was measured.
+
+**Source-quality interpretation:** Wholesale is a more straightforward *prospective third-domain candidate* than Website Phishing, but it is not automatically scientifically fit for P1: the **Channel** task is intentionally different from the **Region** target in the UCI metadata, `Region` was excluded from features and has not been assessed for customer-cluster confounding, repeated customer records cannot be ruled out without customer IDs, and spend features are skewed. Website Phishing should **not** be treated as continuous numeric Euclidean data, and its conflicting class patterns need a separate rationale before inclusion. Neither is yet selected or deemed newly validated.
+
+The source auditor now optionally accepts `--expect-record` and **fails closed** if the official UCI ZIP/member hashes, fixed feature mapping, class distribution, duplicate counts or conflicting-label counts differ from these source-only observations. That check establishes reproducibility of this *research-quality inspection*, not P1 science approval or a P2 execution seal. A later official UCI revision would require a new, explicitly reviewed version, not silent overwriting.
+
+**Next review:** independent prior-publication/MATLAB/local-archive exposure audit for Wholesale; independent decision on Channel task and source grouping, followed by scientific review of a *possible* three-domain design (Vertebral, one grain source, Wholesale). Rice/Raisin overlap remains a concern. No model fit has been run; source-only audits are not C2/G1/P1 scientific outcomes.
