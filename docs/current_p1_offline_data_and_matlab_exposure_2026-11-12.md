@@ -49,3 +49,29 @@ Review report fields always retain `datasets_selected=0`, `execution_authorized=
 ### Decision
 
 **GO: reproduce original MATLAB tracked-text exposure check and validate the offline reader on synthetic fixtures.** **NO GO: declare the three datasets fresh, approve candidate selection, freeze the P1 science, claim UCI integrity, or execute any real PCC propagation.** Next evidence required is legitimate source archive acquisition, explicit no-fit data integrity measurement, wider publication/local archive/previous-code exposure review and independent scientific decision on Rice/Raisin domain overlap and clinical-origin suitability. P2 execution-specific preflight and maintainer approval remain separate future gates.
+
+## E. Follow-up: official UCI HTTPS archive quality checks completed (2026-11-12)
+
+**This section supersedes the earlier access limitation in Section D.** The remote, temporary GitHub Actions runner obtained original UCI source archives directly from the three **Download** endpoints on the current official UCI pages; the local ChatGPT/container network still could not reach UCI. The raw ZIPs and patient/grain rows were **not committed or published**. Only metadata/hash/quality results were archived. A first audit run exposed and then corrected two strict schema assumptions: Vertebral Column's ARFF uses class **full names** rather than abbreviations; Raisin's workbook includes a separate official `Citation_Request` sheet. No data were altered; the verifier was adapted for *exactly* these evidenced schema patterns and retested with synthetic fixtures.
+
+The later exact-head source audit [GitHub Actions #43279321137](https://github.com/fbreve/pypcc/actions/runs/43279321137) on research commit `a709ec48c93902fd51fc748101d969043c5ae631` completed **3/3** official download/quality jobs. The immutable public metadata report, including source ZIP and selected data member SHA-256 values, is [`current_p1_official_uci_quality_results_2026-11-12.json`](current_p1_official_uci_quality_results_2026-11-12.json).
+
+| UCI ID | Class support verified from actual member | Exact duplicate full rows | Repeated numeric feature vectors | Contradictory labels |
+| --- | --- | ---: | ---: | ---: |
+| 212 Vertebral 3-class | Hernia **60**, Normal **100**, Spondylolisthesis **150** | **0** | **0** | **0** |
+| 545 Rice | Cammeo **1,630**, Osmancik **2,180** | **0** | **0** | **0** |
+| 850 Raisin | Besni **450**, Kecimen **450** | **0** | **0** | **0** |
+
+The downloaded ZIP SHA-256 values are:
+- UCI 212: `899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f`
+- UCI 545: `fe94e42046b829de21b92b0ffb6a22774fde021328cae799faa802a14e8dbed9`
+- UCI 850: `5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db`
+
+Exact official public download URLs used (HTTPS, redirects restricted to UCI host):
+- `https://archive.ics.uci.edu/static/public/212/vertebral%2Bcolumn.zip`
+- `https://archive.ics.uci.edu/static/public/545/rice%2Bcammeo%2Band%2Bosmancik.zip`
+- `https://archive.ics.uci.edu/static/public/850/raisin.zip`
+
+The verifier checked declared dimensions, finite features, distinct classes, and numeric exact-equality repeats. Zero duplicate *numeric rows* does **not** prove zero near-duplicates or subject-level independence, and the archive digest does **not** constitute an independently published UCI cryptographic signature. The official pages list CC BY 4.0; attribution/medical-origin reuse requires review. The output still records **zero P1 selections, zero PCC fits, no P2 execution preflight SHA, and no approval for experiments**.
+
+**Decision after E:** source-file quality checks for the three UCI metadata candidates **PASS**, subject to the limited definitions documented. Independent literature and local-history exposure checking, dataset/domain diversity, near-duplicate/group-dependence investigation, preregistered preprocessing and study design, plus P1/P2 explicit authorization **remain blockers**. No scientific P1 GO is implied.
