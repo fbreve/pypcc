@@ -67,8 +67,14 @@ def canonical_sha256(value):
 
 
 def check_graph_source(content):
-    require(git_blob_sha1(content) == GRAPH_SHA,
-            "Production graph code is not the pinned master source")
+    # Windows checkout may materialize the same Git LF blob as CRLF.
+    # Allow only that working-tree newline conversion, then compare EVERY
+    # canonical byte with the pinned Git blob SHA-1. No altered source passes.
+    if git_blob_sha1(content) != GRAPH_SHA:
+        require(b"\r\n" in content and
+                git_blob_sha1(content.replace(b"\r\n", b"\n")) == GRAPH_SHA,
+                "Production graph code is not the pinned master Git blob")
+        content = content.replace(b"\r\n", b"\n")
     module = ast.parse(content)
     functions = [x for x in module.body if isinstance(
         x, (ast.FunctionDef, ast.AsyncFunctionDef)
