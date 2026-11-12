@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install only synthetic XLSX reader dependency
-        run: python -m pip install "openpyxl==3.1.5"
+        run: python -m pip install "openpyxl==3.1.5" "numpy==1.26.4"
       - name: Run synthetic local ARFF/XLSX/ZIP quality tests (NO real data, NO fits)
         run: python -m unittest experiments.test_p1_offline_candidate_integrity -v
       - name: Read original MATLAB exact pinned Git commit (NO checkout/data inspection)
