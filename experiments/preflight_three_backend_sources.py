@@ -137,6 +137,24 @@ def audit(root, *, check_remote_heads=True):
     if production_blobs["pcc_step.pyx"] != CYTHON_PRODUCTION_BLOB:
         raise PreflightBlocked("Cython production blob differs from pinned hotloops")
 
+    # Bind the P0 result to the version of THIS audit implementation, not
+    # merely to the three independently pinned observer branches.
+    audit_head = _git(root, "rev-parse", "HEAD")
+    _verify_commit(root, audit_head)
+    audit_files = (
+        "experiments/preflight_three_backend_sources.py",
+        "experiments/test_three_backend_source_preflight.py",
+        "docs/current_three_backend_source_preflight_2026-11-12.md",
+        ".github/workflows/research-three-backend-source-preflight.yml",
+    )
+    audit_blobs = {path: _blob(root, audit_head, path) for path in audit_files}
+    local_script = (root / audit_files[0]).read_bytes().replace(b"\\r\\n", b"\\n")
+    local_blob = hashlib.sha1(
+        b"blob " + str(len(local_script)).encode("ascii") + b"\\0" + local_script
+    ).hexdigest()
+    if audit_blobs[audit_files[0]] != local_blob:
+        raise PreflightBlocked("Running audit script differs from its committed Git blob")
+
     entries = {}
     for name, config in sorted(BACKENDS.items()):
         head = config["head"]
@@ -176,6 +194,9 @@ def audit(root, *, check_remote_heads=True):
         "schema": SCHEMA,
         "base_commit": BASE,
         "production_blobs": production_blobs,
+        "audit_implementation": {
+            "commit": audit_head, "file_blobs": audit_blobs,
+        },
         "research_branches": entries,
     }
     return {
@@ -183,6 +204,7 @@ def audit(root, *, check_remote_heads=True):
         "source_inventory_sha256": _sha_json(inventory),
         "kind": "source-only, non-executable research inventory",
         "source_validation": "pass",
+        "remote_tracking_verified": bool(check_remote_heads),
         "execution_authorized": False,
         "scientific_protocol_frozen": False,
         "real_dataset_inspected": False,
