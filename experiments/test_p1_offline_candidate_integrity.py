@@ -52,7 +52,7 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         report = checker.review(212, f)
         self.assertEqual(report["rows"], 310)
         self.assertEqual(report["numeric_features"], 6)
-        self.assertEqual(report["class_support"], {"DH": 60, "NO": 100, "SL": 150})
+        self.assertEqual(report["class_support"], {"Hernia": 60, "Normal": 100, "Spondylolisthesis": 150})
         self.assertEqual(report["exact_repeated_feature_rows"], 0)
         self.assertEqual(report["conflicting_label_feature_patterns"], 0)
         self.assertEqual(report["archive_sha256"], checker.sha(f.read_bytes()))
@@ -128,6 +128,35 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         self.assertEqual(
             checker.review(212, f, member="column_3C_weka.arff")["rows"], 310,
         )
+
+    def test_exact_official_raisin_two_sheet_layout_is_allowed(self):
+        try:
+            from openpyxl import Workbook
+        except ImportError:
+            self.skipTest("openpyxl not installed")
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Raisin_Grains_Dataset"
+        ws.append(["Area", "MajorAxisLength", "MinorAxisLength", "Eccentricity",
+                   "ConvexArea", "Extent", "Perimeter", "Class"])
+        for i in range(900):
+            ws.append([i + 1 + k / 100 for k in range(7)] +
+                      ["Kecimen" if i < 450 else "Besni"])
+        cite = wb.create_sheet("Citation_Request")
+        cite["A1"] = "Citation Request : source paper"
+        cite["A2"] = "Synthetic fixture for verifier tests only"
+        out = io.BytesIO()
+        wb.save(out)
+        f = self.write("Raisin_Dataset.xlsx", out.getvalue())
+        result = checker.review(850, f)
+        self.assertEqual(result["class_support"], {"Besni": 450, "Kecimen": 450})
+
+        cite.title = "Unexpected"
+        out = io.BytesIO()
+        wb.save(out)
+        bad = self.write("Raisin_Dataset.xlsx", out.getvalue())
+        with self.assertRaisesRegex(checker.FixtureRejected, "exact UCI two-sheet"):
+            checker.review(850, bad)
 
     def test_raisin_xlsx_read_only_and_optional_dependency(self):
         try:
