@@ -262,7 +262,7 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         with self.assertRaises(near.NearDuplicateAuditBlocked):
             near.analyze_features([[0, 0], [1, 1]], ["A"])
         with self.assertRaises(near.NearDuplicateAuditBlocked):
-            near.analyze_features([[0, 0], [1, 1]], ["A", "B"])
+            near.analyze_features([[0, 0], [1, 1]], ["A", "B", "C"])
 
     def test_near_duplicate_archive_is_only_local_and_no_graph(self):
         from experiments import p1_near_duplicate_audit as near
