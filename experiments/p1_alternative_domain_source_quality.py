@@ -209,7 +209,8 @@ def parse_phishing(member):
             body.append(line)
     check(has_data, "ARFF data section absent")
     check(attrs == DATASETS[379]["all_columns"],
-          "Phishing source feature order or class target changed")
+          "Phishing source feature order or class target changed; "
+          "declared ARFF attributes=" + repr(attrs))
     return attrs, list(csv.reader(body))
 
 
