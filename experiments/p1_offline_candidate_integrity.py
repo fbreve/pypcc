@@ -26,7 +26,7 @@ MAX_CELLS = 200000
 TASKS = {
     212: {
         "name": "Vertebral Column 3-class", "n": 310, "d": 6,
-        "labels": {"DH": 60, "SL": 150, "NO": 100},
+        "labels": {"Hernia": 60, "Spondylolisthesis": 150, "Normal": 100},
         "file": "column_3c_weka.arff",
     },
     545: {
@@ -157,8 +157,30 @@ def parse_xlsx(raw):
         ) from exc
     try:
         workbook = load_workbook(io.BytesIO(raw), read_only=True, data_only=False)
-        require(len(workbook.sheetnames) == 1, "XLSX must have one unambiguous worksheet")
-        sheet = workbook.active
+        if len(workbook.sheetnames) == 1:
+            sheet = workbook.active
+        else:
+            require(
+                len(workbook.sheetnames) == 2 and
+                set(workbook.sheetnames) == {
+                    "Raisin_Grains_Dataset", "Citation_Request",
+                },
+                "XLSX must contain either one data sheet or the exact UCI two-sheet layout",
+            )
+            sheet = workbook["Raisin_Grains_Dataset"]
+            citation = workbook["Citation_Request"]
+            require(citation.max_column == 1 and
+                    citation.max_row is not None and citation.max_row <= 3,
+                    "Unexpected citation-only XLSX sheet structure")
+            first = next(citation.iter_rows(
+                min_row=1, max_row=1, values_only=True
+            ))
+            require(first and isinstance(first[0], str) and
+                    first[0].startswith("Citation Request"),
+                    "Unrecognized citation-only sheet")
+            for row in citation.iter_rows(values_only=False):
+                require(all(cell.data_type != "f" for cell in row),
+                        "Formula in citation sheet is forbidden")
         require(sheet.max_row is None or sheet.max_row <= MAX_ROWS + 1,
                 "XLSX sheet too large")
         require(sheet.max_column is None or sheet.max_column <= 10,
