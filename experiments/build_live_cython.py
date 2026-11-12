@@ -52,7 +52,7 @@ cdef void _research_capture(
 
 '''
 
-SIGNATURE_ANCHOR = "    bint             experimental_canonical_rowmax_init = False\\n):"
+SIGNATURE_ANCHOR = "    bint             experimental_canonical_rowmax_init = False\n):"
 EXTRA_SIGNATURE = """    bint             experimental_canonical_rowmax_init = False,
     object           research_observer = None
 ):"""
@@ -92,14 +92,14 @@ CAPTURE_CALL = """_research_capture(
                     research_rowmax, research_rng)
                 research_cursor += 1"""
 
-LOOP_ANCHOR = "    with nogil:\\n        for it in range(max_iter):"
+LOOP_ANCHOR = "    with nogil:\n        for it in range(max_iter):"
 LOOP_INSERT = """    with nogil:
         if research_active and research_schedule.shape[0] > 0 and research_schedule[0] == 0:
             """ + CAPTURE_CALL + """
         for it in range(max_iter):
             research_stop = False"""
 
-STOP_ANCHOR = "                    if stop_cnt > stop_max:\\n                        break"
+STOP_ANCHOR = "                    if stop_cnt > stop_max:\n                        break"
 STOP_INSERT = """                    if stop_cnt > stop_max:
                         if not research_active:
                             break
@@ -127,7 +127,7 @@ def _replace_once(source, old, new, title):
 
 
 def source_blob_sha(raw):
-    return hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\\0" + raw).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw).hexdigest()
 
 
 def generate():
