@@ -120,13 +120,13 @@ def run_batch(neighbors, degrees, labels, iterations, milestones,
 
 
 def benchmark(nodes=500, iterations=5000, repeats=5,
-              fits_per_sample=100, labels_per_class=12):
+              fits_per_sample=400, labels_per_class=12):
     if type(iterations) is not int or not 100 <= iterations <= 50000:
         raise ValueError("iterations must be int in 100..50000")
     if type(repeats) is not int or not 2 <= repeats <= 8:
         raise ValueError("repeats must be int in 2..8")
-    if type(fits_per_sample) is not int or not 1 <= fits_per_sample <= 200:
-        raise ValueError("fits_per_sample must be int in 1..200")
+    if type(fits_per_sample) is not int or not 1 <= fits_per_sample <= 500:
+        raise ValueError("fits_per_sample must be int in 1..500")
     neighbors, degrees, labels = fixture(nodes, labels_per_class)
     milestones = tuple(sorted(set(
         x for x in (0, 1, 10, 50, 100, 250, 500, iterations)
@@ -167,6 +167,7 @@ def benchmark(nodes=500, iterations=5000, repeats=5,
         raise AssertionError("clock did not resolve CPU samples")
     med_a = statistics.median(baseline_times)
     med_b = statistics.median(observed_times)
+    paired_ratios = [o / b for b, o in zip(baseline_times, observed_times)]
     commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], text=True,
     ).strip()
@@ -192,6 +193,9 @@ def benchmark(nodes=500, iterations=5000, repeats=5,
         "median_observed_cpu_s_per_fit": med_b / (1e9 * fits_per_sample),
         "observed_over_baseline_ratio": med_b / med_a,
         "ratio_minus_one": med_b / med_a - 1.0,
+        "paired_ratio_each": paired_ratios,
+        "median_paired_overhead_percent": 100.0 * (statistics.median(paired_ratios) - 1),
+        "batch_clock_resolution_warning": "Windows process CPU can be quantized; a 400-fit batch reduces but does not eliminate that uncertainty",
         "snapshot_bytes_per_fit": b["snapshot_bytes_total"],
         "warmups_excluded": True,
         "nopython_observer_verified": True,
@@ -211,7 +215,7 @@ def main():
     parser.add_argument("--nodes", type=int, default=500)
     parser.add_argument("--iterations", type=int, default=5000)
     parser.add_argument("--repeats", type=int, default=5)
-    parser.add_argument("--fits-per-sample", type=int, default=100)
+    parser.add_argument("--fits-per-sample", type=int, default=400)
     parser.add_argument("--labels-per-class", type=int, default=12)
     parser.add_argument("--output", default="")
     args = parser.parse_args()
