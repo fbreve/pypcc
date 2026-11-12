@@ -134,8 +134,8 @@ def generate():
     raw = ORIGINAL.read_bytes()
     # GitHub Actions Windows may materialize CRLF via core.autocrlf. The
     # pinned SHA is over Git's canonical LF blob, never host-local CRLF.
-    canonical = raw.replace(b"\\r\\n", b"\\n")
-    if b"\\r" in canonical or source_blob_sha(canonical) != EXPECTED_GIT_BLOB:
+    canonical = raw.replace(b"\r\n", b"\n")
+    if b"\r" in canonical or source_blob_sha(canonical) != EXPECTED_GIT_BLOB:
         raise RuntimeError("Cython original Git blob changed; manually re-audit before regeneration")
     source = canonical.decode("utf-8")
     source = _replace_once(source, "cpdef pcc_propagate(", CAPTURE_HELPER + "cpdef pcc_propagate(", "function entry")
