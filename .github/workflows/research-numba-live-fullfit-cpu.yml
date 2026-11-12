@@ -1,0 +1,36 @@
+name: Research Numba live fullfit CPU (synthetic)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/bench_live_numba_fullfit.py'
+      - 'experiments/live_numba_milestones.py'
+      - 'tests/test_live_numba_milestones.py'
+      - '.github/workflows/research-numba-live-fullfit-cpu.yml'
+jobs:
+  paired-cpu:
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install current compiled Numba project
+        run: python -m pip install -e ".[numba]"
+      - name: Confirm live Numba and full-fit parity
+        run: python -m unittest discover -s tests -p test_live_numba_milestones.py -v
+      - name: Paired Numba complete-fit CPU benchmark
+        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 400 --labels-per-class 12 --output numba-live-fullfit-${{ runner.os }}.json
+      - name: Upload OS-specific raw paired samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: numba-live-fullfit-${{ runner.os }}-py312
+          path: numba-live-fullfit-${{ runner.os }}.json
+          if-no-files-found: error
