@@ -8,7 +8,13 @@ import unittest
 import numpy as np
 
 import pcc_step
-from pcc_step_live_research import pcc_propagate as live_native
+try:
+    from pcc_step_live_research import pcc_propagate as live_native
+except ImportError as error:
+    # The general production regression workflow intentionally does not
+    # compile the independent research extension. Only the dedicated research
+    # workflow has an obligation to compile and execute these tests.
+    raise unittest.SkipTest("research-only Cython extension is not built") from error
 from experiments.live_cython_milestones import (
     observe_cython_sequential, xorshift32_next, _record_buffers,
 )
