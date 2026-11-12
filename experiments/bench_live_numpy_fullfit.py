@@ -20,9 +20,12 @@ from pcc import ParticleCompetitionAndCooperation
 from experiments.live_numpy_milestones import observe_numpy_sequential
 
 
-def fixture(nodes=200):
-    if type(nodes) is not int or nodes < 24:
-        raise ValueError("nodes must be an integer >= 24")
+def fixture(nodes=500, labels_per_class=12):
+    if type(nodes) is not int or nodes < 48:
+        raise ValueError("nodes must be an integer >= 48")
+    if (type(labels_per_class) is not int or labels_per_class < 3
+            or 4 * labels_per_class > nodes):
+        raise ValueError("labels_per_class must be integer >=3 and <=nodes/4")
     neighbors = np.full((nodes, 16), -1, dtype=np.int64)
     offsets = (-5, -4, -3, -2, -1, 1, 2, 3, 4, 5)
     for node in range(nodes):
@@ -30,8 +33,9 @@ def fixture(nodes=200):
             neighbors[node, j] = (node + offset) % nodes
     degrees = np.full(nodes, len(offsets), dtype=np.int64)
     labels = np.full(nodes, -1, dtype=np.int64)
-    labels[[0, 2, 4]] = 0
-    labels[[nodes // 2, nodes // 2 + 2, nodes // 2 + 4]] = 1
+    homes = np.arange(labels_per_class, dtype=np.int64) * 2
+    labels[homes] = 0
+    labels[nodes // 2 + homes] = 1
     return neighbors, degrees, labels
 
 
@@ -91,12 +95,13 @@ def run_one(neighbors, degrees, labels, iterations, milestones, observed):
     )
 
 
-def benchmark(nodes=200, iterations=1200, repeats=3):
+def benchmark(nodes=500, iterations=5000, repeats=5,
+              labels_per_class=12):
     if type(iterations) is not int or iterations < 100 or iterations > 5000:
         raise ValueError("iterations must be an integer in 100..5000")
     if type(repeats) is not int or repeats < 2 or repeats > 8:
         raise ValueError("repeats must be an integer in 2..8")
-    neighbors, degrees, labels = fixture(nodes)
+    neighbors, degrees, labels = fixture(nodes, labels_per_class)
     milestones = tuple(sorted(set(
         i for i in (0, 1, 10, 50, 100, 250, 500, iterations)
         if i <= iterations
@@ -141,7 +146,7 @@ def benchmark(nodes=200, iterations=1200, repeats=3):
             "python": sys.version.split()[0],
             "numpy": np.__version__,
             "nodes": nodes,
-            "particles": 6,
+            "particles": 2 * labels_per_class,
             "neighbor_active_degree": 10,
             "neighbor_allocated_width": 16,
             "iterations": iterations,
@@ -170,12 +175,14 @@ def benchmark(nodes=200, iterations=1200, repeats=3):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--nodes", type=int, default=200)
-    parser.add_argument("--iterations", type=int, default=1200)
-    parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--nodes", type=int, default=500)
+    parser.add_argument("--iterations", type=int, default=5000)
+    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--labels-per-class", type=int, default=12)
     parser.add_argument("--output", default="")
     args = parser.parse_args()
-    result = benchmark(args.nodes, args.iterations, args.repeats)
+    result = benchmark(args.nodes, args.iterations, args.repeats,
+                       args.labels_per_class)
     text = json.dumps(result, sort_keys=True, indent=2) + "\n"
     print(text)
     if args.output:
