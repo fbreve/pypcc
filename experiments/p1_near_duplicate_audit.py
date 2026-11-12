@@ -87,6 +87,7 @@ def analyze_features(matrix, class_labels):
     ]
     return {
         "schema": "pypcc-p1-source-near-duplicate-diagnostic/v1",
+        "numpy_version": np.__version__,
         "quality_only_no_PCC_run": True,
         "n_source_rows": int(n),
         "features": int(d),
