@@ -137,7 +137,42 @@ def inspect_one(dataset_id):
     with tempfile.TemporaryDirectory(prefix="uci-no-fit-") as folder:
         path = Path(folder) / "uci-official-candidate.zip"
         path.write_bytes(raw)
-        quality = offline.review(dataset_id, path, member=member)
+        try:
+            quality = offline.review(dataset_id, path, member=member)
+        except offline.FixtureRejected:
+            # Only safe schema metadata; NEVER print feature vectors, rows or
+            # other record-level values from patient/grain datasets.
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                selected_bytes = z.read(member)
+            if dataset_id == 212:
+                from collections import Counter
+                rows, header, declared = offline.parse_arff(selected_bytes)
+                print(json.dumps({
+                    "schema_diagnostic": "ARFF metadata only",
+                    "class_name_counts": dict(Counter(
+                        str(row[-1]).strip() for row in rows
+                    )),
+                    "declared_nominal_values": sorted(declared),
+                    "attribute_names": header,
+                }, sort_keys=True))
+            elif dataset_id == 850:
+                from openpyxl import load_workbook
+                wb = load_workbook(io.BytesIO(selected_bytes),
+                                   read_only=True, data_only=False)
+                print(json.dumps({
+                    "schema_diagnostic": "XLSX metadata only",
+                    "worksheets": [
+                        {
+                            "title": ws.title, "row_count": ws.max_row,
+                            "column_count": ws.max_column,
+                            "header_names": list(next(ws.iter_rows(
+                                min_row=1, max_row=1, values_only=True
+                            ))),
+                        } for ws in wb.worksheets
+                    ],
+                }, sort_keys=True))
+                wb.close()
+            raise
     return {
         "schema": "pypcc-p1-uci-official-https-no-fit-review/v1",
         "retrieved_at_utc": datetime.datetime.now(
