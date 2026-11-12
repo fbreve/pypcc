@@ -71,7 +71,7 @@
     "seed_policy": "derive and seal backend-specific propagation uint32 seed table independent of label RNG before fits; preserve backend-native RNG distinct streams and never require cross-backend trajectory identity",
     "number_of_fits_if_approved_and_feasible": 72,
     "fit_count_formula": "target_datasets(3) * label_replicates(8) * backends(3) = 72",
-    "graph_policy": "build once per dataset using existing production topology/normalization; seal exact ordered symmetric neighbor graph; no sparse/CSR substitution",
+    "graph_policy": "Build once per dataset using the unchanged production topology and preprocessing; seal the exact ordered symmetric undirected graph; preserve intentionally dense padded neib_list with no sparse/CSR substitution",
     "no_adaptive_resampling": true,
     "stop_rule": "no early stop in proposed fixed-horizon descriptive trajectory protocol; no stopping-rule comparison",
     "limits": {
