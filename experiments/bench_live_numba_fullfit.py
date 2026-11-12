@@ -54,9 +54,6 @@ def fingerprint(model):
         model.part.homenode, model.part.curnode,
         model.part.label, model.part.strength,
         model.part.dist_table, model.owndeg,
-        model.buf_dom_row, model.buf_reduc,
-        model.buf_dom_list, model.buf_dist_list,
-        model.buf_prob, model.buf_slices,
     ):
         data = np.ascontiguousarray(array)
         h.update(str(data.shape).encode("ascii"))
