@@ -132,5 +132,81 @@ class NumbaLiveMilestonesTests(unittest.TestCase):
                     np.testing.assert_array_equal(data[key], before[key])
 
 
+    def test_unseeded_continuation_and_snapshot_ownership(self):
+        # Setting seed=None must never reseed the compiled Numba RNG.
+        before, after = case(max_iter=25), case(max_iter=25)
+        _seed_numba_rng(8127)
+        normal_info = pcc_propagate_numba(**before, seed=None, return_info=True)
+        normal_next = _next_numba_random()
+        _seed_numba_rng(8127)
+        trace = observe_numba_sequential(
+            **after, seed=None, milestones=(0, 1, 11, 25),
+        )
+        self.assertEqual(dict(trace.info), normal_info)
+        self.assertEqual(_next_numba_random(), normal_next)
+        for name in MUTABLE:
+            np.testing.assert_array_equal(before[name], after[name])
+        # Mutation of caller-owned production arrays cannot alter prior captures.
+        originals = {
+            (snapshot.iteration, key): np.array(value, copy=True)
+            for snapshot in trace.milestones
+            for key, value in snapshot.arrays.items()
+        }
+        for name in ("part_curnode", "part_strength", "dist_table",
+                     "dominance", "owndeg"):
+            after[name][...] = 0
+        for snapshot in trace.milestones:
+            for key, value in snapshot.arrays.items():
+                np.testing.assert_array_equal(
+                    value, originals[(snapshot.iteration, key)]
+                )
+        from experiments.live_numba_milestones import _observe_compiled
+        self.assertTrue(_observe_compiled.nopython_signatures,
+                        "observation loop did not compile in nopython mode")
+
+    def test_full_fit_predict_postprocessing_and_native_rng(self):
+        from pcc import ParticleCompetitionAndCooperation
+
+        def model():
+            data = case(max_iter=25)
+            obj = ParticleCompetitionAndCooperation(impl="numba")
+            obj.set_graph(data["neib_list"], data["neib_qt"], k_nn=2)
+            return obj, data["labels"].copy()
+
+        normal, labels = model()
+        original_prediction = normal.fit_predict(
+            labels, max_iter=25, early_stop=False, seed=71
+        )
+        normal_next = _next_numba_random()
+        observed, labels_copy = model()
+        traces = []
+
+        def injected(*args, **kwargs):
+            trace = observe_numba_sequential(
+                *args, **kwargs, milestones=(0, 1, 11, 25),
+            )
+            traces.append(trace)
+            # Keep external backend call behavior: caller ignores return.
+            return None
+
+        observed._get_backend_fn = lambda: injected
+        observed_prediction = observed.fit_predict(
+            labels_copy, max_iter=25, early_stop=False, seed=71
+        )
+        observed_next = _next_numba_random()
+        self.assertEqual(len(traces), 1)
+        self.assertEqual(traces[0].observed_iterations, (0, 1, 11, 25))
+        np.testing.assert_array_equal(observed_prediction, original_prediction)
+        for field in ("dominance", "label"):
+            np.testing.assert_array_equal(
+                getattr(observed.node, field), getattr(normal.node, field)
+            )
+        for field in ("homenode", "curnode", "label", "strength", "dist_table"):
+            np.testing.assert_array_equal(
+                getattr(observed.part, field), getattr(normal.part, field)
+            )
+        np.testing.assert_array_equal(observed.owndeg, normal.owndeg)
+        self.assertEqual(normal_next, observed_next)
+
 if __name__ == "__main__":
     unittest.main()
