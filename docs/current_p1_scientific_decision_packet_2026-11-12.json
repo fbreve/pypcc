@@ -11,7 +11,8 @@
     "docs/current_p1_official_uci_quality_results_2026-11-12.json",
     "docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json",
     "docs/current_p1_alternative_domain_quality_results_2026-11-12.json",
-    "docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json"
+    "docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json",
+    "docs/current_p1_public_literature_exposure_2026-11-12.json"
   ],
   "candidate_shortlist_proposed_not_selected": [
     {
@@ -160,7 +161,7 @@
     "per_backend_native_RNG": "different native streams, no cross-backend bitwise parity requirement"
   },
   "reviewer_decisions_remaining": [
-    "Approve/replace the three domain shortlist AFTER independent prior-MATLAB/publication/local-collaborator exposure check; disclose any previously viewed dataset as exploratory",
+    "Review candidate shortlist after scoped three-paper public-text audit (2015, 2017, 2025) plus independent remaining papers/theses and local/unpublished MATLAB/Python/collaborator experiments; the 20 historical pypcc benchmark sets are not exhaustive (e.g. 2015 g241c and Semeion). Disclose any prior exposure; never label candidates independently novel without full evidence.",
     "Approve task-specific label/feature mapping, especially Wholesale derived Channel and Vertebral three-class variant",
     "Approve clinical/data-lineage/licensing attribution and whether subgroup identifiers can be obtained",
     "Approve precise preprocessing mathematics/software implementations and k-NN graph construction, including observed graph hashes/ordering and undirected symmetry",
@@ -178,5 +179,20 @@
   "execution_authorized": false,
   "no_dataset_download_in_this_document": true,
   "no_graph_construction_in_this_document": true,
-  "no_model_fit_in_this_document": true
+  "no_model_fit_in_this_document": true,
+  "publication_exposure_review_scope": {
+    "status": "THREE_PUBLIC_PAPERS_SCOPED_CHECK_ONLY",
+    "evidence_register": "docs/current_p1_public_literature_exposure_2026-11-12.json",
+    "reviewed_paper_ids": [
+      "BREVE_NEUROCOMPUTING_2015",
+      "GUERREIRO_ICCSA_2017",
+      "LETICIO_VISAPP_2025"
+    ],
+    "candidate_names_absent_in_these_three_papers_only": true,
+    "historical_20_dataset_inventory_is_exhaustive": false,
+    "all_prior_publications_or_unpublished_results_checked": false,
+    "patient_customer_batch_independence_verified": false,
+    "dataset_novelty_or_external_validation_approved": false,
+    "scientific_review_required_before_P1_freeze": true
+  }
 }
