@@ -318,9 +318,24 @@ def review(packet, scientific_draft, graph_content):
             scope["dataset_novelty_or_external_validation_approved"] is False and
             scope["scientific_review_required_before_P1_freeze"] is True,
             "Public literature evidence scope cannot be inflated to novelty approval")
+    require(
+        scope.get("additional_evidence_register") ==
+        "docs/current_p1_additional_public_papers_2026-11-12.json" and
+        scope.get("reviewed_additional_paper_ids") == [
+            "BREVE_COMPLEX_2009", "BREVE_IJCNN_2010", "BREVE_TKDE_2012",
+            "BREVE_IJCNN_2012_CONCEPT_DRIFT", "BREVE_IJCNN_2013_ACTIVE",
+            "BREVE_MLSP_2016", "BREVE_PCC_GCN_ARXIV_2026",
+        ] and
+        scope.get("sources_experiment_sections_checked_total") == 10 and
+        scope.get("additional_six_published_and_one_preprint_only") is True and
+        scope.get("candidate_names_absent_in_ten_scoped_sources_only") is True and
+        scope.get("all_pcc_papers_theses_or_local_experiments_checked") is False,
+        "A ten-source check is not an exhaustive corpus audit")
+    require(scope["additional_evidence_register"] in packet["evidence_files"],
+            "Expanded public paper register missing from scientific packet")
     require(scope["evidence_register"] in packet["evidence_files"],
             "Candidate provenance evidence is missing from packet")
-    require("20 historical pypcc benchmark sets are not exhaustive" in
+    require("historical 20-dataset pypcc campaign is demonstrably nonexhaustive" in
             packet["reviewer_decisions_remaining"][0],
             "Reviewer must know the benchmark list is not comprehensive")
 
