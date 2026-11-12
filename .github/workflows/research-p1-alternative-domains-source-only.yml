@@ -1,0 +1,80 @@
+name: Research P1 alternative domains UCI source-only audit
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/p1_alternative_domain_source_quality.py'
+      - 'experiments/test_p1_alternative_domain_source_quality.py'
+      - 'experiments/p1_wholesale_region_spend_profile.py'
+      - 'experiments/test_p1_wholesale_region_spend_profile.py'
+      - 'docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json'
+      - 'docs/current_p1_wholesale_region_spend_review_2026-11-12.md'
+      - 'docs/current_p1_alternative_domain_sources_2026-11-12.md'
+      - 'docs/current_p1_alternative_domain_quality_results_2026-11-12.json'
+      - '.github/workflows/research-p1-alternative-domains-source-only.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-source-test:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run synthetic UCI schema, collision, URL and anti-fit tests
+        run: python -m unittest experiments.test_p1_alternative_domain_source_quality experiments.test_p1_wholesale_region_spend_profile -v
+
+  official-public-source-metadata-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset-id: [292, 379]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read ephemeral official UCI source ZIP to quality-only metadata
+        run: python -m experiments.p1_alternative_domain_source_quality --dataset-id ${{ matrix.dataset-id }} --out source-only-uci-${{ matrix.dataset-id }}.json --expect-record docs/current_p1_alternative_domain_quality_results_2026-11-12.json
+      - name: Verify no model fit, graph, mask, approval, nor source rows released
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('source-only-uci-${{ matrix.dataset-id }}.json')); assert p['uci_id']==${{ matrix.dataset-id }}; assert len(p['source']['archive_sha256'])==64; assert p['rows'] in (440,1353); assert p['matches_prior_source_only_quality']; assert p['source_quality_record_is_not_P1_or_P2_approval']; assert not p['target_task_independently_reviewed']; assert not p['scientific_P1_frozen']; assert not p['execution_authorized']; assert p['P2_execution_preflight_sha256'] is None; assert p['PCC_fits_executed']==0; assert p['datasets_selected']==0"
+      - name: Profile only Wholesale raw source Region x Channel and six spending distributions
+        if: matrix.dataset-id == 292
+        run: python -m experiments.p1_wholesale_region_spend_profile --source-quality-manifest docs/current_p1_alternative_domain_quality_results_2026-11-12.json --out wholesale-region-spend-source-review.json --expect-diagnostics docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json
+      - name: Assert Wholesale descriptive report cannot authorize P1 or fit
+        if: matrix.dataset-id == 292
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('wholesale-region-spend-source-review.json')); assert r['n']==440; assert r['reproduced_pinned_quality_only']; assert r['region_is_excluded_from_model_features']; assert len(r['features'])==6; assert not r['P1_scientific_approval']; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']; assert r['P2_execution_preflight_sha256'] is None"
+      - name: Upload only Wholesale aggregate distributions, not original records
+        if: matrix.dataset-id == 292
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-WHOLESALE-REGION-SPEND-DESCRIPTIVE-ONLY
+          path: wholesale-region-spend-source-review.json
+          if-no-files-found: error
+      - name: Upload only quality JSON, never original rows or source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-ALTERNATIVE-UCI-${{ matrix.dataset-id }}-NOT-SELECTED
+          path: source-only-uci-${{ matrix.dataset-id }}.json
+          if-no-files-found: error

@@ -1,0 +1,43 @@
+name: Research P1 official UCI source-byte audit — NO FIT
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/p1_official_uci_no_fit.py'
+      - 'experiments/p1_offline_candidate_integrity.py'
+      - 'experiments/p1_near_duplicate_audit.py'
+      - 'docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json'
+      - '.github/workflows/research-p1-uci-official-no-fit.yml'
+
+jobs:
+  source-archive-metadata-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        uci-id: [212, 545, 850]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install optional XLSX reader only
+        run: python -m pip install "openpyxl==3.1.5" "numpy==1.26.4"
+      - name: Read official UCI HTTPS source once into temporary memory (NO PCC fits)
+        run: python -m experiments.p1_official_uci_no_fit --dataset-id ${{ matrix.uci-id }} --output uci-${{ matrix.uci-id }}-no-fit-review.json --expect-record docs/current_p1_official_uci_quality_results_2026-11-12.json --expect-near-record docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json
+      - name: Explicitly reject inference or experiment approval
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('uci-${{ matrix.uci-id }}-no-fit-review.json')); assert p['source']['requested_url'].startswith('https://archive.ics.uci.edu/static/public/'); assert p['source']['http_status']==200; assert len(p['source']['download_sha256'])==64; assert p['quality']['dataset_id']==${{ matrix.uci-id }}; assert p['quality']['rows'] in (310,3810,900); assert p['near_duplicate_quality']['quality_only_no_PCC_run']; assert p['near_duplicate_source_quality_reproduced']; assert p['near_duplicate_check_does_not_authorize_PCC']; assert p['near_duplicate_quality']['unordered_pairs_inspected']==p['quality']['rows']*(p['quality']['rows']-1)//2; assert len(p['near_duplicate_quality']['thresholds'])==4; assert p['near_duplicate_quality']['thresholds_predeclared_not_chosen_from_PCC_outcomes']; assert not p['dataset_selected_for_P1']; assert not p['P1_scientifically_frozen']; assert p['P2_execution_preflight_sha256'] is None; assert p['matches_previous_source_only_audit']; assert p['previous_source_only_audit_is_not_scientific_approval']; assert p['PCC_fits_executed']==0; assert not p['execution_authorized']"
+      - name: Publish report only — never upload dataset rows or ZIPs
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-EXTERNAL-UCI-${{ matrix.uci-id }}-QUALITY-NOT-APPROVED
+          path: uci-${{ matrix.uci-id }}-no-fit-review.json
+          if-no-files-found: error

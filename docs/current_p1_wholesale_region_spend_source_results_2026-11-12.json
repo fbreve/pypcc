@@ -1,0 +1,171 @@
+{
+  "P1_dataset_selected": false,
+  "P1_scientific_approval": false,
+  "P2_execution_preflight_sha256": null,
+  "PCC_fits_executed": 0,
+  "archive_sha256": "647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8",
+  "channel_1_share_by_region": {
+    "1": 0.7662337662337663,
+    "2": 0.5957446808510638,
+    "3": 0.6677215189873418
+  },
+  "channel_totals": {
+    "1": 298,
+    "2": 142
+  },
+  "cramers_v_descriptive_not_causal": 0.09942039020030671,
+  "derived_target": "Channel",
+  "does_not_establish_independent_customers_or_batches": true,
+  "does_not_prescribe_scaling_or_PCC_graph": true,
+  "execution_authorized": false,
+  "features": {
+    "Delicassen": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 3938.5,
+      "max": 47943,
+      "max_over_median_if_positive": 49.733402489626556,
+      "mean": 1524.8704545454545,
+      "median_q50": 964,
+      "min": 3,
+      "q25": 406,
+      "q75": 1819,
+      "q95": 4478,
+      "q99": 8550,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 27,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    },
+    "Detergents_Paper": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 9388.5,
+      "max": 40827,
+      "max_over_median_if_positive": 50.21771217712177,
+      "mean": 2881.4931818181817,
+      "median_q50": 813,
+      "min": 3,
+      "q25": 256,
+      "q75": 3909,
+      "q95": 12034,
+      "q99": 24171,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 30,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    },
+    "Fresh": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 37678,
+      "max": 112151,
+      "max_over_median_if_positive": 13.233156342182891,
+      "mean": 12000.297727272728,
+      "median_q50": 8475,
+      "min": 3,
+      "q25": 3103,
+      "q75": 16933,
+      "q95": 36817,
+      "q99": 56083,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 20,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    },
+    "Frozen": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 7767,
+      "max": 60869,
+      "max_over_median_if_positive": 40.124588002636784,
+      "mean": 3071.931818181818,
+      "median_q50": 1517,
+      "min": 25,
+      "q25": 737,
+      "q75": 3549,
+      "q95": 9927,
+      "q99": 18028,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 43,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    },
+    "Grocery": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 23394.5,
+      "max": 92780,
+      "max_over_median_if_positive": 19.51619688683214,
+      "mean": 7951.277272727273,
+      "median_q50": 4754,
+      "min": 3,
+      "q25": 2147,
+      "q75": 10646,
+      "q95": 23998,
+      "q99": 45828,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 24,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    },
+    "Milk": {
+      "high_outlier_fence_q75_plus_1_5_iqr": 15665,
+      "max": 73498,
+      "max_over_median_if_positive": 20.30331491712707,
+      "mean": 5796.265909090909,
+      "median_q50": 3620,
+      "min": 55,
+      "q25": 1530,
+      "q75": 7184,
+      "q95": 16784,
+      "q99": 38369,
+      "quantile_method": "nearest_rank_ceil_p_n",
+      "strict_tukey_high_outlier_count": 28,
+      "units": "original monetary units, raw source",
+      "values_modified_or_excluded": 0
+    }
+  },
+  "n": 440,
+  "no_p_value_or_automatic_exclusion": true,
+  "pearson_chi_square_descriptive_not_significance_test": 4.349142154535747,
+  "phase": "NO_FIT_SOURCE_QUALITY_REVIEW_ONLY",
+  "raw_numeric_features_used": [
+    "Fresh",
+    "Milk",
+    "Grocery",
+    "Frozen",
+    "Detergents_Paper",
+    "Delicassen"
+  ],
+  "region_channel_counts_by_original_UCI_codes": {
+    "1": {
+      "1": 59,
+      "2": 18
+    },
+    "2": {
+      "1": 28,
+      "2": 19
+    },
+    "3": {
+      "1": 211,
+      "2": 105
+    }
+  },
+  "region_is_excluded_from_model_features": true,
+  "region_is_used_only_for_group_level_quality_diagnostics": true,
+  "region_totals": {
+    "1": 77,
+    "2": 47,
+    "3": 316
+  },
+  "schema": "pypcc-p1-wholesale-origin-region-channel-diagnostics/v1",
+  "selected_member_sha256": "c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef",
+  "source_rows_not_exported": true,
+  "source_url": "https://archive.ics.uci.edu/static/public/292/wholesale%2Bcustomers.zip",
+  "evidence_context": {
+    "kind": "official_UCI_source_only_aggregated_report_not_experiment",
+    "source_workflow_run_url": "https://github.com/fbreve/pypcc/actions/runs/43309139894",
+    "source_job_id": 131500251815,
+    "first_report_git_commit": "5a6192ed344b72e1482f5cf7d89f17e901e774a6",
+    "official_UCI_source_sha256_independently_signed": false,
+    "data_rows_committed_or_uploaded": false
+  },
+  "remaining_review_gates": [
+    "Derived Channel-as-target task must receive independent P1 scientific review; UCI lists Region as its target in metadata.",
+    "Region geographic grouping is not customer identity: cannot prove distinct customers, businesses or batches.",
+    "Raw feature distributions are heavy-tailed; choose and freeze preprocessing and graph k/distance prior to PCC outcomes.",
+    "Historical published papers, local MATLAB binary archives and collaborators not exhaustively reviewed.",
+    "No real-data PCC fit, graph, label sampling, P1 science approval or P2 execution SHA authorized."
+  ]
+}

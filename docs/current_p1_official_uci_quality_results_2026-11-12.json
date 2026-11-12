@@ -1,0 +1,99 @@
+{
+  "schema": "pypcc-p1-official-uci-https-archive-quality-results/v1",
+  "status": "REAL_SOURCE_QUALITY_CHECK_PASSED_NOT_AN_EXPERIMENT_OR_APPROVAL",
+  "observation_date": "2026-11-12",
+  "source_audit_run": {
+    "repository": "fbreve/pypcc",
+    "workflow_run_id": 43279321137,
+    "workflow_url": "https://github.com/fbreve/pypcc/actions/runs/43279321137",
+    "run_head_commit": "a709ec48c93902fd51fc748101d969043c5ae631",
+    "individual_job_results": "3/3 successful official archive downloads and no-fit validations"
+  },
+  "archive_urls_from_uci_download_pages": true,
+  "acquisition_method": "GitHub Actions isolated Ubuntu Python3.12 HTTPS urllib; response URL checked against archive.ics.uci.edu; ZIP held only in temporary runner; no raw archives in repository or published artifacts",
+  "uci_source_pages": [
+    "https://archive.ics.uci.edu/dataset/212/vertebra",
+    "https://archive.ics.uci.edu/dataset/545/rice+cammeo+and+osmancik",
+    "https://archive.ics.uci.edu/dataset/850/raisin"
+  ],
+  "datasets": [
+    {
+      "uci_id": 212,
+      "task": "Vertebral Column 3-class",
+      "url": "https://archive.ics.uci.edu/static/public/212/vertebral%2Bcolumn.zip",
+      "observed_rows": 310,
+      "numeric_features": 6,
+      "class_support": {
+        "Hernia": 60,
+        "Normal": 100,
+        "Spondylolisthesis": 150
+      },
+      "exact_duplicate_full_rows": 0,
+      "exact_repeated_feature_rows": 0,
+      "conflicting_label_feature_patterns": 0,
+      "source_zip_sha256": "899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f",
+      "selected_member_sha256": "cf768854cf4cf42b3a3b792a239a81ebfd4fbfafc25fbe2a19d15b3f73249879",
+      "source_format_note": "Official ARFF uses class names Hernia/Normal/Spondylolisthesis (not only abbreviations). Correct target is column_3C_weka.arff, never 2C."
+    },
+    {
+      "uci_id": 545,
+      "task": "Rice Cammeo Osmancik",
+      "url": "https://archive.ics.uci.edu/static/public/545/rice%2Bcammeo%2Band%2Bosmancik.zip",
+      "observed_rows": 3810,
+      "numeric_features": 7,
+      "class_support": {
+        "Cammeo": 1630,
+        "Osmancik": 2180
+      },
+      "exact_duplicate_full_rows": 0,
+      "exact_repeated_feature_rows": 0,
+      "conflicting_label_feature_patterns": 0,
+      "source_zip_sha256": "fe94e42046b829de21b92b0ffb6a22774fde021328cae799faa802a14e8dbed9",
+      "selected_member_sha256": "1af97883100c89de2ea2972f7a28d428f4f1c14711a61defc0b0569e9eb65665",
+      "source_format_note": "ARFF tabular grain morphology features, exact classes Cammeo/Osmancik."
+    },
+    {
+      "uci_id": 850,
+      "task": "Raisin Kecimen Besni",
+      "url": "https://archive.ics.uci.edu/static/public/850/raisin.zip",
+      "observed_rows": 900,
+      "numeric_features": 7,
+      "class_support": {
+        "Besni": 450,
+        "Kecimen": 450
+      },
+      "exact_duplicate_full_rows": 0,
+      "exact_repeated_feature_rows": 0,
+      "conflicting_label_feature_patterns": 0,
+      "source_zip_sha256": "5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db",
+      "selected_member_sha256": "9370b5f749a572a0bbeae15c93bf2e15c859b06d2626ae401b844c0a925fa553",
+      "source_format_note": "XLSX official workbook contains the 901-row sheet Raisin_Grains_Dataset and a separate two-row Citation_Request sheet; data sheet only was parsed."
+    }
+  ],
+  "integrity_checks": [
+    "reported row count and numeric feature dimensions",
+    "finite numeric feature values",
+    "exact source file identity and task/class support",
+    "full-row numeric equality duplicates and repeated numeric vectors",
+    "same numeric vector with different class labels",
+    "archive/selected member SHA256",
+    "ZIP structure and safe paths (no extraction)",
+    "formula cell rejection for data sheets"
+  ],
+  "unverified_items": [
+    "independent archival signed digest authenticity; HTTPS source alone is not independent signature",
+    "near-duplicate distances and possible correlated/related subjects",
+    "prior use in all earlier papers, MATLAB binary artifacts or private datasets",
+    "scientific independence/eligibility and matching domain diversity; Rice and Raisin share a morphology domain",
+    "licensed attribution and citation obligations beyond source page listings",
+    "P1 exact preprocessing, symmetry graph and label masks",
+    "runtime, RAM/disk/export budgets; no P2 compiled source/environment preflight"
+  ],
+  "all_source_pages_list_CC_BY_4_0": true,
+  "selected_dataset_ids": [],
+  "scientific_P1_frozen": false,
+  "scientific_P1_approved": false,
+  "P2_execution_preflight_sha256": null,
+  "PCC_real_data_fits_executed": 0,
+  "execution_authorized": false
+}
