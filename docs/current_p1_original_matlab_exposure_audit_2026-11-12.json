@@ -3,8 +3,7 @@
   "status": "PUBLIC_TRACKED_TEXT_SCAN_ONLY",
   "checked_utc_date": "2026-11-12",
   "repository": "fbreve/Particle-Competition-and-Cooperation",
-  "github_tree_url": "https://api.github.com/repos/fbreve/Particle-Competition-and-Cooperation/git/trees/master?recursive=1",
-  "master_tree_sha": "f13c4ac5c2cc925bedf9fa5983af742502243a4f",
+  "github_tree_url": "https://api.github.com/repos/fbreve/Particle-Competition-and-Cooperation/git/trees/f13c4ac5c2cc925bedf9fa5983af742502243a4f?recursive=1",
   "tracked_entries_total": 19,
   "tracked_text_files_checked": 12,
   "tokens_case_insensitive": [
@@ -84,14 +83,6 @@
     "benchmark.m uses Wine and Digits",
     "example.m uses Wine"
   ],
-  "binary_or_dataset_bytes_not_inspected": [
-    "digits.mat",
-    "wine.data",
-    "pccloop.mexa64",
-    "pccloop.mexw64",
-    "pccloop.mexw64.bak",
-    "wine.names"
-  ],
   "nontracked_or_prior_commits_checked": false,
   "external_papers_or_theses_exhaustively_checked": false,
   "collaborator_or_local_archives_checked": false,
@@ -99,5 +90,15 @@
   "P1_selected_dataset_ids": [],
   "P2_execution_preflight_sha256": null,
   "model_fits_executed": 0,
-  "execution_authorized": false
+  "execution_authorized": false,
+  "master_commit_sha": "f13c4ac5c2cc925bedf9fa5983af742502243a4f",
+  "master_git_tree_sha": "71b003825d76e6e70649e93d8947c6aed43f2dc1",
+  "other_tracked_data_or_binaries_not_text_searched": [
+    "digits.mat",
+    "wine.data",
+    "pccloop.mexa64",
+    "pccloop.mexw64",
+    "pccloop.mexw64.bak",
+    "wine.names"
+  ]
 }
