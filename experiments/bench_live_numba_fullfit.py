@@ -97,10 +97,10 @@ def run_one(edges, degrees, labels, iterations, milestones, observed):
     }
 
 
-def benchmark(nodes=500, iterations=150000, repeats=5,
+def benchmark(nodes=500, iterations=1200000, repeats=5,
               labels_per_class=12):
-    if type(iterations) is not int or not 5000 <= iterations <= 300000:
-        raise ValueError("iterations must be integer in 5000..300000")
+    if type(iterations) is not int or not 5000 <= iterations <= 2000000:
+        raise ValueError("iterations must be integer in 5000..2000000")
     if type(repeats) is not int or not 3 <= repeats <= 8:
         raise ValueError("repeats must be integer in 3..8")
     graph, degree, labels = fixture(nodes, labels_per_class)
@@ -184,7 +184,7 @@ def benchmark(nodes=500, iterations=150000, repeats=5,
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--nodes", type=int, default=500)
-    parser.add_argument("--iterations", type=int, default=150000)
+    parser.add_argument("--iterations", type=int, default=1200000)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--labels-per-class", type=int, default=12)
     parser.add_argument("--output", default="")
