@@ -139,6 +139,10 @@ def inspect_one(dataset_id):
         path.write_bytes(raw)
         try:
             quality = offline.review(dataset_id, path, member=member)
+            from experiments import p1_near_duplicate_audit as near
+            near_quality = near.audit_local_archive(
+                path, dataset_id=dataset_id, member=member,
+            )
         except offline.FixtureRejected:
             # Only safe schema metadata; NEVER print feature vectors, rows or
             # other record-level values from patient/grain datasets.
@@ -181,12 +185,21 @@ def inspect_one(dataset_id):
         "source": source,
         "embedded_archives": zips,
         "quality": quality,
+        "near_duplicate_quality": near_quality,
         "official_source_signed_checksum_verified": False,
         "original_publication_exposure_completely_checked": False,
         "subject_or_group_independence_verified": False,
         "dataset_selected_for_P1": False,
         "P1_scientifically_frozen": False,
         "P2_execution_preflight_sha256": None,
+        "near_duplicate_pair_counts": [
+            t["unordered_pair_count"] for t in
+            report["near_duplicate_quality"]["thresholds"]
+        ],
+        "near_duplicate_cross_class_pair_counts": [
+            t["cross_class_pair_count"] for t in
+            report["near_duplicate_quality"]["thresholds"]
+        ],
         "PCC_fits_executed": 0,
         "execution_authorized": False,
     }
