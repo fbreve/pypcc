@@ -226,6 +226,63 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         self.assertFalse(prior["execution_authorized"])
         self.assertEqual(prior["PCC_real_data_fits_executed"], 0)
 
+    def test_predeclared_near_duplicate_grid_and_cross_class_pairs(self):
+        from experiments import p1_near_duplicate_audit as near
+        matrix = [
+            [0.0, 0.0], [0.0, 0.0],
+            [0.0, 0.00001], [10.0, 10.0],
+        ]
+        result = near.analyze_features(matrix, ["A", "A", "B", "B"])
+        self.assertEqual(result["unordered_pairs_inspected"], 6)
+        self.assertEqual(
+            [row["rms_std_euclidean_threshold_le"]
+             for row in result["thresholds"]],
+            [1e-6, 1e-4, 1e-3, 1e-2],
+        )
+        self.assertEqual(result["thresholds"][0]["unordered_pair_count"], 1)
+        self.assertEqual(result["thresholds"][0]["cross_class_pair_count"], 0)
+        self.assertEqual(result["thresholds"][1]["unordered_pair_count"], 3)
+        self.assertEqual(result["thresholds"][1]["cross_class_pair_count"], 2)
+        self.assertEqual(result["thresholds"][1]["distinct_rows_involved"], 3)
+        self.assertEqual(result["minimum_distinct_row_rms_standardized_distance"], 0)
+        self.assertFalse(result["dataset_selected_for_P1"])
+        self.assertEqual(result["model_fits_executed"], 0)
+        self.assertFalse(result["execution_authorized"])
+        self.assertTrue(
+            all(a["unordered_pair_count"] <= b["unordered_pair_count"]
+                for a, b in zip(result["thresholds"], result["thresholds"][1:]))
+        )
+
+    def test_near_duplicate_screen_rejects_constant_and_nonfinite_features(self):
+        from experiments import p1_near_duplicate_audit as near
+        with self.assertRaises(near.NearDuplicateAuditBlocked):
+            near.analyze_features([[1, 0], [1, 1]], ["A", "B"])
+        with self.assertRaises(near.NearDuplicateAuditBlocked):
+            near.analyze_features([[0, 0], [1, float("nan")]], ["A", "B"])
+        with self.assertRaises(near.NearDuplicateAuditBlocked):
+            near.analyze_features([[0, 0], [1, 1]], ["A"])
+        with self.assertRaises(near.NearDuplicateAuditBlocked):
+            near.analyze_features([[0, 0], [1, 1]], ["A", "B"])
+
+    def test_near_duplicate_archive_is_only_local_and_no_graph(self):
+        from experiments import p1_near_duplicate_audit as near
+        f = self.write("column_3C_weka.arff", synthetic_arff(212))
+        result = near.audit_local_archive(
+            f, dataset_id=212, member=None,
+        )
+        self.assertEqual(result["n_source_rows"], 310)
+        self.assertEqual(result["features"], 6)
+        self.assertEqual(result["unordered_pairs_inspected"], 310 * 309 // 2)
+        self.assertFalse(result["subject_or_batch_identity_verified"])
+        self.assertEqual(result["model_fits_executed"], 0)
+        source = Path(near.__file__).read_text(encoding="utf-8")
+        for forbidden in (
+            "import pcc", "import sklearn", "import numba", "pcc_propagate(",
+            "fit_predict(", "requests.get(", "urllib.request", "urlopen(",
+            "kneighbors_graph(", "NearestNeighbors(",
+        ):
+            self.assertNotIn(forbidden, source)
+
     def test_no_runtime_imports_or_network_calls(self):
         source = Path(checker.__file__).read_text(encoding="utf-8")
         for forbidden in (
