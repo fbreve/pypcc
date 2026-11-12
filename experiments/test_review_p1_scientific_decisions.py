@@ -112,10 +112,13 @@ class ScientificDecisionPacketTests(unittest.TestCase):
                 proposed_fit_count_if_all_approved=70))
 
     def test_windows_checkout_CRLF_is_same_pinned_git_blob_not_source_change(self):
-        converted = self.graph_source.replace(b"\n", b"\r\n")
+        # Test the same on either checkout convention: first get Git's LF
+        # bytes, then simulate the Windows CRLF working-tree materialization.
+        canonical = self.graph_source.replace(b"\r\n", b"\n")
+        converted = canonical.replace(b"\n", b"\r\n")
         self.assertNotEqual(
             gate.git_blob_sha1(converted),
-            gate.git_blob_sha1(self.graph_source),
+            gate.git_blob_sha1(canonical),
         )
         report = gate.review(self.packet, self.draft, converted)
         self.assertTrue(report["original_graph_source_blob_checked"])
