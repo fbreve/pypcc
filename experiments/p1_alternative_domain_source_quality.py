@@ -50,12 +50,12 @@ DATASETS = {
         "source_member_basename": "PhishingData.arff",
         "n": 1353,
         "all_columns": [
-            "SFH", "popUpWindow", "SSLfinal_State", "Request_URL",
+            "SFH", "popUpWidnow", "SSLfinal_State", "Request_URL",
             "URL_of_Anchor", "web_traffic", "URL_Length",
             "age_of_domain", "having_IP_Address", "Result",
         ],
         "numeric_features": [
-            "SFH", "popUpWindow", "SSLfinal_State", "Request_URL",
+            "SFH", "popUpWidnow", "SSLfinal_State", "Request_URL",
             "URL_of_Anchor", "web_traffic", "URL_Length",
             "age_of_domain", "having_IP_Address",
         ],
