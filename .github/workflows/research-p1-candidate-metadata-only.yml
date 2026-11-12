@@ -1,0 +1,44 @@
+name: Research P1 candidate metadata-only audit
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/current_p1_candidate_metadata_registry_2026-11-12.json'
+      - 'docs/current_p1_candidate_metadata_screen_2026-11-12.md'
+      - 'experiments/review_p1_candidate_metadata.py'
+      - 'experiments/test_review_p1_candidate_metadata.py'
+      - '.github/workflows/research-p1-candidate-metadata-only.yml'
+
+jobs:
+  candidate-audit:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify archived 20-dataset source Git blob and inert candidate registry
+        run: python -m experiments.review_p1_candidate_metadata --output p1-candidate-review-only.json
+      - name: Adversarial fake-approval and provenance-drift tests
+        run: python -m unittest experiments.test_review_p1_candidate_metadata -v
+      - name: Enforce no selections, no real data or fits in source-only report
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p1-candidate-review-only.json')); assert r['metadata_review']=='PASS'; assert r['historically_documented_datasets']==20; assert r['candidate_ids']==[212,545,850]; assert r['datasets_selected']==0; assert not r['novelty_outside_frozen_20_verified']; assert not r['P1_scientific_protocol_frozen']; assert not r['execution_authorized']; assert r['P2_execution_preflight_sha256'] is None; assert r['datasets_downloaded']==0; assert r['model_fits_executed']==0"
+      - name: Archive candidate-only report (not an approved protocol)
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-CANDIDATES-NOT-SELECTED-${{ runner.os }}-py${{ matrix.python-version }}
+          path: p1-candidate-review-only.json
+          if-no-files-found: error
