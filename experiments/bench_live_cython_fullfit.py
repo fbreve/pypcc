@@ -48,14 +48,6 @@ def digest(arrays):
     return sha.hexdigest()
 
 
-def full_state_digest(model):
-    return digest((
-        model.node.dominance, model.node.label, model.owndeg,
-    )) if hasattr(model, "node") and hasattr(model.node, "owndeg") else digest((
-        model.node.dominance, model.node.label, model.owndeg
-    ))
-
-
 def fingerprint(model):
     return digest((
         model.node.dominance, model.node.label, model.part.homenode,
