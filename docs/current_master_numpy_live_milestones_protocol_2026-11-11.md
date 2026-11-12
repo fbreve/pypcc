@@ -73,7 +73,12 @@ the observed call to the **unmodified production**
 - an early-stop case with no active edges, halting at a known bound and
   correctly omitting later requested snapshots;
 - no-fit zero iterations, strictly enforced memory/schedule/input bounds,
-  rejection before RNG or state changes, copy ownership and nonaliasing.
+  rejection before RNG or state changes, copy ownership and nonaliasing;
+- a **full public `fit_predict` call** with an *instance-only* experimental
+  backend dispatch in the test (no global monkey-patching) versus the
+  unchanged standard NumPy model, checking final decoded labels, all final
+  node/particle state arrays, postprocessed normalized `owndeg`,
+  next RNG state and subsequent random number.
 
 Within-backend byte-for-byte floating values are required, not a tolerance
 selected after observing data. Tests do **not** require equal RNG streams
