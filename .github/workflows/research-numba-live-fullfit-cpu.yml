@@ -30,7 +30,7 @@ jobs:
       - name: Compile and syntax-check research programs
         run: python -m py_compile experiments/live_numba_milestones.py experiments/bench_live_numba_fullfit.py
       - name: AB/BA paired complete Numba fit_predict CPU, synthetic only
-        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 150000 --repeats 5 --labels-per-class 12 --output numba_cpu_report.json
+        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 1200000 --repeats 5 --labels-per-class 12 --output numba_cpu_report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
