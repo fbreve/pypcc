@@ -8,6 +8,7 @@ on:
       - 'experiments/p1_wholesale_region_spend_profile.py'
       - 'experiments/test_p1_wholesale_region_spend_profile.py'
       - 'docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json'
+      - 'docs/current_p1_wholesale_region_spend_review_2026-11-12.md'
       - 'docs/current_p1_alternative_domain_sources_2026-11-12.md'
       - 'docs/current_p1_alternative_domain_quality_results_2026-11-12.json'
       - '.github/workflows/research-p1-alternative-domains-source-only.yml'
