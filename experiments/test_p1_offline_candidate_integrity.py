@@ -283,6 +283,49 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, source)
 
+    def test_near_duplicate_quality_source_reference_fails_closed(self):
+        from experiments import p1_official_uci_no_fit as official
+        path = Path(__file__).resolve().parents[1] / "docs"
+        prior = json.loads((
+            path / "current_p1_official_uci_near_duplicate_results_2026-11-12.json"
+        ).read_text(encoding="utf-8"))
+        self.assertFalse(prior["execution_authorized"])
+        self.assertFalse(prior["P1_dataset_selected"])
+        self.assertEqual(prior["real_PCC_fits_executed"], 0)
+        self.assertEqual(len(prior["by_dataset"]), 3)
+        for entry in prior["by_dataset"]:
+            sample = {
+                "source": {"download_sha256": entry["archive_sha256"]},
+                "quality": {
+                    "dataset_id": entry["dataset_id"],
+                    "source_member_sha256": entry["member_sha256"],
+                },
+                "near_duplicate_quality": {
+                    "numpy_version": prior["numpy_version_for_diagnostic"],
+                    "n_source_rows": entry["rows"],
+                    "features": entry["features"],
+                    "unordered_pairs_inspected": entry["pairs"],
+                    "thresholds": entry["thresholds"],
+                },
+            }
+            output = official.verify_near_duplicate_report(sample, prior)
+            self.assertTrue(output["near_duplicate_source_quality_reproduced"])
+            self.assertTrue(output["near_duplicate_check_does_not_authorize_PCC"])
+            tampered = json.loads(json.dumps(sample))
+            tampered["near_duplicate_quality"]["thresholds"][3][
+                "unordered_pair_count"
+            ] += 1
+            with self.assertRaisesRegex(
+                official.ExternalDataBlocked, "thresholds"
+            ):
+                official.verify_near_duplicate_report(tampered, prior)
+            tampered = json.loads(json.dumps(sample))
+            tampered["near_duplicate_quality"]["numpy_version"] = "changed"
+            with self.assertRaisesRegex(
+                official.ExternalDataBlocked, "NumPy version"
+            ):
+                official.verify_near_duplicate_report(tampered, prior)
+
     def test_no_runtime_imports_or_network_calls(self):
         source = Path(checker.__file__).read_text(encoding="utf-8")
         for forbidden in (
