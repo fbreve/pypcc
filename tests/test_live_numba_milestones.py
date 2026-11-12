@@ -211,6 +211,59 @@ class NumbaLiveMilestoneTests(unittest.TestCase):
                                           getattr(normal.part, name))
         np.testing.assert_array_equal(observed.owndeg, normal.owndeg)
 
+    def test_seed_none_preserves_inherited_native_rng_stream(self):
+        # Explicitly clone Numba's own MT state rather than assuming
+        # NumPy's Python generator controls native np.random calls.
+        before_run = _helperlib.rnd_get_state(self.native_ptr)
+        normal = case(max_iter=29)
+        normal["deltap"] = 0.35
+        normal_info = pcc_propagate_numba(**normal, seed=None, return_info=True)
+        normal_state = _helperlib.rnd_get_state(self.native_ptr)
+        normal_next = _next_native_random()
+
+        _helperlib.rnd_set_state(self.native_ptr, before_run)
+        observed = case(max_iter=29)
+        observed["deltap"] = 0.35
+        monitored = observe_numba_sequential(
+            **observed, seed=None, milestones=(0, 1, 10, 11, 29),
+        )
+        observed_state = _helperlib.rnd_get_state(self.native_ptr)
+        observed_next = _next_native_random()
+        self.assertEqual(dict(monitored.info), normal_info)
+        assert_state(self, observed, normal)
+        self.assertEqual(observed_state, normal_state)
+        self.assertEqual(observed_next, normal_next)
+
+    def test_nondefault_strength_and_pure_random_movement(self):
+        plain = case(max_iter=25)
+        trace_data = case(max_iter=25)
+        for data in (plain, trace_data):
+            data["p_grd"] = 0.0
+            data["deltap"] = 0.33
+        baseline_info = pcc_propagate_numba(
+            **plain, seed=991, return_info=True,
+        )
+        baseline_rng = _helperlib.rnd_get_state(self.native_ptr)
+        baseline_next = _next_native_random()
+
+        observed = observe_numba_sequential(
+            **trace_data, seed=991, milestones=(0, 1, 11, 25),
+        )
+        self.assertEqual(dict(observed.info), baseline_info)
+        assert_state(self, trace_data, plain)
+        self.assertEqual(_helperlib.rnd_get_state(self.native_ptr),
+                         baseline_rng)
+        self.assertEqual(_next_native_random(), baseline_next)
+        for boundary in observed.milestones:
+            original = case(max_iter=boundary.iteration)
+            original["p_grd"] = 0.0
+            original["deltap"] = 0.33
+            pcc_propagate_numba(**original, seed=991)
+            for name, source in SNAP.items():
+                np.testing.assert_array_equal(
+                    boundary.arrays[name], original[source]
+                )
+
     def test_all_snapshot_boundaries_have_independent_memory(self):
         data = case(max_iter=3)
         result = observe_numba_sequential(
