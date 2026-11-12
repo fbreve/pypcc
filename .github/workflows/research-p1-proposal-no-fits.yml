@@ -12,6 +12,8 @@ on:
       - 'experiments/p1_exploratory_reference.py'
       - 'experiments/test_p1_exploratory_reference.py'
       - 'docs/current_p1_rng_and_exploratory_analysis_2026-11-12.md'
+      - 'docs/current_p1_public_literature_exposure_2026-11-12.json'
+      - 'docs/current_p1_public_literature_exposure_2026-11-12.md'
       - 'experiments/review_p1_proposal.py'
       - 'experiments/test_review_p1_proposal.py'
       - '.github/workflows/research-p1-proposal-no-fits.yml'
@@ -47,7 +49,7 @@ jobs:
       - name: Reject any false dataset selection, scientific seal, or real PCC fit
         shell: bash
         run: |
-          python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
+          python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert r['public_full_text_papers_scoped_checked']==3; assert not r['all_history_or_private_matlab_checked']; assert not r['paper_20_dataset_inventory_exhaustive']; assert not r['data_independence_or_ethics_certified']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
       - name: Upload explicitly unapproved P1 review
         uses: actions/upload-artifact@v4
         with:
