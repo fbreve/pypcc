@@ -149,6 +149,59 @@ class NumPyLiveMilestoneTests(unittest.TestCase):
         )
         self.assertEqual(info["effective_iterations"], 0)
 
+    def test_full_fit_predict_postprocessing_and_rng_unchanged(self):
+        # Research injection is entirely local to this synthetic test:
+        # real model initialization, full propagation and post-fit label
+        # conversion/owndeg normalization must still match normal fit_predict.
+        from pcc import ParticleCompetitionAndCooperation
+
+        def prepare():
+            data = case(max_iter=25)
+            model = ParticleCompetitionAndCooperation(impl="numpy")
+            model.set_graph(data["neib_list"], data["neib_qt"], k_nn=2)
+            return model, data["labels"].copy()
+
+        original, labels = prepare()
+        normal_predictions = original.fit_predict(
+            labels, max_iter=25, early_stop=False, seed=71,
+        )
+        after_baseline = np.random.get_state()
+        next_baseline = np.random.random()
+
+        observed, labels2 = prepare()
+        reports = []
+
+        def experimental_numpy(*args, **kwargs):
+            report = observe_numpy_sequential(
+                *args, **kwargs, milestones=(0, 1, 11, 25),
+            )
+            reports.append(report)
+            # The production fit call does not consume the propagator return.
+            return None
+
+        # Overrides instance dispatch in this test only, not any library module.
+        observed._get_backend_fn = lambda: experimental_numpy
+        observed_predictions = observed.fit_predict(
+            labels2, max_iter=25, early_stop=False, seed=71,
+        )
+        after_observed = np.random.get_state()
+        next_observed = np.random.random()
+
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0].observed_iterations, (0, 1, 11, 25))
+        np.testing.assert_array_equal(observed_predictions, normal_predictions)
+        for field in ("dominance", "label"):
+            np.testing.assert_array_equal(
+                getattr(observed.node, field), getattr(original.node, field)
+            )
+        for field in ("curnode", "label", "strength", "dist_table", "homenode"):
+            np.testing.assert_array_equal(
+                getattr(observed.part, field), getattr(original.part, field)
+            )
+        np.testing.assert_array_equal(observed.owndeg, original.owndeg)
+        check_rng(self, after_observed, after_baseline)
+        self.assertEqual(next_observed, next_baseline)
+
     def test_invalid_schedule_and_budget_rejected_before_any_rng_draw(self):
         examples = [
             ({"milestones": ()}, ValueError),
