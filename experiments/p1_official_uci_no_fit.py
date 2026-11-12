@@ -229,6 +229,44 @@ def verify_against_previous_observation(report, prior):
     return report
 
 
+def verify_near_duplicate_report(report, prior):
+    """Exact source-quality result replay, not a study or P2 approval."""
+    if prior.get("schema") != "pypcc-p1-official-uci-source-near-duplicate-results/v1":
+        raise ExternalDataBlocked("Unrecognized source-near-duplicate reference")
+    if (prior.get("execution_authorized") is not False or
+            prior.get("P1_dataset_selected") is not False or
+            prior.get("P1_scientific_approval") is not False or
+            prior.get("P2_execution_preflight_sha256") is not None or
+            prior.get("real_PCC_fits_executed") != 0):
+        raise ExternalDataBlocked("A source quality report cannot grant approval")
+    entries = [
+        x for x in prior.get("by_dataset", [])
+        if x.get("dataset_id") == report["quality"]["dataset_id"]
+    ]
+    if len(entries) != 1:
+        raise ExternalDataBlocked("Missing or duplicated near-duplicate dataset")
+    case = entries[0]
+    near = report["near_duplicate_quality"]
+    checks = {
+        "archive_sha256": report["source"]["download_sha256"],
+        "member_sha256": report["quality"]["source_member_sha256"],
+        "rows": near["n_source_rows"],
+        "features": near["features"],
+        "pairs": near["unordered_pairs_inspected"],
+        "thresholds": near["thresholds"],
+    }
+    if near.get("numpy_version") != prior.get("numpy_version_for_diagnostic"):
+        raise ExternalDataBlocked("Source quality NumPy version changed")
+    for key, val in checks.items():
+        if case.get(key) != val:
+            raise ExternalDataBlocked(
+                "Near-duplicate source or quality result drift: " + key
+            )
+    report["near_duplicate_source_quality_reproduced"] = True
+    report["near_duplicate_check_does_not_authorize_PCC"] = True
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-id", type=int, choices=sorted(UCI_URLS),
@@ -236,11 +274,16 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--expect-record", type=Path, default=None,
                         help="Reject changed source bytes vs earlier no-fit audit")
+    parser.add_argument("--expect-near-record", type=Path, default=None,
+                        help="Reject near-duplicate result drift from the predeclared source-quality audit")
     args = parser.parse_args()
     report = inspect_one(args.dataset_id)
     if args.expect_record is not None:
         prior = json.loads(args.expect_record.read_text(encoding="utf-8"))
         verify_against_previous_observation(report, prior)
+    if args.expect_near_record is not None:
+        prior = json.loads(args.expect_near_record.read_text(encoding="utf-8"))
+        verify_near_duplicate_report(report, prior)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
