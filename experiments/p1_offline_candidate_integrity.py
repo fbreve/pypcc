@@ -71,7 +71,6 @@ def safely_read(path, member):
         return raw, path.name, outer_sha, outer_sha
     try:
         archive = zipfile.ZipFile(io.BytesIO(raw))
-        require(archive.testzip() is None, "Corrupt ZIP member CRC")
         entries = archive.infolist()
         require(len(entries) <= 40, "Unexpectedly many ZIP entries")
         for entry in entries:
@@ -85,7 +84,7 @@ def safely_read(path, member):
             )
             require(not ((entry.external_attr >> 16) & 0o170000) == 0o120000,
                     "ZIP symbolic links are prohibited")
-        files = [e for e in entries if not e.is_dir() and
+        require(sum(e.file_size for e in entries) <= MAX_MEMBER,\n                "Combined ZIP contents exceed safe audit limit")\n        require(archive.testzip() is None, "Corrupt ZIP member CRC")\n        files = [e for e in entries if not e.is_dir() and
                  e.filename.lower().endswith((".arff", ".csv", ".xlsx"))]
         if member is not None:
             files = [e for e in files if e.filename == member]
