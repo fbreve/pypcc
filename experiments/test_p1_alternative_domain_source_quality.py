@@ -140,6 +140,62 @@ class AlternativesTest(unittest.TestCase):
         for d in a.DATASETS.values():
             self.assertEqual(a.allowed_url(d["source_url"]), d["source_url"])
 
+    def test_pinned_source_quality_rejects_modified_duplicate_metrics_and_approval(self):
+        reference = json.loads((
+            Path(__file__).resolve().parents[1] / "docs" /
+            "current_p1_alternative_domain_quality_results_2026-11-12.json"
+        ).read_text(encoding="utf-8"))
+        for case in reference["datasets"]:
+            sample = {
+                "uci_id": case["id"],
+                "source": {
+                    "source_url": case["source_url"],
+                    "archive_sha256": case["archive_sha256"],
+                    "data_member": case["member_name"],
+                    "data_member_sha256": case["member_sha256"],
+                },
+                "rows": case["instances"],
+                "features_used": case.get(
+                    "feature_names",
+                    a.DATASETS[case["id"]]["numeric_features"],
+                ),
+                "features_excluded": (
+                    [case["excluded_feature"]] if case["id"] == 292 else []
+                ),
+                "proposed_target": case["target"],
+                "exact_repeated_feature_vector_surplus_rows":
+                    case["exact_repeated_feature_surplus_rows"],
+                "exact_duplicate_full_row_surplus":
+                    case["exact_full_row_duplicate_surplus"],
+                "conflicting_label_feature_patterns":
+                    case["conflicting_class_feature_patterns"],
+                "distinct_feature_patterns": case["unique_feature_patterns"],
+                "class_support_by_uci_code": (
+                    case["channel_counts_by_official_code"] if case["id"] == 292
+                    else case["class_support_by_official_code"]
+                ),
+                "categorical_features_euclidean_ready": False,
+            }
+            ok = a.enforce_published_source_quality(sample, reference)
+            self.assertTrue(ok["matches_prior_source_only_quality"])
+            self.assertTrue(ok["source_quality_record_is_not_P1_or_P2_approval"])
+            bad = json.loads(json.dumps(sample))
+            bad["source"]["archive_sha256"] = "0" * 64
+            with self.assertRaisesRegex(
+                a.CandidateReviewBlocked, "archive_sha256"
+            ):
+                a.enforce_published_source_quality(bad, reference)
+            bad = json.loads(json.dumps(sample))
+            bad["conflicting_label_feature_patterns"] += 1
+            with self.assertRaisesRegex(
+                a.CandidateReviewBlocked, "conflicting_class_feature_patterns"
+            ):
+                a.enforce_published_source_quality(bad, reference)
+        approved = json.loads(json.dumps(reference))
+        approved["execution_authorized"] = True
+        with self.assertRaises(a.CandidateReviewBlocked):
+            a.enforce_published_source_quality(sample, approved)
+
     def test_no_production_code_import_or_model_fit(self):
         source = Path(a.__file__).read_text(encoding="utf-8")
         for forbidden in (
