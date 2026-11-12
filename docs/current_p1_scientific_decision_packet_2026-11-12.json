@@ -12,7 +12,8 @@
     "docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json",
     "docs/current_p1_alternative_domain_quality_results_2026-11-12.json",
     "docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json",
-    "docs/current_p1_public_literature_exposure_2026-11-12.json"
+    "docs/current_p1_public_literature_exposure_2026-11-12.json",
+    "docs/current_p1_additional_public_papers_2026-11-12.json"
   ],
   "candidate_shortlist_proposed_not_selected": [
     {
@@ -161,7 +162,7 @@
     "per_backend_native_RNG": "different native streams, no cross-backend bitwise parity requirement"
   },
   "reviewer_decisions_remaining": [
-    "Review candidate shortlist after scoped three-paper public-text audit (2015, 2017, 2025) plus independent remaining papers/theses and local/unpublished MATLAB/Python/collaborator experiments; the 20 historical pypcc benchmark sets are not exhaustive (e.g. 2015 g241c and Semeion). Disclose any prior exposure; never label candidates independently novel without full evidence.",
+    "Review candidate shortlist after scoped TEN public experimental-source checks (9 published papers plus 2026 arXiv preprint) in two evidence registers; other articles, 2010 doctoral thesis, historical local MATLAB/Python/collaborator work and alternate dataset aliases remain unverified. The historical 20-dataset pypcc campaign is demonstrably nonexhaustive for all PCC publications. Explicitly disclose prior exposure; do not claim independently novel/confirmatory data from negative literal matches.",
     "Approve task-specific label/feature mapping, especially Wholesale derived Channel and Vertebral three-class variant",
     "Approve clinical/data-lineage/licensing attribution and whether subgroup identifiers can be obtained",
     "Approve precise preprocessing mathematics/software implementations and k-NN graph construction, including observed graph hashes/ordering and undirected symmetry",
@@ -193,6 +194,20 @@
     "all_prior_publications_or_unpublished_results_checked": false,
     "patient_customer_batch_independence_verified": false,
     "dataset_novelty_or_external_validation_approved": false,
-    "scientific_review_required_before_P1_freeze": true
+    "scientific_review_required_before_P1_freeze": true,
+    "additional_evidence_register": "docs/current_p1_additional_public_papers_2026-11-12.json",
+    "reviewed_additional_paper_ids": [
+      "BREVE_COMPLEX_2009",
+      "BREVE_IJCNN_2010",
+      "BREVE_TKDE_2012",
+      "BREVE_IJCNN_2012_CONCEPT_DRIFT",
+      "BREVE_IJCNN_2013_ACTIVE",
+      "BREVE_MLSP_2016",
+      "BREVE_PCC_GCN_ARXIV_2026"
+    ],
+    "sources_experiment_sections_checked_total": 10,
+    "additional_six_published_and_one_preprint_only": true,
+    "candidate_names_absent_in_ten_scoped_sources_only": true,
+    "all_pcc_papers_theses_or_local_experiments_checked": false
   }
 }
