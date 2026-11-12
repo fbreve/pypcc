@@ -9,6 +9,9 @@ on:
       - 'docs/current_p1_scientific_decisions_2026-11-12.md'
       - 'experiments/review_p1_scientific_decisions.py'
       - 'experiments/test_review_p1_scientific_decisions.py'
+      - 'experiments/p1_exploratory_reference.py'
+      - 'experiments/test_p1_exploratory_reference.py'
+      - 'docs/current_p1_rng_and_exploratory_analysis_2026-11-12.md'
       - 'experiments/review_p1_proposal.py'
       - 'experiments/test_review_p1_proposal.py'
       - '.github/workflows/research-p1-proposal-no-fits.yml'
@@ -36,7 +39,7 @@ jobs:
       - name: Validate source-pinned P1 reviewer decisions (no datasets or graphs loaded)
         run: python -m experiments.review_p1_scientific_decisions --out p1-science-decision-review.json
       - name: Verify reject-approval and reject-scientific-drift tests
-        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions -v
+        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference -v
       - name: Assert report cannot authorize science or execution
         shell: bash
         run: |
