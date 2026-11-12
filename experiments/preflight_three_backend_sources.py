@@ -148,9 +148,9 @@ def audit(root, *, check_remote_heads=True):
         ".github/workflows/research-three-backend-source-preflight.yml",
     )
     audit_blobs = {path: _blob(root, audit_head, path) for path in audit_files}
-    local_script = (root / audit_files[0]).read_bytes().replace(b"\\r\\n", b"\\n")
+    local_script = (root / audit_files[0]).read_bytes().replace(b"\r\n", b"\n")
     local_blob = hashlib.sha1(
-        b"blob " + str(len(local_script)).encode("ascii") + b"\\0" + local_script
+        b"blob " + str(len(local_script)).encode("ascii") + b"\0" + local_script
     ).hexdigest()
     if audit_blobs[audit_files[0]] != local_blob:
         raise PreflightBlocked("Running audit script differs from its committed Git blob")
