@@ -1,0 +1,124 @@
+{
+  "schema": "pypcc-P1-public-literature-exposure-register/v1",
+  "status": "SCOPED_PUBLIC_TEXT_CHECK_ONLY_NOT_PROOF_OF_NOVELTY",
+  "review_date": "2026-11-12",
+  "method": "Manual review of named dataset descriptions in experimental sections of 3 publicly available paper full texts, plus first-party UCI metadata. No automated or exhaustive full-corpus plagiarism/novelty check, and no confidential/private local-source access.",
+  "reviewed_full_texts": [
+    {
+      "id": "BREVE_NEUROCOMPUTING_2015",
+      "title": "Particle Competition and Cooperation for Semi-Supervised Learning with Label Noise",
+      "year": 2015,
+      "url": "https://www.fabriciobreve.com/artigos/2015/Neurocomputing2015.pdf",
+      "article_section": "4. Computer Simulations; Figures 1–6, Tables 1–6",
+      "experimental_datasets_named": [
+        "Iris",
+        "Wine",
+        "Gaussian synthetic four-class",
+        "g241c",
+        "Semeion Handwritten Digit",
+        "Optical Recognition of Handwritten Digits"
+      ],
+      "candidate_name_mentions_in_experimental_section": [],
+      "evidence_note": "Full experimental section includes Semeion and g241c, NOT present in the frozen PyPCC 20-set performance_campaign_plan inventory; therefore that 20-item list is NOT an exhaustive historical PCC-paper exposure registry."
+    },
+    {
+      "id": "GUERREIRO_ICCSA_2017",
+      "title": "Analyzing and Inferring Distance Metrics on the Particle Competition and Cooperation Algorithm",
+      "year": 2017,
+      "url": "https://www.fabriciobreve.com/artigos/2017/iccsa2017lucas.pdf",
+      "article_section": "3. Methodology, Tables 2–3",
+      "experimental_datasets_named": [
+        "Iris",
+        "Wine",
+        "Banknote Authentication"
+      ],
+      "candidate_name_mentions_in_experimental_section": [],
+      "evidence_note": "Author explicitly identifies the three experimental datasets, normalizing Wine and Banknote in some conditions. This is limited to this 2017 paper."
+    },
+    {
+      "id": "LETICIO_VISAPP_2025",
+      "title": "Graph Convolutional Networks and Particle Competition and Cooperation for Semi-Supervised Learning",
+      "year": 2025,
+      "url": "https://www.scitepress.org/Papers/2025/132670/132670.pdf",
+      "article_section": "5.1 Datasets and Experimental Protocol, Table 1",
+      "experimental_datasets_named": [
+        "g241c",
+        "g241n",
+        "Digit1",
+        "USPS",
+        "COIL",
+        "COIL2",
+        "BCI"
+      ],
+      "candidate_name_mentions_in_experimental_section": [],
+      "evidence_note": "The complete named seven-dataset table was read from the publicly retrieved paper text. A page screenshot request against the publisher was blocked (403), so the result is grounded in extracted textual content, not screenshot-verified rendering."
+    }
+  ],
+  "candidate_ids_checked_against_these_three_papers_only": [
+    212,
+    850,
+    292
+  ],
+  "candidate_names_checked": [
+    "Vertebral Column",
+    "Raisin",
+    "Wholesale customers"
+  ],
+  "result": "NONE_OF_THREE_CANDIDATES_NAMED_IN_EXPERIMENTAL_SECTIONS_OF_THE_THREE_PAPERS_REVIEWED",
+  "no_claim_of_unpublished_or_all_paper_novelty": true,
+  "known_historical_inventory_limitation": "The 20 datasets named in PyPCC docs/performance_campaign_plan.md do not include g241c or Semeion appearing in 2015 published work. The 20-item inventory is not exhaustive for every publication, version, collaborator or historical local experiment.",
+  "source_metadata": [
+    {
+      "uci_id": 212,
+      "uci_url": "https://archive.ics.uci.edu/dataset/212/vertebral+column",
+      "doi": "10.24432/C5K89B",
+      "citation_as_given_by_uci": "Barreto, G. & Neto, A. (2005). Vertebral Column [Dataset].",
+      "donated_to_uci": "2011-08-08",
+      "original_description": "Orthopedic patient biomechanical observations collected by Henrique da Mota during residency at GARO, Centre Médico-Chirurgical de Réadaptation des Massues, Lyon, France. 310 patients in 3-class version, 6 numeric features.",
+      "independent_subject_or_patient_IDs_in_selected_UCI_file_verified": false,
+      "license_reported_by_uci": "CC BY 4.0",
+      "risk": "Clinical-origin data with no independently verifiable patient/visit IDs in numeric source; public license not a substitute for data-use/privacy ethics or patient-independence proof."
+    },
+    {
+      "uci_id": 850,
+      "uci_url": "https://archive.ics.uci.edu/dataset/850/raisin",
+      "doi": "10.24432/C5660T",
+      "citation_as_given_by_uci": "Çinar, İ., Koklu, M., & Tasdemir, S. (2020). Raisin [Dataset].",
+      "donated_to_uci": "2023-08-13",
+      "original_description": "900 raisin grains, 450 each Kecimen/Besni, morphological features extracted from image processing; introductory paper from 2020.",
+      "independent_raisins_and_acquisition_batch_IDs_verified": false,
+      "license_reported_by_uci": "CC BY 4.0",
+      "risk": "Tabular morphological descriptors do not establish independence of photographed physical grains, acquisitions or image-processing batches."
+    },
+    {
+      "uci_id": 292,
+      "uci_url": "https://archive.ics.uci.edu/dataset/292/wholesale+customers",
+      "doi": "10.24432/C5030X",
+      "citation_as_given_by_uci": "Cardoso, M. (2013). Wholesale customers [Dataset].",
+      "donated_to_uci": "2014-03-30",
+      "original_description": "440 wholesale-distributor customers; six annual spending measures plus nominal Channel and Region. UCI metadata lists Region as target, Channel as feature.",
+      "channel_as_proposed_derived_target_is_uci_default": false,
+      "independent_customers_or_org_IDs_verified": false,
+      "license_reported_by_uci": "CC BY 4.0",
+      "risk": "P1 proposal reinterprets original nominal Channel as target and excludes Region from X; separate scientific approval required. Individual client IDs, corporate groups and acquisition session IDs absent from published tabular export."
+    }
+  ],
+  "still_unreviewed": [
+    "Other PCC and graph papers (including originals from 2009–2012, 2019, 2020, 2022, 2023, 2026)",
+    "All conference posters, workshop manuscripts, unpublished student dissertations and source notebooks",
+    "Older source commits and public forks beyond specific MATLAB tracked 12 files",
+    "Local/private MATLAB experiment data and any collaborator-owned experiments",
+    "Whether dataset versions/classes were previously used under alternative file names or aliases",
+    "Independent patient, customer, grain or acquisition-batch lineage, consent and privacy requirements",
+    "Whether all intended data attributions, dataset licenses, third-party terms are met"
+  ],
+  "scientific_implication": "Exploratory-only P1 remains appropriate. Do not represent the 3 sources as externally novel/unexamined or independently sampled across domains. Do not freeze before reviewer acknowledges exposure unknowns and any prior-use declarations.",
+  "historical_exposure_completely_checked": false,
+  "clinical_lineage_or_ethical_review_completed": false,
+  "dataset_independence_verified": false,
+  "dataset_selected_ids": [],
+  "P1_scientific_protocol_sha256": null,
+  "P2_execution_preflight_sha256": null,
+  "execution_authorized": false,
+  "PCC_fits_executed": 0
+}
