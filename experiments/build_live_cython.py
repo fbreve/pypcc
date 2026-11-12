@@ -59,7 +59,6 @@ EXTRA_SIGNATURE = """    bint             experimental_canonical_rowmax_init = F
 CDEF_ANCHOR = "    cdef int metric_mismatch_iteration = 0"
 EXTRA_CDEF = """    cdef int metric_mismatch_iteration = 0
     cdef bint research_active = research_observer is not None
-    cdef bint research_stop = False
     cdef Py_ssize_t research_cursor = 0
     cdef np.int64_t[:] research_schedule = None
     cdef np.int64_t[:, :] research_positions = None
@@ -96,23 +95,29 @@ LOOP_ANCHOR = "    with nogil:\n        for it in range(max_iter):"
 LOOP_INSERT = """    with nogil:
         if research_active and research_schedule.shape[0] > 0 and research_schedule[0] == 0:
                 """ + CAPTURE_CALL + """
-        for it in range(max_iter):
-            research_stop = False"""
+        for it in range(max_iter):"""
 
 STOP_ANCHOR = "                    if stop_cnt > stop_max:\n                        break"
 STOP_INSERT = """                    if stop_cnt > stop_max:
-                        if not research_active:
-                            break
-                        research_stop = True"""
-AFTER_STOP_ANCHOR = """                        research_stop = True
+                        # Preserve native immediate break. When the stop
+                        # boundary is explicitly requested, copy it first.
+                        if research_active and research_cursor < research_schedule.shape[0] and research_schedule[research_cursor] == it + 1:
+                            _research_capture(
+                                research_cursor, part_curnode, part_strength,
+                                dist_table, dominance, owndeg, row_max_cache,
+                                cache_enabled, rng_state, research_positions,
+                                research_strengths, research_distances,
+                                research_dominance, research_owndeg,
+                                research_rowmax, research_rng)
+                            research_cursor += 1
+                        break"""
+AFTER_STOP_ANCHOR = """                        break
 
     if metric_mismatch_iteration:"""
-AFTER_STOP_INSERT = """                        research_stop = True
+AFTER_STOP_INSERT = """                        break
 
             if research_active and research_cursor < research_schedule.shape[0] and research_schedule[research_cursor] == it + 1:
                 """ + CAPTURE_CALL + """
-            if research_stop:
-                break
 
     if research_active:
         research_final_rng[0] = rng_state
