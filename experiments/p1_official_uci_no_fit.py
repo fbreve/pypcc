@@ -192,13 +192,50 @@ def inspect_one(dataset_id):
     }
 
 
+def verify_against_previous_observation(report, prior):
+    """Compare public source bytes/results to an earlier audit, NOT to a science seal."""
+    if prior.get("schema") != "pypcc-p1-official-uci-https-archive-quality-results/v1":
+        raise ExternalDataBlocked("Unexpected prior quality-record schema")
+    case = [v for v in prior.get("datasets", [])
+            if v.get("uci_id") == report["quality"]["dataset_id"]]
+    if len(case) != 1:
+        raise ExternalDataBlocked("Missing or ambiguous prior candidate ID")
+    expected = case[0]
+    actual = report["quality"]
+    comparisons = {
+        "source_zip_sha256": report["source"]["download_sha256"],
+        "selected_member_sha256": actual["source_member_sha256"],
+        "observed_rows": actual["rows"],
+        "numeric_features": actual["numeric_features"],
+        "class_support": actual["class_support"],
+        "exact_duplicate_full_rows": actual["exact_duplicate_full_rows"],
+        "exact_repeated_feature_rows": actual["exact_repeated_feature_rows"],
+        "conflicting_label_feature_patterns":
+            actual["conflicting_label_feature_patterns"],
+        "url": report["source"]["requested_url"],
+    }
+    for key, value in comparisons.items():
+        if expected.get(key) != value:
+            raise ExternalDataBlocked(
+                f"Official source or quality result differs from prior audit: {key}"
+            )
+    report["matches_previous_source_only_audit"] = True
+    report["previous_source_only_audit_is_not_scientific_approval"] = True
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-id", type=int, choices=sorted(UCI_URLS),
                         required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--expect-record", type=Path, default=None,
+                        help="Reject changed source bytes vs earlier no-fit audit")
     args = parser.parse_args()
     report = inspect_one(args.dataset_id)
+    if args.expect_record is not None:
+        prior = json.loads(args.expect_record.read_text(encoding="utf-8"))
+        verify_against_previous_observation(report, prior)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
