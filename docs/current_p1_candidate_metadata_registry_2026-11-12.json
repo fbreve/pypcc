@@ -1,0 +1,188 @@
+{
+  "schema": "pypcc-p1-candidate-metadata-registry/v0.1",
+  "status": "CANDIDATES_ONLY_NOT_SELECTED",
+  "source_base_commit": "ea69f690208620d5563c8efece6b2e04369f52c0",
+  "p1_draft_pr": 258,
+  "p1_draft_head": "9c8c88aab745e7526a68b2aef958858990f1cfea",
+  "p1_draft_checksum_unapproved": "fdbf74c1faea06c38b27c935de9167685f372786d277fbdc8726510adc80c854",
+  "historical_registry": {
+    "source": "docs/performance_campaign_plan.md",
+    "source_git_blob_sha": "35944c493d38046e71790ca4521cc42ce0aa570d",
+    "source_scope": "20 documented historical benchmark datasets, NOT an exhaustive scan of all publications, branches, local artifacts or earlier collaborators",
+    "entries": [
+      {
+        "historical_name": "Wine",
+        "cli_alias": "wine"
+      },
+      {
+        "historical_name": "Digits",
+        "cli_alias": "digits"
+      },
+      {
+        "historical_name": "Iris",
+        "cli_alias": "iris"
+      },
+      {
+        "historical_name": "BreastCancer",
+        "cli_alias": "breast_cancer"
+      },
+      {
+        "historical_name": "BalanceScale",
+        "cli_alias": "balancescale"
+      },
+      {
+        "historical_name": "GermanCredit",
+        "cli_alias": "germancredit"
+      },
+      {
+        "historical_name": "Diabetes",
+        "cli_alias": "diabetes"
+      },
+      {
+        "historical_name": "Sonar",
+        "cli_alias": "sonar"
+      },
+      {
+        "historical_name": "Glass",
+        "cli_alias": "glass"
+      },
+      {
+        "historical_name": "Vehicle",
+        "cli_alias": "vehicle"
+      },
+      {
+        "historical_name": "Ionosphere",
+        "cli_alias": "ionosphere"
+      },
+      {
+        "historical_name": "PenDigits",
+        "cli_alias": "pendigits"
+      },
+      {
+        "historical_name": "Satimage",
+        "cli_alias": "satimage"
+      },
+      {
+        "historical_name": "Spambase",
+        "cli_alias": "spambase"
+      },
+      {
+        "historical_name": "PageBlocks",
+        "cli_alias": "pageblocks"
+      },
+      {
+        "historical_name": "Banknote",
+        "cli_alias": "banknote"
+      },
+      {
+        "historical_name": "BloodTransfusion",
+        "cli_alias": "bloodtransfusion"
+      },
+      {
+        "historical_name": "Yeast",
+        "cli_alias": "yeast"
+      },
+      {
+        "historical_name": "Segment",
+        "cli_alias": "segment"
+      },
+      {
+        "historical_name": "QSARBiodeg",
+        "cli_alias": "qsarbiodeg"
+      }
+    ],
+    "additional_known_exposed_designs": [
+      "C2-R1: Banknote and Sonar (already in 20)",
+      "G1-R1: PageBlocks and Spambase (already in 20)"
+    ],
+    "not_exhaustive": true
+  },
+  "candidates": [
+    {
+      "id": "uci-212-vertebral-3class",
+      "uci_dataset_id": 212,
+      "name": "Vertebral Column (three-class task)",
+      "instances_reported": 310,
+      "numeric_features_reported": 6,
+      "classes_reported": 3,
+      "minimum_class_count_reported": 60,
+      "source_page": "https://archive.ics.uci.edu/dataset/212/vertebral-column",
+      "doi": "10.24432/C5K89B",
+      "license_reported": "CC BY 4.0",
+      "canonical_data_file_proposed": "column_3C_weka.arff",
+      "label_target_proposed": "three-class DH/SL/NO (never mix with two-class file)",
+      "feature_type_reported": "real",
+      "missing_values_reported": false,
+      "domain": "orthopedic_biomechanics",
+      "data_exposure_caveat": "Clinical-origin observations; verify anonymization, reuse and original patient independence; methodological benchmarking only, no medical inference",
+      "provenance_review": "candidate_metadata_only"
+    },
+    {
+      "id": "uci-545-rice",
+      "uci_dataset_id": 545,
+      "name": "Rice (Cammeo and Osmancik)",
+      "instances_reported": 3810,
+      "numeric_features_reported": 7,
+      "classes_reported": 2,
+      "minimum_class_count_reported": null,
+      "source_page": "https://archive.ics.uci.edu/dataset/545/rice%2Bcammeo%2Band%2Bosmancik",
+      "doi": "10.24432/C5MW4Z",
+      "license_reported": "CC BY 4.0",
+      "canonical_data_file_proposed": "Rice_Cammeo_Osmancik.arff",
+      "label_target_proposed": "two original varieties Cammeo/Osmancik",
+      "feature_type_reported": "real",
+      "missing_values_reported": false,
+      "domain": "plant_grain_morphology",
+      "data_exposure_caveat": "Same imaging/shape-feature domain as Raisin; treat external-domain diversity as limited, not three independent problem families",
+      "provenance_review": "candidate_metadata_only"
+    },
+    {
+      "id": "uci-850-raisin",
+      "uci_dataset_id": 850,
+      "name": "Raisin",
+      "instances_reported": 900,
+      "numeric_features_reported": 7,
+      "classes_reported": 2,
+      "minimum_class_count_reported": 450,
+      "source_page": "https://archive.ics.uci.edu/dataset/850/raisin",
+      "doi": "10.24432/C5660T",
+      "license_reported": "CC BY 4.0",
+      "canonical_data_file_proposed": "Raisin_Dataset.zip",
+      "label_target_proposed": "Kecimen/Besni",
+      "feature_type_reported": "real_and_integer",
+      "missing_values_reported": false,
+      "domain": "plant_grain_morphology",
+      "data_exposure_caveat": "Same imaging/shape-feature domain as Rice; independently verify repeated grain records and any duplicate-feature rows before eligibility",
+      "provenance_review": "candidate_metadata_only"
+    }
+  ],
+  "candidate_order_rule": "proposed UCI numeric ID ascending; order fixed before looking at any PCC outcome. This is a reading order, NOT an authorized selection.",
+  "candidate_count_for_review": 3,
+  "selected_dataset_ids": [],
+  "dataset_bytes_sha256": null,
+  "source_archive_sha256": null,
+  "full_history_exposure_audit_complete": false,
+  "independent_reviewer_approved": false,
+  "license_and_data_integrity_approved": false,
+  "metadata_evidence_checked_on": "2026-11-12",
+  "metadata_evidence_kind": "public UCI listing pages; counts/license/missingness are unverified until real source bytes are reviewed",
+  "gates_before_selection": [
+    "independently review all publications, old PR branches, original MATLAB experiments, and local stores for prior use/exposure of each candidate",
+    "verify actual download bytes, source archive SHA-256, license attribution and version; do not alter scientific dataset once selected",
+    "inspect class support, duplicate/near-duplicate feature patterns, subject/group identity, missing/invalid values, and row integrity WITHOUT running PCC",
+    "choose exact single target task per dataset, preprocessing/scaling, graph k, distance/normalization and deterministic feature/row ordering before any outcome",
+    "independently assess same-modality Raisin/Rice limitation; if inadequate require a revised P1 design rather than post-outcome replacement",
+    "review candidate selection and record explicit scientific approval before generating masks or fitting models",
+    "run separate P2 execution-specific preflight including versioned fixture and compiled binaries, RAM/disk/CPU/export budgets without fitting"
+  ],
+  "run_permission": {
+    "P1_scientific_protocol_frozen": false,
+    "P2_execution_preflight_sha256": null,
+    "execution_authorized": false,
+    "model_fits_executed": 0,
+    "datasets_downloaded": 0
+  },
+  "no_dataset_loading": true,
+  "no_PCC_import": true,
+  "no_production_code_changes": true
+}
