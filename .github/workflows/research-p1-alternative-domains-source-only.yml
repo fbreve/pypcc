@@ -48,11 +48,11 @@ jobs:
         with:
           python-version: '3.12'
       - name: Read ephemeral official UCI source ZIP to quality-only metadata
-        run: python -m experiments.p1_alternative_domain_source_quality --dataset-id ${{ matrix.dataset-id }} --out source-only-uci-${{ matrix.dataset-id }}.json
+        run: python -m experiments.p1_alternative_domain_source_quality --dataset-id ${{ matrix.dataset-id }} --out source-only-uci-${{ matrix.dataset-id }}.json --expect-record docs/current_p1_alternative_domain_quality_results_2026-11-12.json
       - name: Verify no model fit, graph, mask, approval, nor source rows released
         shell: bash
         run: |
-          python -c "import json; p=json.load(open('source-only-uci-${{ matrix.dataset-id }}.json')); assert p['uci_id']==${{ matrix.dataset-id }}; assert len(p['source']['archive_sha256'])==64; assert p['rows'] in (440,1353); assert not p['target_task_independently_reviewed']; assert not p['scientific_P1_frozen']; assert not p['execution_authorized']; assert p['P2_execution_preflight_sha256'] is None; assert p['PCC_fits_executed']==0; assert p['datasets_selected']==0"
+          python -c "import json; p=json.load(open('source-only-uci-${{ matrix.dataset-id }}.json')); assert p['uci_id']==${{ matrix.dataset-id }}; assert len(p['source']['archive_sha256'])==64; assert p['rows'] in (440,1353); assert p['matches_prior_source_only_quality']; assert p['source_quality_record_is_not_P1_or_P2_approval']; assert not p['target_task_independently_reviewed']; assert not p['scientific_P1_frozen']; assert not p['execution_authorized']; assert p['P2_execution_preflight_sha256'] is None; assert p['PCC_fits_executed']==0; assert p['datasets_selected']==0"
       - name: Upload only quality JSON, never original rows or source ZIP
         uses: actions/upload-artifact@v4
         with:
