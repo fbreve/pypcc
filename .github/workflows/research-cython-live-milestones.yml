@@ -1,0 +1,38 @@
+name: Research Cython live milestones (synthetic)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/build_live_cython.py'
+      - 'experiments/live_cython_milestones.py'
+      - 'experiments/bench_live_cython_fullfit.py'
+      - 'tests/test_live_cython_milestones.py'
+      - '.github/workflows/research-cython-live-milestones.yml'
+jobs:
+  cython-live:
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Cython and native production project
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip install "Cython>=3,<4"
+      - name: Build ISOLATED research-only compiled Cython observer
+        run: python -m experiments.build_live_cython
+      - name: Import isolated native extension
+        run: python -c "import pcc_step_live_research; print(pcc_step_live_research.pcc_propagate)"
+      - name: Verify exact Cython milestones and RNG
+        run: python -m unittest discover -s tests -p test_live_cython_milestones.py -v
+      - name: Verify complete production regression
+        run: python -m unittest discover -s tests -v
