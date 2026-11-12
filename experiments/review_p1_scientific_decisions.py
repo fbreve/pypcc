@@ -151,9 +151,9 @@ def review_public_literature_evidence(exposure):
             exposure["dataset_independence_verified"] is False and
             exposure["clinical_lineage_or_ethical_review_completed"] is False,
             "Source-only checking cannot become an unreviewed novelty/ethics seal")
-    require("g241c" in exposure["known_historical_inventory_limitation"] and
-            "Semeion" in exposure["known_historical_inventory_limitation"] and
-            "NOT" in exposure["known_historical_inventory_limitation"],
+    history_note = exposure["known_historical_inventory_limitation"]
+    require("g241c" in history_note and "Semeion" in history_note and
+            "not exhaustive" in history_note.lower(),
             "20-set campaign is not an exhaustive historical PCC-paper inventory")
     sources = exposure["source_metadata"]
     require([x["uci_id"] for x in sources] == [212,850,292] and
