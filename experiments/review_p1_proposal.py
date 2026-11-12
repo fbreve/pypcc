@@ -85,8 +85,8 @@ def review(proposal):
     _require(experimental["no_adaptive_resampling"] is True,
              "adaptive resampling is prohibited")
     _require("dense" in experimental["graph_policy"] and
-             "CSR" not in experimental["graph_policy"],
-             "graph policy must preserve dense neighbors without substitutes")
+             "no sparse/CSR substitution" in experimental["graph_policy"],
+             "graph policy must explicitly preserve dense neighbors")
 
     dataset = proposal["dataset_registry"]
     _require(dataset["selected"] == [],
