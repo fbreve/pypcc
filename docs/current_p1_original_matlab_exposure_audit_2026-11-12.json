@@ -1,0 +1,103 @@
+{
+  "schema": "pypcc-p1-exposure-original-matlab-source-v1",
+  "status": "PUBLIC_TRACKED_TEXT_SCAN_ONLY",
+  "checked_utc_date": "2026-11-12",
+  "repository": "fbreve/Particle-Competition-and-Cooperation",
+  "github_tree_url": "https://api.github.com/repos/fbreve/Particle-Competition-and-Cooperation/git/trees/master?recursive=1",
+  "master_tree_sha": "f13c4ac5c2cc925bedf9fa5983af742502243a4f",
+  "tracked_entries_total": 19,
+  "tracked_text_files_checked": 12,
+  "tokens_case_insensitive": [
+    "vertebral",
+    "rice",
+    "raisin",
+    "cammeo",
+    "osmancik",
+    "kecimen",
+    "besni",
+    "column[_ ]?3c"
+  ],
+  "checked_files": [
+    {
+      "path": "README.md",
+      "blob_sha": "a0545d04c2b186d0366211de1c0aadf9804dd053",
+      "text_search_hits": 0
+    },
+    {
+      "path": "benchmark.m",
+      "blob_sha": "1a79aa9a0feab0a0160ff87c02b2649a6df879d9",
+      "text_search_hits": 0
+    },
+    {
+      "path": "changelog.txt",
+      "blob_sha": "779a60985828ae07b4183e23f8d655b79f3f3784",
+      "text_search_hits": 0
+    },
+    {
+      "path": "example.m",
+      "blob_sha": "a4aa3465fac4653272d6820499833caaf6c115e9",
+      "text_search_hits": 0
+    },
+    {
+      "path": "kappa.m",
+      "blob_sha": "cb90464ef28c5ff5f15cf4684a7e5f53e5de3838",
+      "text_search_hits": 0
+    },
+    {
+      "path": "pcc.asv",
+      "blob_sha": "3c29a900cd15f15123e38529aab3ecd11a75d77d",
+      "text_search_hits": 0
+    },
+    {
+      "path": "pcc.m",
+      "blob_sha": "28061f8a7973ec279050e408a9a8198ab82c40a0",
+      "text_search_hits": 0
+    },
+    {
+      "path": "pcc_buildgraph.m",
+      "blob_sha": "f0c92386ac0a83c23db8a0c300d110ebe5426180",
+      "text_search_hits": 0
+    },
+    {
+      "path": "pccloop.c",
+      "blob_sha": "f6247e0b682178a59ff33f4bc16632f89742e586",
+      "text_search_hits": 0
+    },
+    {
+      "path": "slabelgen.m",
+      "blob_sha": "8a8acb7d7d94f6ffb877a7f5e4033aacd84596e5",
+      "text_search_hits": 0
+    },
+    {
+      "path": "stmwevalk.m",
+      "blob_sha": "5ae986f3f31e2d288f74365b9c7cc2700771b087",
+      "text_search_hits": 0
+    },
+    {
+      "path": "sumcol.m",
+      "blob_sha": "4f72585181e71c05eb8c4b2c5c91a3187f246a76",
+      "text_search_hits": 0
+    }
+  ],
+  "search_hits_total": 0,
+  "examples_verified": [
+    "benchmark.m uses Wine and Digits",
+    "example.m uses Wine"
+  ],
+  "binary_or_dataset_bytes_not_inspected": [
+    "digits.mat",
+    "wine.data",
+    "pccloop.mexa64",
+    "pccloop.mexw64",
+    "pccloop.mexw64.bak",
+    "wine.names"
+  ],
+  "nontracked_or_prior_commits_checked": false,
+  "external_papers_or_theses_exhaustively_checked": false,
+  "collaborator_or_local_archives_checked": false,
+  "novelty_approved": false,
+  "P1_selected_dataset_ids": [],
+  "P2_execution_preflight_sha256": null,
+  "model_fits_executed": 0,
+  "execution_authorized": false
+}
