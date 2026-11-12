@@ -14,6 +14,10 @@ on:
       - 'docs/current_p1_rng_and_exploratory_analysis_2026-11-12.md'
       - 'docs/current_p1_public_literature_exposure_2026-11-12.json'
       - 'docs/current_p1_public_literature_exposure_2026-11-12.md'
+      - 'docs/current_p1_additional_public_papers_2026-11-12.json'
+      - 'docs/current_p1_additional_public_papers_2026-11-12.md'
+      - 'experiments/review_p1_additional_public_papers.py'
+      - 'experiments/test_review_p1_additional_public_papers.py'
       - 'experiments/review_p1_proposal.py'
       - 'experiments/test_review_p1_proposal.py'
       - '.github/workflows/research-p1-proposal-no-fits.yml'
@@ -40,8 +44,10 @@ jobs:
         run: python -m experiments.review_p1_proposal --output p1-draft-review.json
       - name: Validate source-pinned P1 reviewer decisions (no datasets or graphs loaded)
         run: python -m experiments.review_p1_scientific_decisions --out p1-science-decision-review.json
+      - name: Validate seven additional bounded historical PCC sources (no data/models)
+        run: python -m experiments.review_p1_additional_public_papers --out p1-additional-paper-evidence.json
       - name: Verify reject-approval and reject-scientific-drift tests
-        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference -v
+        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference experiments.test_review_p1_additional_public_papers -v
       - name: Assert report cannot authorize science or execution
         shell: bash
         run: |
@@ -50,6 +56,10 @@ jobs:
         shell: bash
         run: |
           python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert r['public_full_text_papers_scoped_checked']==3; assert not r['all_history_or_private_matlab_checked']; assert not r['paper_20_dataset_inventory_exhaustive']; assert not r['data_independence_or_ethics_certified']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
+      - name: Reject false full historical coverage, source independence and science approval
+        shell: bash
+        run: |
+          python -c "import json; a=json.load(open('p1-additional-paper-evidence.json')); assert a['scope_integrity']=='PASS'; assert a['additional_published_sources']==6; assert a['additional_arxiv_preprints']==1; assert a['total_scoped_sources_with_prior_three']==10; assert not a['candidate_dataset_novelty_proved']; assert not a['all_prior_research_or_aliases_checked']; assert not a['scientific_P1_approved']; assert not a['execution_authorized']; assert a['PCC_fits_executed']==0"
       - name: Upload explicitly unapproved P1 review
         uses: actions/upload-artifact@v4
         with:
@@ -57,4 +67,5 @@ jobs:
           path: |
             p1-draft-review.json
             p1-science-decision-review.json
+            p1-additional-paper-evidence.json
           if-no-files-found: error
