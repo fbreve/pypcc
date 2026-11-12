@@ -87,6 +87,12 @@ def review(proposal):
     _require("dense" in experimental["graph_policy"] and
              "no sparse/CSR substitution" in experimental["graph_policy"],
              "graph policy must explicitly preserve dense neighbors")
+    _require(
+        "SHA256(" in experimental["seed_policy"] and
+        "native" in experimental["seed_policy"] and
+        "before real fits" in experimental["seed_policy"],
+        "proposed backend-native seed policy must be explicit and unapproved",
+    )
 
     dataset = proposal["dataset_registry"]
     _require(dataset["selected"] == [],
@@ -112,6 +118,18 @@ def review(proposal):
              "primary denominator must exclude originally labeled nodes")
     _require(len(estimands["secondary"]) >= 2,
              "all secondary analyses must be declared before outcomes")
+    _require(
+        "NO 95% confidence interval" in estimands["primary"]["uncertainty"] and
+        "exploratory descriptive" in estimands["primary"]["uncertainty"] and
+        "NO 95% confidence interval" in estimands["primary"]["uncertainty"],
+        "prospective three-domain analysis cannot silently claim inferential CI",
+    )
+    _require(
+        proposal["analysis_plan"]["decision_logic"].startswith("Exploratory P1:") and
+        "withhold an unqualified 72-case aggregate" in
+        proposal["analysis_plan"]["decision_logic"],
+        "exploratory-only and missing-fit reporting policy changed",
+    )
     historical = proposal["historical_overlap"]
     _require({"banknote", "sonar", "pageblocks", "spambase"}.issubset(
         set(historical["datasets_examined_in_prior_C2_G1"])),
