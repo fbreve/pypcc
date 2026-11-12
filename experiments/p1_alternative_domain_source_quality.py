@@ -302,13 +302,71 @@ def inspect_source(dataset_id, *, payload_override=None):
     return result
 
 
+def enforce_published_source_quality(report, reference):
+    """Refuse source/label-collision drift; this does NOT approve any dataset."""
+    check(reference.get("schema") ==
+          "pypcc-p1-alternative-domain-official-uci-quality-results/v1",
+          "Unrecognized published data-quality record")
+    check(reference.get("status") == "REVIEW_ONLY_NOT_SELECTED" and
+          reference.get("selected_dataset_ids") == [] and
+          reference.get("scientific_P1_approved") is False and
+          reference.get("P2_execution_preflight_sha256") is None and
+          reference.get("execution_authorized") is False and
+          reference.get("real_PCC_fits_executed") == 0,
+          "Quality reference must not be interpreted as scientific approval")
+    matches = [d for d in reference["datasets"]
+               if d["id"] == report["uci_id"]]
+    check(len(matches) == 1, "Missing or ambiguous candidate source identity")
+    pinned = matches[0]
+    fields = {
+        "source_url": report["source"]["source_url"],
+        "archive_sha256": report["source"]["archive_sha256"],
+        "member_name": report["source"]["data_member"].split("/")[-1],
+        "member_sha256": report["source"]["data_member_sha256"],
+        "instances": report["rows"],
+        "features": len(report["features_used"]),
+        "target": report["proposed_target"],
+        "exact_repeated_feature_surplus_rows":
+            report["exact_repeated_feature_vector_surplus_rows"],
+        "exact_full_row_duplicate_surplus":
+            report["exact_duplicate_full_row_surplus"],
+        "conflicting_class_feature_patterns":
+            report["conflicting_label_feature_patterns"],
+        "unique_feature_patterns": report["distinct_feature_patterns"],
+    }
+    for key, value in fields.items():
+        check(pinned.get(key) == value,
+              "Official UCI source or quality drift: " + key)
+    if report["uci_id"] == 292:
+        check(pinned["feature_names"] == report["features_used"] and
+              report["features_excluded"] == [pinned["excluded_feature"]] and
+              pinned["channel_counts_by_official_code"] ==
+              report["class_support_by_uci_code"],
+              "Wholesale derived Channel or feature mapping drift")
+    elif report["uci_id"] == 379:
+        check(pinned["class_support_by_official_code"] ==
+              report["class_support_by_uci_code"] and
+              report["categorical_features_euclidean_ready"] is False and
+              pinned["source_attribute_spelling"] ==
+              "popUpWidnow (as actually stored; not popUpWindow)",
+              "Phishing class/feature representation changed")
+    report["matches_prior_source_only_quality"] = True
+    report["source_quality_record_is_not_P1_or_P2_approval"] = True
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-id", type=int, choices=sorted(DATASETS),
                         required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--expect-record", default=None)
     args = parser.parse_args()
     report = inspect_source(args.dataset_id)
+    if args.expect_record is not None:
+        with open(args.expect_record, encoding="utf-8") as fh:
+            pinned = json.load(fh)
+        enforce_published_source_quality(report, pinned)
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(report, fh, sort_keys=True, indent=2)
         fh.write("\n")
