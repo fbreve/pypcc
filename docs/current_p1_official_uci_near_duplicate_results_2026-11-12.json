@@ -1,0 +1,139 @@
+{
+  "schema": "pypcc-p1-official-uci-source-near-duplicate-results/v1",
+  "status": "EXPLORATORY_DESCRIPTIVE_SOURCE_QUALITY_ONLY_NOT_APPROVED",
+  "audit_date": "2026-11-12",
+  "initial_audit_code_commit": "76498bfb6dfa7989fa477a403e80bdc4940aee70",
+  "initial_ci_run_url": "https://github.com/fbreve/pypcc/actions/runs/43298034501",
+  "source_quality_reference": "docs/current_p1_official_uci_quality_results_2026-11-12.json",
+  "numpy_version_for_diagnostic": "1.26.4",
+  "method": "All n(n-1)/2 unordered source-data row pairs. Feature population z-scores (ddof=0). RMS Euclidean distance sqrt(sum((z_i-z_j)^2)/d). Thresholds fixed at [1e-6,1e-4,1e-3,1e-2] before run; no graph, labels sampling, algorithm fitting or use of PCC outcomes.",
+  "by_dataset": [
+    {
+      "dataset_id": 212,
+      "rows": 310,
+      "features": 6,
+      "pairs": 47895,
+      "archive_sha256": "899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f",
+      "member_sha256": "cf768854cf4cf42b3a3b792a239a81ebfd4fbfafc25fbe2a19d15b3f73249879",
+      "thresholds": [
+        {
+          "rms_std_euclidean_threshold_le": 0.000001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.0001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.01,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        }
+      ]
+    },
+    {
+      "dataset_id": 545,
+      "rows": 3810,
+      "features": 7,
+      "pairs": 7256145,
+      "archive_sha256": "fe94e42046b829de21b92b0ffb6a22774fde021328cae799faa802a14e8dbed9",
+      "member_sha256": "1af97883100c89de2ea2972f7a28d428f4f1c14711a61defc0b0569e9eb65665",
+      "thresholds": [
+        {
+          "rms_std_euclidean_threshold_le": 0.000001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.0001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.01,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        }
+      ]
+    },
+    {
+      "dataset_id": 850,
+      "rows": 900,
+      "features": 7,
+      "pairs": 404550,
+      "archive_sha256": "5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db",
+      "member_sha256": "9370b5f749a572a0bbeae15c93bf2e15c859b06d2626ae401b844c0a925fa553",
+      "thresholds": [
+        {
+          "rms_std_euclidean_threshold_le": 0.000001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.0001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.001,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        },
+        {
+          "rms_std_euclidean_threshold_le": 0.01,
+          "unordered_pair_count": 0,
+          "cross_class_pair_count": 0,
+          "same_class_pair_count": 0,
+          "distinct_rows_involved": 0
+        }
+      ]
+    }
+  ],
+  "not_checked": [
+    "record grouping across patients/batches/photography sessions",
+    "independence of objects depicted in original images",
+    "other similarity measures or thresholds outside declared grid",
+    "source preprocessing or P1 graph topology/accuracy",
+    "exhaustive prior-PCC-paper and local archive exposure"
+  ],
+  "no_record_identifiers_or_rows_published": true,
+  "P1_dataset_selected": false,
+  "P1_scientific_approval": false,
+  "P2_execution_preflight_sha256": null,
+  "real_PCC_fits_executed": 0,
+  "execution_authorized": false
+}
