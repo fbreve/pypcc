@@ -5,6 +5,8 @@ on:
     paths:
       - experiments/live_numba_milestones.py
       - experiments/bench_live_numba_fullfit.py
+      - tests/test_live_numba_milestones.py
+      - docs/current_master_numba_live_milestones_protocol_2026-11-11.md
       - .github/workflows/research-numba-live-fullfit-cpu.yml
   workflow_dispatch:
 
