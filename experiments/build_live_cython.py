@@ -132,9 +132,12 @@ def source_blob_sha(raw):
 
 def generate():
     raw = ORIGINAL.read_bytes()
-    if source_blob_sha(raw) != EXPECTED_GIT_BLOB:
+    # GitHub Actions Windows may materialize CRLF via core.autocrlf. The
+    # pinned SHA is over Git's canonical LF blob, never host-local CRLF.
+    canonical = raw.replace(b"\\r\\n", b"\\n")
+    if b"\\r" in canonical or source_blob_sha(canonical) != EXPECTED_GIT_BLOB:
         raise RuntimeError("Cython original Git blob changed; manually re-audit before regeneration")
-    source = raw.decode("utf-8")
+    source = canonical.decode("utf-8")
     source = _replace_once(source, "cpdef pcc_propagate(", CAPTURE_HELPER + "cpdef pcc_propagate(", "function entry")
     source = _replace_once(source, SIGNATURE_ANCHOR, EXTRA_SIGNATURE, "signature")
     source = _replace_once(source, CDEF_ANCHOR, EXTRA_CDEF, "declarations")
@@ -143,7 +146,7 @@ def generate():
     source = _replace_once(source, AFTER_STOP_ANCHOR, AFTER_STOP_INSERT, "terminal capture/final RNG")
 
     # Both original native hotloops must remain byte-for-byte unchanged.
-    hotloops = raw.decode("utf-8").split("cdef void pcc_step_sequential(", 1)[1]
+    hotloops = canonical.decode("utf-8").split("cdef void pcc_step_sequential(", 1)[1]
     hotloops = hotloops.split("cpdef pcc_step(", 1)[0]
     checkloops = source.split("cdef void pcc_step_sequential(", 1)[1]
     checkloops = checkloops.split("cpdef pcc_step(", 1)[0]
