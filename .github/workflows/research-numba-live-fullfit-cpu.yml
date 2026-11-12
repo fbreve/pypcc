@@ -27,7 +27,7 @@ jobs:
       - name: Confirm live Numba and full-fit parity
         run: python -m unittest discover -s tests -p test_live_numba_milestones.py -v
       - name: Paired Numba complete-fit CPU benchmark
-        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 100 --labels-per-class 12 --output numba-live-fullfit-${{ runner.os }}.json
+        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 400 --labels-per-class 12 --output numba-live-fullfit-${{ runner.os }}.json
       - name: Upload OS-specific raw paired samples
         uses: actions/upload-artifact@v4
         with:
