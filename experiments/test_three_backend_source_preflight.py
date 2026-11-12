@@ -21,6 +21,20 @@ class ThreeBackendSourceInventoryTests(unittest.TestCase):
         second = preflight.audit(ROOT)
         self.assertEqual(first, second)
         self.assertEqual(first["source_validation"], "pass")
+        self.assertTrue(first["remote_tracking_verified"])
+        self.assertEqual(
+            first["source_inventory"]["audit_implementation"]["commit"],
+            preflight._git(ROOT, "rev-parse", "HEAD"),
+        )
+        self.assertEqual(
+            set(first["source_inventory"]["audit_implementation"]["file_blobs"]),
+            {
+                "experiments/preflight_three_backend_sources.py",
+                "experiments/test_three_backend_source_preflight.py",
+                "docs/current_three_backend_source_preflight_2026-11-12.md",
+                ".github/workflows/research-three-backend-source-preflight.yml",
+            },
+        )
         self.assertEqual(first["model_fits_executed"], 0)
         self.assertFalse(first["execution_authorized"])
         self.assertFalse(first["scientific_protocol_frozen"])
