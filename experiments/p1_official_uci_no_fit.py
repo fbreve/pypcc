@@ -192,14 +192,6 @@ def inspect_one(dataset_id):
         "dataset_selected_for_P1": False,
         "P1_scientifically_frozen": False,
         "P2_execution_preflight_sha256": None,
-        "near_duplicate_pair_counts": [
-            t["unordered_pair_count"] for t in
-            report["near_duplicate_quality"]["thresholds"]
-        ],
-        "near_duplicate_cross_class_pair_counts": [
-            t["cross_class_pair_count"] for t in
-            report["near_duplicate_quality"]["thresholds"]
-        ],
         "PCC_fits_executed": 0,
         "execution_authorized": False,
     }
@@ -265,6 +257,14 @@ def main():
             report["quality"]["exact_duplicate_full_rows"],
         "conflicting_label_feature_patterns":
             report["quality"]["conflicting_label_feature_patterns"],
+        "near_duplicate_pair_counts": [
+            t["unordered_pair_count"]
+            for t in report["near_duplicate_quality"]["thresholds"]
+        ],
+        "near_duplicate_cross_class_pair_counts": [
+            t["cross_class_pair_count"]
+            for t in report["near_duplicate_quality"]["thresholds"]
+        ],
         "PCC_fits_executed": 0,
         "execution_authorized": False,
     }, sort_keys=True))
