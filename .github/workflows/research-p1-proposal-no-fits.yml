@@ -1,0 +1,43 @@
+name: Research P1 prospective draft review (no fits)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/current_p1_prospective_design_draft_2026-11-12.json'
+      - 'docs/current_p1_prospective_design_2026-11-12.md'
+      - 'experiments/review_p1_proposal.py'
+      - 'experiments/test_review_p1_proposal.py'
+      - '.github/workflows/research-p1-proposal-no-fits.yml'
+jobs:
+  draft-only:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Validate draft only (stdlib, no dependencies, no data)
+        run: python -m experiments.review_p1_proposal --output p1-draft-review.json
+      - name: Verify reject-approval and reject-scientific-drift tests
+        run: python -m unittest experiments.test_review_p1_proposal -v
+      - name: Assert report cannot authorize science or execution
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p1-draft-review.json')); assert r['design_integrity']=='PASS'; assert not r['P1_ready_to_freeze']; assert not r['P2_ready']; assert not r['P3_ready']; assert not r['execution_authorized']; assert r['execution_preflight_sha256'] is None; assert r['model_fits_executed']==0"
+      - name: Upload explicitly unapproved P1 review
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-DRAFT-NOT-APPROVED-${{ runner.os }}-py${{ matrix.python-version }}
+          path: p1-draft-review.json
+          if-no-files-found: error
