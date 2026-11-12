@@ -57,8 +57,11 @@ The permanent `tests/test_live_numba_milestones.py` compares against
 - Public `fit_predict` parity under test-local instance dispatch, with
   returned labels, final node/particle states, **normalized** owndeg and
   native RNG continuation. This covers two-class synthetic fit only.
-  Larger-class C-contiguous Numba dominance and other graph structures
-  will need separate targeted coverage before any blanket claim.
+  Independent tests also check inherited native RNG with `seed=None`
+  (by restoring the exact Numba MT state), plus `deltap=0.33/0.35`
+  and pure-random `p_grd=0.0` movement. Larger-class C-contiguous
+  Numba dominance and other graph structures will need separate targeted
+  coverage before any blanket claim.
 
 Do not infer identity across NumPy, Numba and Cython: they have distinct
 random-number streams, numeric layouts and native execution paths.
@@ -69,15 +72,26 @@ random-number streams, numeric layouts and native execution paths.
    3.10/3.12 run of the complete PCC regression, including installed
    Cython, NumPy and Numba. JIT compilation/warmup must not be counted
    in steady-state CPU medians.
-2. If technical parity passes, measure opt-in Numba observation overhead
-   in independent *complete `fit_predict` CPU* paired AB/BA tests,
-   fixed data/seed, state+RNG digests, no reused warmup samples, and
-   Linux/Windows artifacts. Separate memory reservation and snapshot
-   copies from the compiled control-loop/dispatch overhead.
-3. Inspect missing-edge/zero-iteration/early-stop and multiple class-count
-   scenarios. Verify NaN/inf rejection and non-default `deltap`,
-   seed=None behavior in separate characterized experiments before
-   claiming broad support.
+2. An independent opt-in Numba complete-`fit_predict` CPU pilot is
+   provided by `experiments/bench_live_numba_fullfit.py` and the **branch-
+   scoped** `.github/workflows/research-numba-live-fullfit-cpu.yml`.
+   It measures **five AB/BA CPU pairs** on both Windows and Linux at
+   500 synthetic symmetric-ring nodes, 24 particles, 1,200,000 iterations,
+   ten snapshots and fixed seed 71, after **separate JIT warmups**.
+   Every paired result is rejected unless predictions, full final fit
+   state and *native Numba* RNG SHA match exactly. Preserve raw samples,
+   separate wall times, source SHA and artifacts. The earlier 150,000-
+   iteration pilot finished but its 0.28s Windows CPU values showed coarse
+   15.625ms timer steps; it is a **superseded timing design**, not evidence
+   of zero overhead. Distinguish snapshot reserved/copied bytes from
+   compiled-loop CPU overhead. No real data or acceptance claim follows
+   from synthetic timings alone.
+3. Continue with additional graph/topology, multi-class C-contiguous
+   dominance, parameter and malformed-input scenarios, including the
+   low-level early-stop/seed-none contracts already covered on synthetic
+   two-class cases. Do not generalize those characterized cases to all
+   datasets or automatically treat backend-specific floating differences
+   as defects.
 4. Native Cython remains separate: current specialized cached-rowmax and
    legacy kernels plus their **local xorshift** RNG cannot be replaced
    by an October 2026 wrapper. Independent within-backend RNG and
