@@ -95,7 +95,7 @@ CAPTURE_CALL = """_research_capture(
 LOOP_ANCHOR = "    with nogil:\n        for it in range(max_iter):"
 LOOP_INSERT = """    with nogil:
         if research_active and research_schedule.shape[0] > 0 and research_schedule[0] == 0:
-            """ + CAPTURE_CALL + """
+                """ + CAPTURE_CALL + """
         for it in range(max_iter):
             research_stop = False"""
 
