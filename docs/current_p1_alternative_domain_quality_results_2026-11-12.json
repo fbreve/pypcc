@@ -1,0 +1,87 @@
+{
+  "schema": "pypcc-p1-alternative-domain-official-uci-quality-results/v1",
+  "status": "REVIEW_ONLY_NOT_SELECTED",
+  "date_checked_utc": "2026-11-12",
+  "research_pr": 260,
+  "initial_audit_commit": "2cd7bcdf2b64d0d3911d651c01293a14b22731e3",
+  "initial_run_id": 43305443733,
+  "initial_run_url": "https://github.com/fbreve/pypcc/actions/runs/43305443733",
+  "data_source": "direct UCI official HTTPS ZIP, temporary CI runner, no raw data uploaded",
+  "source_sha_values_are_not_independent_uci_signed_certificates": true,
+  "source_task_definition_provisional": true,
+  "datasets": [
+    {
+      "id": 292,
+      "name": "Wholesale customers",
+      "domain": "Business / annual wholesale customer spending",
+      "uci_url": "https://archive.ics.uci.edu/dataset/292/wholesale+customers",
+      "doi": "10.24432/C5030X",
+      "source_url": "https://archive.ics.uci.edu/static/public/292/wholesale%2Bcustomers.zip",
+      "archive_sha256": "647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8",
+      "member_name": "Wholesale customers data.csv",
+      "member_sha256": "c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef",
+      "instances": 440,
+      "features": 6,
+      "feature_names": [
+        "Fresh",
+        "Milk",
+        "Grocery",
+        "Frozen",
+        "Detergents_Paper",
+        "Delicassen"
+      ],
+      "target": "Channel",
+      "excluded_feature": "Region",
+      "channel_counts_by_official_code": {
+        "1": 298,
+        "2": 142
+      },
+      "exact_repeated_feature_surplus_rows": 0,
+      "exact_full_row_duplicate_surplus": 0,
+      "conflicting_class_feature_patterns": 0,
+      "unique_feature_patterns": 440,
+      "source_only_recommendation": "Eligible for independent source/history review as a possible third distinct domain; Channel is a derived classification target, not the UCI table's default Region target.",
+      "frozen": false
+    },
+    {
+      "id": 379,
+      "name": "Website Phishing",
+      "domain": "Cybersecurity / website features",
+      "uci_url": "https://archive.ics.uci.edu/dataset/379/website+phishing",
+      "doi": "10.24432/C5B301",
+      "source_url": "https://archive.ics.uci.edu/static/public/379/website%2Bphishing.zip",
+      "archive_sha256": "fa029c3b079b6bfb4f0833c0ec94a778a20522161b028273e81ac3b93ee8bfee",
+      "member_name": "PhishingData.arff",
+      "member_sha256": "ec1c4594cb152e99bd0820855b19eff78a367d623ac5e7f419e6ba3c47dd2432",
+      "instances": 1353,
+      "features": 9,
+      "source_attribute_spelling": "popUpWidnow (as actually stored; not popUpWindow)",
+      "target": "Result",
+      "class_support_by_official_code": {
+        "0": 103,
+        "1": 548,
+        "-1": 702
+      },
+      "exact_repeated_feature_surplus_rows": 677,
+      "exact_full_row_duplicate_surplus": 629,
+      "conflicting_class_feature_patterns": 48,
+      "unique_feature_patterns": 676,
+      "source_only_recommendation": "Not suitable as a straightforward continuous-numeric substitute: 9 categorical features coded -1/0/+1 and substantial conflicting class labels at identical feature vectors. Require new categorical representation plus explicit scientific review.",
+      "frozen": false
+    }
+  ],
+  "limits": [
+    "exact duplicate collisions computed on original numeric/coded features, not group/near-duplicates",
+    "48 distinct conflicting attribute patterns do not equal 48 affected rows or 48 wrong predictions",
+    "website feature-code collisions do not prove duplicate websites or same individual",
+    "wholesale region is excluded from candidate features; Channel target differs from UCI declared Region target",
+    "no prior-paper/local-archive novelty certified and no independent subject/customer/website identity",
+    "source hashes are observed SHA256 digests, not UCI independently signed immutable checksums",
+    "no PCC model fit, no graph, no label-mask sampling, no accuracy/trajectory inspected"
+  ],
+  "selected_dataset_ids": [],
+  "scientific_P1_approved": false,
+  "P2_execution_preflight_sha256": null,
+  "execution_authorized": false,
+  "real_PCC_fits_executed": 0
+}
