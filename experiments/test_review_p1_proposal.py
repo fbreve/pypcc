@@ -102,6 +102,23 @@ class P1DraftReviewTests(unittest.TestCase):
             lambda p: p["p0_reference"].update(source_inventory_sha256="b" * 64)
         )
 
+    def test_seed_and_exploratory_only_inference_cannot_drift_silently(self):
+        self.assert_rejected(
+            lambda p: p["experimental_design"].update(
+                seed_policy="reuse one seed across every backend",
+            )
+        )
+        self.assert_rejected(
+            lambda p: p["estimands"]["primary"].update(
+                uncertainty="95% CI from naive node-level bootstrap",
+            )
+        )
+        self.assert_rejected(
+            lambda p: p["analysis_plan"].update(
+                decision_logic="declare significance if p < 0.05",
+            )
+        )
+
     def test_digest_is_deterministic_and_detects_edit(self):
         a = copy.deepcopy(self.proposal)
         b = {key: a[key] for key in reversed(list(a))}
