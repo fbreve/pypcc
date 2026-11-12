@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "docs/current_p1_scientific_decision_packet_2026-11-12.json"
 DRAFT = ROOT / "docs/current_p1_prospective_design_draft_2026-11-12.json"
 GRAPH_SOURCE = ROOT / "pcc_graph.py"
+EXPOSURE = ROOT / "docs/current_p1_public_literature_exposure_2026-11-12.json"
 GRAPH_SHA = "3e8943462555b4feafbd162125b51e41f29d7ab7"
 EXPECTED_IDS = (212, 850, 292)
 EXPECTED_SUPPORT = {
@@ -93,6 +94,93 @@ def check_graph_source(content):
             "Expected auto/symmetric/dense-padded graph construction changed")
     # These text checks are not a substitute for P2 actual graph computation.
     return True
+
+
+def review_public_literature_evidence(exposure):
+    """Validate the *limits* of manual source evidence, not paper authenticity.
+
+    A passing CI check proves only that a bounded reviewer register is internally
+    consistent. It CANNOT demonstrate no prior unpublished/local research use.
+    """
+    require(type(exposure) is dict and
+            exposure.get("schema") ==
+            "pypcc-P1-public-literature-exposure-register/v1" and
+            exposure.get("status") ==
+            "SCOPED_PUBLIC_TEXT_CHECK_ONLY_NOT_PROOF_OF_NOVELTY",
+            "Unrecognized or incorrectly approved literature scope")
+    papers = exposure["reviewed_full_texts"]
+    expected = {
+        "BREVE_NEUROCOMPUTING_2015": (
+            2015, "Neurocomputing2015.pdf",
+            {"Iris", "Wine", "g241c", "Semeion Handwritten Digit",
+             "Optical Recognition of Handwritten Digits",
+             "Gaussian synthetic four-class"}
+        ),
+        "GUERREIRO_ICCSA_2017": (
+            2017, "iccsa2017lucas.pdf",
+            {"Iris", "Wine", "Banknote Authentication"}
+        ),
+        "LETICIO_VISAPP_2025": (
+            2025, "132670.pdf",
+            {"g241c", "g241n", "Digit1", "USPS", "COIL", "COIL2", "BCI"}
+        )
+    }
+    require(len(papers) == len(expected) == 3 and
+            {x["id"] for x in papers} == set(expected),
+            "Exactly three named publicly checked papers, not all publications")
+    for entry in papers:
+        year, suffix, datasets = expected[entry["id"]]
+        require(entry["year"] == year and
+                entry["url"].startswith("https://") and
+                entry["url"].endswith(suffix) and
+                set(entry["experimental_datasets_named"]) == datasets and
+                entry["candidate_name_mentions_in_experimental_section"] == [],
+                "Published dataset-set evidence was changed without review")
+        require(len(entry["article_section"]) >= 5 and
+                len(entry["evidence_note"]) >= 20,
+                "Publication evidence scope undocumented")
+    require(exposure["candidate_ids_checked_against_these_three_papers_only"] ==
+            [212,850,292] and
+            exposure["candidate_names_checked"] ==
+            ["Vertebral Column","Raisin","Wholesale customers"] and
+            exposure["result"] ==
+            "NONE_OF_THREE_CANDIDATES_NAMED_IN_EXPERIMENTAL_SECTIONS_OF_THE_THREE_PAPERS_REVIEWED",
+            "No claim permitted beyond the three papers examined")
+    require(exposure["no_claim_of_unpublished_or_all_paper_novelty"] is True and
+            exposure["historical_exposure_completely_checked"] is False and
+            exposure["dataset_independence_verified"] is False and
+            exposure["clinical_lineage_or_ethical_review_completed"] is False,
+            "Source-only checking cannot become an unreviewed novelty/ethics seal")
+    require("g241c" in exposure["known_historical_inventory_limitation"] and
+            "Semeion" in exposure["known_historical_inventory_limitation"] and
+            "NOT" in exposure["known_historical_inventory_limitation"],
+            "20-set campaign is not an exhaustive historical PCC-paper inventory")
+    sources = exposure["source_metadata"]
+    require([x["uci_id"] for x in sources] == [212,850,292] and
+            all(x["license_reported_by_uci"] == "CC BY 4.0" for x in sources),
+            "Original UCI provenance or license scope changed")
+    require(sources[0]["independent_subject_or_patient_IDs_in_selected_UCI_file_verified"] is False and
+            sources[1]["independent_raisins_and_acquisition_batch_IDs_verified"] is False and
+            sources[2]["independent_customers_or_org_IDs_verified"] is False and
+            sources[2]["channel_as_proposed_derived_target_is_uci_default"] is False,
+            "Provenance uncertainties and derived Wholesale target cannot be suppressed")
+    require(len(exposure["still_unreviewed"]) >= 5 and
+            exposure["dataset_selected_ids"] == [] and
+            exposure["P1_scientific_protocol_sha256"] is None and
+            exposure["P2_execution_preflight_sha256"] is None and
+            exposure["execution_authorized"] is False and
+            exposure["PCC_fits_executed"] == 0,
+            "Incomplete literature review must never authorize real data fitting")
+    return {
+        "public_full_text_papers_scoped_checked":3,
+        "three_candidate_names_absent_from_checked_papers_only":True,
+        "all_history_or_private_matlab_checked":False,
+        "paper_20_dataset_inventory_exhaustive":False,
+        "data_independence_or_ethics_certified":False,
+        "unreviewed_categories":len(exposure["still_unreviewed"]),
+        "public_literature_register_sha256_NOT_novelty_or_approval":
+            canonical_sha256(exposure),
+    }
 
 
 def review(packet, scientific_draft, graph_content):
@@ -214,6 +302,28 @@ def review(packet, scientific_draft, graph_content):
             proposed["proposed_fit_count_if_all_approved"] ==
             d["number_of_fits_if_approved_and_feasible"] == 72,
             "P1 trial design changed without independent scientific review")
+    scope = packet["publication_exposure_review_scope"]
+    require(scope["status"] == "THREE_PUBLIC_PAPERS_SCOPED_CHECK_ONLY" and
+            scope["evidence_register"] ==
+            "docs/current_p1_public_literature_exposure_2026-11-12.json" and
+            scope["reviewed_paper_ids"] == [
+                "BREVE_NEUROCOMPUTING_2015",
+                "GUERREIRO_ICCSA_2017",
+                "LETICIO_VISAPP_2025"
+            ] and
+            scope["candidate_names_absent_in_these_three_papers_only"] is True and
+            scope["historical_20_dataset_inventory_is_exhaustive"] is False and
+            scope["all_prior_publications_or_unpublished_results_checked"] is False and
+            scope["patient_customer_batch_independence_verified"] is False and
+            scope["dataset_novelty_or_external_validation_approved"] is False and
+            scope["scientific_review_required_before_P1_freeze"] is True,
+            "Public literature evidence scope cannot be inflated to novelty approval")
+    require(scope["evidence_register"] in packet["evidence_files"],
+            "Candidate provenance evidence is missing from packet")
+    require("20 historical pypcc benchmark sets are not exhaustive" in
+            packet["reviewer_decisions_remaining"][0],
+            "Reviewer must know the benchmark list is not comprehensive")
+
     require(len(packet["reviewer_decisions_remaining"]) >= 7,
             "Review checklist must be comprehensive")
 
@@ -246,6 +356,8 @@ def main():
         json.loads(args.draft.read_text(encoding="utf-8")),
         args.graph_source.read_bytes(),
     )
+    exposure = json.loads(EXPOSURE.read_text(encoding="utf-8"))
+    report.update(review_public_literature_evidence(exposure))
     rendered = json.dumps(report, sort_keys=True, indent=2) + "\n"
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
