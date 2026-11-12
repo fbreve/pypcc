@@ -111,6 +111,20 @@ class ScientificDecisionPacketTests(unittest.TestCase):
             "scientific_design_preserved_from_P1_draft"].update(
                 proposed_fit_count_if_all_approved=70))
 
+    def test_windows_checkout_CRLF_is_same_pinned_git_blob_not_source_change(self):
+        converted = self.graph_source.replace(b"\n", b"\r\n")
+        self.assertNotEqual(
+            gate.git_blob_sha1(converted),
+            gate.git_blob_sha1(self.graph_source),
+        )
+        report = gate.review(self.packet, self.draft, converted)
+        self.assertTrue(report["original_graph_source_blob_checked"])
+        self.assertFalse(report["execution_authorized"])
+        changed = converted.replace(b"k_nn=10", b"k_nn=11", 1)
+        self.assertNotEqual(changed, converted)
+        with self.assertRaises(gate.ScientificDecisionInvalid):
+            gate.review(self.packet, self.draft, changed)
+
     def test_digest_deterministic_and_no_backend_imports(self):
         a = copy.deepcopy(self.packet)
         b = dict(reversed(list(a.items())))
