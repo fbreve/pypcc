@@ -1,0 +1,45 @@
+name: Research three-backend source-only preflight
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/preflight_three_backend_sources.py'
+      - 'experiments/test_three_backend_source_preflight.py'
+      - 'docs/current_three_backend_source_preflight_2026-11-12.md'
+      - '.github/workflows/research-three-backend-source-preflight.yml'
+
+jobs:
+  source-audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Fetch exact research refs (NO execution, no data)
+        shell: bash
+        run: |
+          git fetch --no-tags origin 'refs/heads/research/current-numpy-live-milestones-2026-11-11:refs/remotes/origin/research/current-numpy-live-milestones-2026-11-11'
+          git fetch --no-tags origin 'refs/heads/research/current-numba-live-milestones-2026-11-12:refs/remotes/origin/research/current-numba-live-milestones-2026-11-12'
+          git fetch --no-tags origin 'refs/heads/research/current-cython-live-milestones-2026-11-12:refs/remotes/origin/research/current-cython-live-milestones-2026-11-12'
+      - name: Exact pinned Git blob and branch ancestry checks
+        run: python -m experiments.preflight_three_backend_sources --output three-backend-source-only.json
+      - name: Source-audit adversarial tests (no model fits)
+        run: python -m unittest experiments.test_three_backend_source_preflight -v
+      - name: Publish non-executable source-only manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: three-backend-source-only-${{ runner.os }}-py${{ matrix.python-version }}
+          path: three-backend-source-only.json
+          if-no-files-found: error
