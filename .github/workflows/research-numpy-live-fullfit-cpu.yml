@@ -30,7 +30,7 @@ jobs:
       - name: Compile and check synthetic benchmark code
         run: python -m py_compile experiments/live_numpy_milestones.py experiments/bench_live_numpy_fullfit.py
       - name: AB/BA paired complete fit_predict CPU, synthetic fixture only
-        run: python -m experiments.bench_live_numpy_fullfit --nodes 200 --iterations 1200 --repeats 3 --output cpu_report.json
+        run: python -m experiments.bench_live_numpy_fullfit --nodes 500 --iterations 5000 --repeats 5 --labels-per-class 12 --output cpu_report.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
