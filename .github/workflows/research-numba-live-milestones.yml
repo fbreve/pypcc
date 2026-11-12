@@ -1,0 +1,27 @@
+name: Research Numba live milestones (synthetic)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/live_numba_milestones.py'
+      - 'tests/test_live_numba_milestones.py'
+      - '.github/workflows/research-numba-live-milestones.yml'
+jobs:
+  parity:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install native production project and optional Numba
+        run: python -m pip install -e ".[numba]"
+      - name: Verify synthetic within-Numba exact parity
+        run: python -m unittest discover -s tests -p test_live_numba_milestones.py -v
+      - name: Verify existing regression suite
+        run: python -m unittest discover -s tests -v
