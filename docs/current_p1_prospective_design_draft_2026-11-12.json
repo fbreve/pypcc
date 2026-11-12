@@ -68,7 +68,7 @@
     "generator_proposed": "NumPy Generator(PCG64(SeedSequence([P1_NAMESPACE_INTEGER, dataset_registry_index, replicate_index]))) used only once to choose uniformly without replacement within each sorted original class; do not consume the propagation RNG.",
     "namespace_integer_proposed": 20261112,
     "label_policy": "same frozen label mask, home-node sorted order and graph for every backend within dataset x replicate; all other nodes receive -1; P2 must seal each label mask hash",
-    "seed_policy": "derive and seal backend-specific propagation uint32 seed table independent of label RNG before fits; preserve backend-native RNG distinct streams and never require cross-backend trajectory identity",
+    "seed_policy": "PROPOSED only: for candidate registry order [212,850,292], mask RNG SeedSequence([20261112, registry_index, replicate_index]), with PCG64 used only to sample 3/class distinct original row IDs in source-class sorted order. Separately derive native propagation seed as 1 + (LE_uint32(SHA256('pypcc-P1-propagation-v1|uci:<dataset_id>|mask:<replicate>|<backend_name>')[:4]) % (2**32-1)). Backend-specific nonzero uint32 seeds preserve native RNG differences; independent reviewer must freeze registry order, exact mask implementation/NumPy version, 72 seed table, graph/mask hashes before real fits.",
     "number_of_fits_if_approved_and_feasible": 72,
     "fit_count_formula": "target_datasets(3) * label_replicates(8) * backends(3) = 72",
     "graph_policy": "Build once per dataset using the unchanged production topology and preprocessing; seal the exact ordered symmetric undirected graph; preserve intentionally dense padded neib_list with no sparse/CSR substitution",
@@ -88,7 +88,7 @@
       "unit": "dataset x frozen label mask x backend",
       "ties": "argmax deterministic first-index convention; exact ties remain in the denominator, with tied-row fraction reported separately",
       "summary": "report each backend separately: dataset-level average across mask replicates, then unweighted mean across eligible datasets",
-      "uncertainty": "descriptive per-dataset values and cluster-aware uncertainty intervals; no unregistered p-value or equivalence claim"
+      "uncertainty": "PROPOSED exploratory descriptive only: show all 8 masks per dataset/backend, mask mean/median/min/max and unweighted mean across 3 dataset means; NO 95% confidence interval, p-value, equivalence or population generalization claim from 3 deliberately selected domains or node-level pseudo-replicates. A separate confirmatory protocol would require independent datasets, practical-effect thresholds and justified cluster-aware uncertainty before seeing results."
     },
     "secondary": [
       {
@@ -117,7 +117,7 @@
   "analysis_plan": {
     "aggregation": "nodes nested in fixed label masks, masks nested in datasets; backends paired by same masks but distinct RNG and arithmetic; do not treat nodes or backend conditions as independent dataset replicates",
     "missingness": "any failed fit, inaccessible milestone, memory-cap block or invalid provenance reported with reason and denominator; no silently dropped outcome or automatic retry",
-    "decision_logic": "no binary support/rejection or empirical equivalence claim until separate scientific review freezes practical relevance thresholds and uncertainty method",
+    "decision_logic": "Exploratory P1: report complete prespecified descriptive changes, no binary support/rejection, p-value, equivalence claim or confidence interval. Missing/failed cases remain in append-only attempt ledger; withhold an unqualified 72-case aggregate until a separate reviewed missingness disposition. Confirmatory thresholds and interval method need an independently approved FUTURE protocol.",
     "oracle_access": "retrospective scoring only; forbidden during seed/mask/graph/milestone/backend choice",
     "no_result_peeking": true,
     "raw_audit": "append-only attempt records, exact hashes and classifications for negative, ambiguous and non-evaluable results"
@@ -134,7 +134,7 @@
       "prospectively selected and independently reviewed dataset registry, versions, licensing, and historical exposure audit",
       "exact feature preprocessing and graph generation/ordering/topology parameters per dataset",
       "seed-policy finalization with explicit generated label masks and unique propagation seeds",
-      "scientific hypothesis/estimand thresholds, uncertainty interval procedure, and non-evaluability criteria",
+      "explicit reviewer approval of exploratory-only descriptive estimands (all 8 masks and backend-stratified domain summaries, no significance/CI/equivalence), tie and non-evaluability handling; any confirmatory claim needs a separate preregistration",
       "approval of sample size/resource rationale and observation milestone schedule before any outcome inspection",
       "maintainer explicit approval and signed/sealed new immutable P1 payload"
     ],
