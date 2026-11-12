@@ -186,6 +186,46 @@ class OfflineCandidateIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(checker.FixtureRejected, "Formulas forbidden"):
             checker.review(850, bad)
 
+    def test_prior_official_source_record_rejects_byte_and_result_drift(self):
+        from experiments import p1_official_uci_no_fit as source
+        prior = json.loads((
+            Path(__file__).resolve().parents[1] /
+            "docs/current_p1_official_uci_quality_results_2026-11-12.json"
+        ).read_text(encoding="utf-8"))
+        for case in prior["datasets"]:
+            fake = {
+                "quality": {
+                    "dataset_id": case["uci_id"],
+                    "source_member_sha256": case["selected_member_sha256"],
+                    "rows": case["observed_rows"],
+                    "numeric_features": case["numeric_features"],
+                    "class_support": case["class_support"],
+                    "exact_duplicate_full_rows": case["exact_duplicate_full_rows"],
+                    "exact_repeated_feature_rows": case["exact_repeated_feature_rows"],
+                    "conflicting_label_feature_patterns":
+                        case["conflicting_label_feature_patterns"],
+                },
+                "source": {
+                    "download_sha256": case["source_zip_sha256"],
+                    "requested_url": case["url"],
+                },
+                "execution_authorized": False, "PCC_fits_executed": 0,
+            }
+            ok = source.verify_against_previous_observation(fake, prior)
+            self.assertTrue(ok["matches_previous_source_only_audit"])
+            self.assertTrue(ok["previous_source_only_audit_is_not_scientific_approval"])
+            corrupt = json.loads(json.dumps(fake))
+            corrupt["source"]["download_sha256"] = "f" * 64
+            with self.assertRaisesRegex(source.ExternalDataBlocked, "source_zip_sha256"):
+                source.verify_against_previous_observation(corrupt, prior)
+            corrupt = json.loads(json.dumps(fake))
+            corrupt["quality"]["class_support"] = {"tampered": 1}
+            with self.assertRaisesRegex(source.ExternalDataBlocked, "class_support"):
+                source.verify_against_previous_observation(corrupt, prior)
+        self.assertEqual(prior["selected_dataset_ids"], [])
+        self.assertFalse(prior["execution_authorized"])
+        self.assertEqual(prior["PCC_real_data_fits_executed"], 0)
+
     def test_no_runtime_imports_or_network_calls(self):
         source = Path(checker.__file__).read_text(encoding="utf-8")
         for forbidden in (
