@@ -202,15 +202,8 @@ def main():
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(result, f, sort_keys=True, indent=2)
         f.write("\n")
-    print(json.dumps({
-        "region_channel_counts": result["region_channel_counts_by_original_UCI_codes"],
-        "cramers_v": result["cramers_v_descriptive_not_causal"],
-        "feature_high_outliers": {
-            k: v["strict_tukey_high_outlier_count"]
-            for k, v in result["features"].items()
-        },
-        "PCC_fits_executed": 0, "execution_authorized": False,
-    }, sort_keys=True))
+    # Full output contains ONLY aggregate source distributions, no original rows.
+    print(json.dumps(result, sort_keys=True))
 
 
 if __name__ == "__main__":
