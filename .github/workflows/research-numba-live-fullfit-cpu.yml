@@ -1,0 +1,40 @@
+name: "Research: synthetic Numba live complete-fit CPU"
+on:
+  push:
+    branches: [research/current-numba-live-milestones-2026-11-11]
+    paths:
+      - experiments/live_numba_milestones.py
+      - experiments/bench_live_numba_fullfit.py
+      - .github/workflows/research-numba-live-fullfit-cpu.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measured-numba-full-fit:
+    name: "Numba whole-fit CPU (${{ matrix.os }}, Python 3.12)"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install complete PyPCC package and Numba
+        run: python -m pip install -e ".[numba]"
+      - name: Compile and syntax-check research programs
+        run: python -m py_compile experiments/live_numba_milestones.py experiments/bench_live_numba_fullfit.py
+      - name: AB/BA paired complete Numba fit_predict CPU, synthetic only
+        run: python -m experiments.bench_live_numba_fullfit --nodes 500 --iterations 150000 --repeats 5 --labels-per-class 12 --output numba_cpu_report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "numba-live-fullfit-cpu-${{ matrix.os }}"
+          retention-days: 90
+          if-no-files-found: warn
+          path: numba_cpu_report.json
