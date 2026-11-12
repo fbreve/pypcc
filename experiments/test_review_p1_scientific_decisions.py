@@ -128,6 +128,61 @@ class ScientificDecisionPacketTests(unittest.TestCase):
         with self.assertRaises(gate.ScientificDecisionInvalid):
             gate.review(self.packet, self.draft, changed)
 
+    def test_three_paper_public_history_evidence_is_bounded_not_an_approval(self):
+        evidence = json.loads(gate.EXPOSURE.read_text(encoding="utf-8"))
+        result = gate.review_public_literature_evidence(evidence)
+        self.assertEqual(result["public_full_text_papers_scoped_checked"], 3)
+        self.assertTrue(
+            result["three_candidate_names_absent_from_checked_papers_only"]
+        )
+        self.assertFalse(result["all_history_or_private_matlab_checked"])
+        self.assertFalse(result["paper_20_dataset_inventory_exhaustive"])
+        self.assertFalse(result["data_independence_or_ethics_certified"])
+        self.assertGreaterEqual(result["unreviewed_categories"], 5)
+        self.assertRegex(
+            result["public_literature_register_sha256_NOT_novelty_or_approval"],
+            "^[0-9a-f]{64}$",
+        )
+        for field, value in [
+            ("historical_exposure_completely_checked", True),
+            ("execution_authorized", True),
+            ("dataset_independence_verified", True),
+            ("P1_scientific_protocol_sha256", "a" * 64),
+        ]:
+            forged = json.loads(json.dumps(evidence))
+            forged[field] = value
+            with self.assertRaises(gate.ScientificDecisionInvalid):
+                gate.review_public_literature_evidence(forged)
+        forged = json.loads(json.dumps(evidence))
+        forged["reviewed_full_texts"][0]["experimental_datasets_named"] = [
+            "Iris","Wine"
+        ]
+        with self.assertRaises(gate.ScientificDecisionInvalid):
+            gate.review_public_literature_evidence(forged)
+        forged = json.loads(json.dumps(evidence))
+        forged["source_metadata"][2][
+            "channel_as_proposed_derived_target_is_uci_default"
+        ] = True
+        with self.assertRaises(gate.ScientificDecisionInvalid):
+            gate.review_public_literature_evidence(forged)
+
+    def test_scoped_paper_registry_cannot_claim_full_novelty(self):
+        self.reject_modified(lambda p: p[
+            "publication_exposure_review_scope"].update(
+                historical_20_dataset_inventory_is_exhaustive=True
+            ))
+        self.reject_modified(lambda p: p[
+            "publication_exposure_review_scope"].update(
+                all_prior_publications_or_unpublished_results_checked=True
+            ))
+        self.reject_modified(lambda p: p[
+            "publication_exposure_review_scope"].update(
+                dataset_novelty_or_external_validation_approved=True
+            ))
+        self.reject_modified(lambda p: p["evidence_files"].remove(
+            "docs/current_p1_public_literature_exposure_2026-11-12.json"
+        ))
+
     def test_digest_deterministic_and_no_backend_imports(self):
         a = copy.deepcopy(self.packet)
         b = dict(reversed(list(a.items())))
