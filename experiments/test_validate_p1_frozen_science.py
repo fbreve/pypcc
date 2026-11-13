@@ -126,6 +126,40 @@ class FrozenP1ScienceTests(unittest.TestCase):
         with self.assertRaises(p1.FrozenScienceInvalid):
             self.run_review(graph=converted+b"# accidental change\r\n")
 
+    def test_manifest_matches_exact_human_approved_scientific_SHA(self):
+        manifest = json.loads(p1.MANIFEST.read_text(encoding="utf-8"))
+        r = p1.verify_scientific_manifest(manifest, self.run_review())
+        self.assertTrue(
+            r["scientific_P1_SHA_manifest_matches_exact_approved_digest"]
+        )
+        self.assertFalse(r["P2_execution_authorized"])
+        self.assertEqual(
+            r["scientific_protocol_sha256"],
+            "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+        )
+
+    def test_manifest_forgery_must_not_authorize_unreviewed_change(self):
+        source = json.loads(p1.MANIFEST.read_text(encoding="utf-8"))
+        result = self.run_review()
+        bad_cases = [
+            ("approved_P1_scientific_protocol_sha256", "0"*64),
+            ("P2_execution_authorized", True),
+            ("P2_preflight_sha256", "f"*64),
+            ("any_real_PCC_fit_authorized", True),
+            ("local_prior_PCC_use_on_selected_sets", "NEVER_USED"),
+            ("real_PCC_fits_executed", 1),
+        ]
+        for key, value in bad_cases:
+            modified = copy.deepcopy(source)
+            modified[key] = value
+            with self.subTest(key=key):
+                with self.assertRaises(p1.FrozenScienceInvalid):
+                    p1.verify_scientific_manifest(modified, result)
+        changed = copy.deepcopy(result)
+        changed["scientific_protocol_sha256"] = "1" * 64
+        with self.assertRaises(p1.FrozenScienceInvalid):
+            p1.verify_scientific_manifest(source, changed)
+
     def test_canonical_digest_is_deterministic_and_sensitive(self):
         x=copy.deepcopy(self.protocol)
         y=dict(reversed(list(x.items())))
