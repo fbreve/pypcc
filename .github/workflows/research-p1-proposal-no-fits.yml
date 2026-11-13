@@ -10,6 +10,7 @@ on:
       - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.json'
       - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.md'
       - 'docs/current_p1_frozen_scientific_protocol_2026-11-12.json'
+      - 'docs/current_p1_scientific_sha_manifest_2026-11-12.json'
       - 'docs/current_p1_scientific_freeze_approved_2026-11-12.md'
       - 'experiments/validate_p1_frozen_science.py'
       - 'experiments/test_validate_p1_frozen_science.py'
@@ -71,7 +72,7 @@ jobs:
       - name: Ensure approved SCIENCE does NOT authorize technical P2 execution
         shell: bash
         run: |
-          python -c "import json; a=json.load(open('p1-approved-science-no-fit.json')); assert a['science_status']=='FROZEN_S1_S6_EXPLORATORY_ONLY'; assert a['selected_source_uci_ids_as_research_protocol']==[212,850,292]; assert a['trial_count_IF_future_P2_approved']==72; assert not a['P2_execution_authorized']; assert a['P2_execution_preflight_sha256'] is None; assert a['PCC_fits_executed']==0; assert a['datasets_or_real_labels_processed']==0; assert len(a['scientific_protocol_sha256'])==64"
+          python -c "import json; a=json.load(open('p1-approved-science-no-fit.json')); assert a['science_status']=='FROZEN_S1_S6_EXPLORATORY_ONLY'; assert a['selected_source_uci_ids_as_research_protocol']==[212,850,292]; assert a['trial_count_IF_future_P2_approved']==72; assert not a['P2_execution_authorized']; assert a['P2_execution_preflight_sha256'] is None; assert a['PCC_fits_executed']==0; assert a['datasets_or_real_labels_processed']==0; assert a['scientific_P1_SHA_manifest_matches_exact_approved_digest']; assert a['scientific_protocol_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'"
       - name: Upload explicitly unapproved P1 review
         uses: actions/upload-artifact@v4
         with:
