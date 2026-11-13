@@ -25,7 +25,7 @@ Each platform (Linux and Windows CPython 3.12) starts exactly three separate chi
 - 500 deterministic synthetic graph nodes, 10 active neighbors per node and width 16 dense int64 padded neighbors (constructed by the original benchmark's fixed synthetic ring fixture; **not** the three real kNN graphs).
 - Two fake classes with three labeled synthetic nodes/class = six particles; seed 71, sequential update, 1,000 iterations, `early_stop=False`.
 - The **original synthetic benchmark's** eight-milestone schedule: 0, 1, 10, 50, 100, 250, 500, 1000 — not the P1 50,000-iteration schedule. No P1 masks, real-source labels or UCI archive is read.
-- Original warmups excluded from original paired full-fit CPU samples. Two AB/BA pairs; NumPy one fit per pair arm, and Numba/Cython 10 fits per pair arm (necessary for Windows CPU clock resolution and Cython original benchmark's minimum).
+- Original warmups excluded from original paired full-fit CPU samples. Two AB/BA pairs; NumPy one fit per pair arm; Numba/Cython **400 fits per pair arm**, which matches the untouched compiled benchmark scripts' original defaults and avoids zero-resolution Windows CPU samples. Total synthetic fits are larger than a direct per-platform comparison might suggest; do not compare across backends as equal-work batch samples.
 - The original benchmark assertions must check observed vs unobserved **within each backend** for final labels, full mutable state and (where supported) native/Python RNG. No cross-backend state or CPU identity is claimed.
 
 Measurements:
