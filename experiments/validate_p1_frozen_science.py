@@ -198,7 +198,7 @@ def validate(frozen, draft, decisions, review, graph_bytes):
     require(
         ethics.get("previously_used_locally", "").startswith(
             "UNKNOWN_NOT_DECLARED") and
-        "independence" in ethics.get("science_claim","").lower() is False,
+        "independence" not in ethics.get("science_claim","").lower(),
         "Prior use or independence must remain unverified")
     approval = frozen.get("approvals_and_execution", {})
     require(approval.get("P1_scientific_approval") ==
