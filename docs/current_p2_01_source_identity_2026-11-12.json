@@ -1,0 +1,127 @@
+{
+  "schema": "pypcc-P2-01-source-identity-and-platform-inventory/v1",
+  "date": "2026-11-12",
+  "status": "SOURCE_GIT_BLOB_PINS_VERIFIED_VIA_PUBLIC_REPO_METADATA_RUNTIME_NATIVE_ABI_UNVERIFIED",
+  "parent_science": {
+    "P1_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+    "approval_record": "docs/current_p1_scientific_sha_manifest_2026-11-12.json",
+    "frozen_payload": "docs/current_p1_frozen_scientific_protocol_2026-11-12.json",
+    "P2_execution_approved": false
+  },
+  "repository": "fbreve/pypcc",
+  "production_master": "ea69f690208620d5563c8efece6b2e04369f52c0",
+  "production_version": "1.3.0",
+  "production_file_git_blobs": {
+    "VERSION": "f0bb29e76388856b273698ae6064b0380ce5e5d2",
+    "pcc.py": "01606aaee860c3b9bc84710e7362a2ef81046d45",
+    "pcc_graph.py": "3e8943462555b4feafbd162125b51e41f29d7ab7",
+    "pcc_metrics.py": "967353fc0f6ee88c8f26bbde6266645e6de9aa3b",
+    "pcc_numba.py": "86d21d57ef535bbdb8566f10ace38cb54f93f741",
+    "pcc_numpy.py": "edf09a4ac5487327d8bd2b63415b5dd6564209f5",
+    "pcc_step.pyx": "021c9a2c34f912e0d8382f05d0e21b9713ffd5fc",
+    "pcc_validation.py": "b98510431c2281463988321fb7f1b6b159a5f77d",
+    "pyproject.toml": "623c4ee8c6558e9e95af661054abb0ef067d3fa9",
+    "setup.py": "622feff882bf9e9b3a5bdd890f4cc5b0a6bf91c6"
+  },
+  "research_sources": [
+    {
+      "name": "numpy",
+      "pr": 253,
+      "branch": "research/current-numpy-live-milestones-2026-11-11",
+      "head": "6d908e78878c4922674277e3313dbfe7f7924146",
+      "files": {
+        "experiments/live_numpy_milestones.py": "d642bd0f329eceb4f3dc3111b5f8c91f0e085cac",
+        "tests/test_live_numpy_milestones.py": "2dd7b87e54ee5acd458cf56b20adf4516c4a8e60"
+      },
+      "native_artifact": "none; Python source imports unchanged production step"
+    },
+    {
+      "name": "numba",
+      "pr": 255,
+      "branch": "research/current-numba-live-milestones-2026-11-12",
+      "head": "4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5",
+      "files": {
+        "experiments/live_numba_milestones.py": "e10942e96be623d47d5537d45bd365f366bba548",
+        "tests/test_live_numba_milestones.py": "ef56733245bdc7226edd6c3567de27343cdd3734"
+      },
+      "native_artifact": "Numba compiled specialization/dispatcher/cache signatures unverified in P2"
+    },
+    {
+      "name": "cython",
+      "pr": 256,
+      "branch": "research/current-cython-live-milestones-2026-11-12",
+      "head": "af34f50ebabb0a7204d3f30679adaf3f00169742",
+      "files": {
+        "experiments/build_live_cython.py": "d30e9b85419b8f31cd5f677f848357fb121d316f",
+        "experiments/live_cython_milestones.py": "281daf0e66a567e587d0bd3e21dc34329a234b95",
+        "tests/test_live_cython_milestones.py": "19cce9e695a0351fe135233ba6c069b6bfba95db"
+      },
+      "native_artifact": "isolated pcc_step_live_research extension NOT compiled for this P2 preflight"
+    },
+    {
+      "name": "source_p0",
+      "pr": 257,
+      "branch": "research/current-three-backend-source-preflight-2026-11-12",
+      "head": "fa59ef20c235cf03075bdcc09d1d182bd5ca06fd",
+      "files": {
+        "experiments/preflight_three_backend_sources.py": "31f7ab76ac68d1a688a60e7f64c0d6045b38866c"
+      },
+      "native_artifact": "source-only baseline audit reference, no native artifact"
+    }
+  ],
+  "declared_build_and_install_constraints": {
+    "pyproject_build_system_requires": [
+      "setuptools>=61",
+      "wheel",
+      "Cython>=3.2,<4",
+      "numpy>=2,<3"
+    ],
+    "pyproject_build_backend": "setuptools.build_meta",
+    "setup_python_requires": ">=3.10",
+    "setup_install_requires": [
+      "numpy>=2,<3",
+      "scipy",
+      "scikit-learn"
+    ],
+    "setup_numba_extra": [
+      "numba"
+    ],
+    "actual_runtime_resolved_package_versions": "NOT_YET_FROZEN",
+    "original_Cython_build_compiler_flags": {
+      "msvc": [
+        "/O2"
+      ],
+      "unix": [
+        "-O3"
+      ],
+      "mingw32": [
+        "-O3"
+      ]
+    },
+    "original_native_module": "pcc_step",
+    "research_isolated_Cython_module": "pcc_step_live_research",
+    "cython_research_generator_requires_production_blob": "021c9a2c34f912e0d8382f05d0e21b9713ffd5fc",
+    "build_provenance": "NO_NATIVE_P2_BUILD_OR_BINARY_SHA_HAS_BEEN_VERIFIED",
+    "numba_dispatcher_native_signatures": "NOT_YET_OBSERVED"
+  },
+  "checked_from": "GitHub public git trees at the exact PR heads; CI will independently fetch and verify immutable Git commits/blobs via git, without compiling any native code.",
+  "scope_and_limitations": {
+    "git_source_consistency_gate": "CAN_BE_CHECKED_WITHOUT_THIRD_PARTY_DEPS",
+    "platform_info": "OS and Python metadata may be read from CI runners; installed package/version presence is not itself proof of same production native runtime",
+    "runtime_versions": "NOT_RESOLVED_OR_LOCKED",
+    "binary_identity_and_ABI": "NOT_VERIFIED",
+    "native_observer_parity_on_P2_technical_runner": "NOT_EXECUTED",
+    "real_data_import_graph_mask_or_fit": "NONE",
+    "P2_01_status": "PARTIAL_ONLY_SOURCE_STAGE",
+    "P2_06_status": "NOT_EXECUTED",
+    "P2_execution_preflight_SHA256": null,
+    "P2_execution_authorized": false,
+    "PCC_fits_executed": 0
+  },
+  "next_checks": [
+    "Verify exact branch refs and all production/file Git blobs on fresh runner using git ls-remote/ls-tree; reject modified production or experimental observer source.",
+    "Record runner Python/OS/architecture, packaging build constraints, packages present versus missing WITHOUT imports, compiler binary identification and isolated native module state.",
+    "Freeze actual versions, C compiler ABI and native extension wheel hashes in subsequent controlled P2 technical job; no real data or fits.",
+    "Verify NumPy/Numba/Cython observer synthetic parity for exact approved builds, then source rows/graph/masks/budgets in separate P2 steps before a P2 execution consent."
+  ]
+}
