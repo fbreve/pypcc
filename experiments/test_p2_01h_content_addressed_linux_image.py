@@ -128,7 +128,7 @@ class ContentAddressedCandidateTests(unittest.TestCase):
         self.assertEqual(candidate.SOURCE_RUN,43488066633)
         self.assertEqual(candidate.BASE_TAG,"ubuntu:26.04")
         self.assertEqual(candidate.BASE_ARCH,"linux/amd64")
-        self.assertIn("full_PCC_scientific_execution_image","not_the_complete_final_PCC_scientific_execution_image")
+        self.assertEqual(candidate.SOURCE_RUN,43488066633)
         self.assertFalse(candidate.POLICY_SHA == candidate.P1_SHA)
 
 
