@@ -1,0 +1,31 @@
+# PyPCC — P2-01H content-addressed Linux OCI runtime substrate (2026-11-13)
+
+**Research-only, stacked DRAFT on #275. NO real PCC propagation, no synthetic fits, no UCI datasets.** The immutable scientific P1 SHA256 remains `f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166`. The previous #274 P2-08 dossier checksum is a review-only fingerprint, NOT P2 execution permission. This work does not alter the original `master`, source kernels, dense `neib_list` with `-1` padding, graph topology, masks, scientific seed values, or the 72-case approved-design matrix.
+
+## What changes from #275
+
+The last P2-01G import-only check proved that the exact new P2-01F Cython binaries imported on one GitHub Ubuntu26 host with 13 exact archived wheels and 171 hashed mapped ELF files. It also demonstrated the hosted `ubuntu-latest` image had changed since the binaries were compiled. Merely listing runner image versions is insufficient for a transportable runtime.
+
+This experiment creates a **real exportable OCI/Docker runtime image** with a content-addressed **Ubuntu 26.04 linux/amd64 base**, the actual exact CPython 3.12.16 binary installation tree including the **13 exact later P2-01D candidate wheel distributions**, and the **two NEW, byte-sealed P2-01F Cython extensions** from workflow #43488066633. The image is built from a `FROM ubuntu@sha256:...` reference; the floating tag `ubuntu:26.04` is used only once for discovery and the discovered digest is recorded and validated. The build itself runs with `--pull=false --network=none`.
+
+The Python environment is **copied, not rebuilt** from archived Python source and compiler inputs. The script hashes every regular file and symlink in the sorted interpreter tree and independently verifies the bytes after copying and after loading inside the image; it explicitly checks package versions and exact P2-01F native `.so` hashes. The P2-01D 13-wheel sources were first reverified by individual SHA-256 and installed with **offline, hash-only requirements** on the staging host. Only afterward is this exact installed CPython tree staged for the image.
+
+**No Python package installer is run during the Docker build.** The only build commands are `FROM`, `COPY`, and environment/entrypoint declarations, all with networking disabled. This is a frozen-copy binary runtime, **not a source-reproducible distribution build**. Docker image config ID, pinned base digest, exact full image export tar.gz SHA256, source archive identities, and interpreter/native byte hashes are preserved.
+
+## Independent test in a second CI host
+
+The image is first started with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 --memory 2g`. Its sole entrypoint is a deliberately **import-only** verifier: it opens the embedded manifest, validates every copied Python file/symlink digest, checks that all 13 exact packages are present, imports NumPy/SciPy/scikit-learn/Numba/llvmlite (without compiling a model), imports both original P2-01F NEW Cython native modules directly by path **without invoking propagation**, and records the currently mapped native ELF files and their SHA256 values. The image contains neither official UCI rows nor a scientific PCC execution script.
+
+A full `docker save | gzip` transportable image bundle is archived. **Another independent GitHub Actions runner** downloads that exact bundle, verifies the archive SHA256, `docker load`s it without any Docker registry pull, confirms the identical image config ID, and repeats the same network-free, read-only import-only selfcheck. This checks that the image can be moved between machines, not just referenced by a Dockerfile.
+
+## Boundaries and explicit STOPs
+
+1. **Still not a final scientific execution image.** The initial OCI runtime substrate contains the Python installation tree and two compiled extension files, but not the entire PCC scientific experiment runner, frozen source checkout, UCI sources, real graphs or label masks. No native Numba PCC JIT-specialized kernel was exercised in the image.
+2. **Byte-transportable is not source-reproducible.** The exact CPython binary tree is copied from an ephemeral Actions host and its **original CPython compiler/SDK/header/build-input byte closure is not established**. The Ubuntu base manifest digest fixes the base contents for that architecture, but neither a Dockerfile nor the copied tree prove source-reproducible Linux or full original build toolchain identity. The earlier P2-01F compiler metadata remains partial.
+3. **The image archive is retained for only 30 days** in Actions, expected through 2026-12-13; without a separately reviewed, durable backup/registry policy it is **not permanently preserved**. Do not publish the environment to a public registry implicitly or replace the wheel/native archives.
+4. **No real-source resource upper bound** is measured by import-only checks, even though a candidate Docker process can be given a 2GiB cgroup. Future process-tree CPU/RSS/disk supervision, real graph feasibility, failure accounting and the 72-case operating limits still need explicit approval. The 50k workload results from #273 were synthetic, using artificial ring+hub topology.
+5. **No P2-08 execution authority.** The final technical execution manifest SHA remains **null** and separate exact-digest maintainer approval is still missing. Neither a digest-pinned OCI image nor this PR can substitute for it.
+
+The P2-01H audit records `P2_01_final_execution_toolchain_lock_pass=false`, `P2_07_full_resources_gate_pass=false`, `P2_execution_preflight_sha256=null`, `P2_execution_authorized=false`, `real_PCC_fits_executed=0`. No production merge is planned for the staged scientific experiments.
+
+**CI acceptance requires all three stages to pass:** digest discovery (plus adversarial tests), full binary image build and import-only audit, and separate-host offline reloading/import, while preserving these STOPs. A build failing due to missing shared libraries or incompatible ABI is evidence of an environment incompatibility and must not be silently patched with unpinned `apt` packages.
