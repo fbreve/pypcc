@@ -1,0 +1,73 @@
+name: Research P2-01B isolated native provenance WITHOUT PCC fits
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01_native_build_identity.py'
+      - '.github/workflows/research-p2-01-native-build-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-native-build-no-fit:
+    name: native-only (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Fetch pinned source heads for independent Git verification
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Block native build if P1/source baseline mismatched
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-01-source-only.json
+      - name: Install production native build dependencies (NO data or fits)
+        shell: bash
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip install "setuptools>=70" "Cython>=3,<4" wheel
+      - name: Copy ONLY three pinned research observer sources and Cython generator into ephemeral runner
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/build_live_cython.py > experiments/build_live_cython.py
+      - name: Build separate source-exact pcc_step_live_research extension
+        shell: bash
+        run: |
+          python -m experiments.build_live_cython
+      - name: Capture extension binary SHA, real package versions, and tiny non-PCC Numba JIT smoke
+        shell: bash
+        run: |
+          python -m experiments.p2_01_native_build_identity --output p2-01-native-no-fit.json
+      - name: Reject false P2 completion, approval or propagation claims
+        shell: bash
+        run: |
+          python -c "import json; x=json.load(open('p2-01-native-no-fit.json')); assert x['result']=='NATIVE_ARTIFACTS_BUILT_AND_IMPORTED_NO_PCC_FIT'; assert x['P1_approved_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'; assert len(x['native_Cython_modules'])==2; assert all(len(b['sha256'])==64 for b in x['native_Cython_modules'].values()); assert not x['P2_01_complete_native_version_lock']; assert not x['P2_execution_authorized']; assert x['P2_preflight_sha256'] is None; assert x['PCC_fits_executed']==0; assert x['real_datasets_loaded']==0; assert x['label_masks_drawn']==0"
+      - name: Upload BINARY provenance summaries only (not binaries)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01-native-provenance-${{ matrix.os }}-py${{ matrix.python }}
+          path: |
+            p2-01-source-only.json
+            p2-01-native-no-fit.json
+          if-no-files-found: error
