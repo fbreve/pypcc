@@ -163,9 +163,11 @@ def verify_original_result(backend, record):
         base = record.get("median_baseline_cpu_s")
         obs = record.get("median_observed_cpu_s")
     else:
+        batch_field = ("fits_per_batch" if backend == "numba"
+                       else "fits_per_sample")
         require(record.get("snapshot_bytes_per_fit", 0) > 0 and
-                record.get("fits_per_sample", 0) == COMPILED_BATCH,
-                "Compiled observer snapshots or paired batch missing")
+                record.get(batch_field, 0) == COMPILED_BATCH,
+                "Compiled observer snapshots or original paired batch missing")
         pairs = record.get("pairs", [])
         require(len(pairs) == REPEATS and
                 all(entry.get("baseline", {}).get("cpu_ns", 0) > 0 and
