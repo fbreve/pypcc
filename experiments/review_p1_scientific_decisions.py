@@ -18,6 +18,7 @@ PACKET = ROOT / "docs/current_p1_scientific_decision_packet_2026-11-12.json"
 DRAFT = ROOT / "docs/current_p1_prospective_design_draft_2026-11-12.json"
 GRAPH_SOURCE = ROOT / "pcc_graph.py"
 EXPOSURE = ROOT / "docs/current_p1_public_literature_exposure_2026-11-12.json"
+RESOLUTION = ROOT / "docs/current_p1_scientific_resolution_for_review_2026-11-12.json"
 GRAPH_SHA = "3e8943462555b4feafbd162125b51e41f29d7ab7"
 EXPECTED_IDS = (212, 850, 292)
 EXPECTED_SUPPORT = {
@@ -180,6 +181,81 @@ def review_public_literature_evidence(exposure):
         "unreviewed_categories":len(exposure["still_unreviewed"]),
         "public_literature_register_sha256_NOT_novelty_or_approval":
             canonical_sha256(exposure),
+    }
+
+
+def review_scientific_resolution(resolution, draft, packet):
+    """Human review recommendations, never an implicit P1 scientific GO."""
+    require(type(resolution) is dict and
+            resolution.get("schema") ==
+            "pypcc-p1-scientific-resolution-for-review/v1" and
+            resolution.get("status") ==
+            "RECOMMENDED_FOR_EXPLICIT_SCIENTIFIC_DECISION_NOT_APPROVED",
+            "Invalid or automatically approved scientific resolution")
+    require(resolution["source_proposals"]["design"] ==
+            "docs/current_p1_prospective_design_draft_2026-11-12.json" and
+            resolution["source_proposals"]["decisions"] ==
+            "docs/current_p1_scientific_decision_packet_2026-11-12.json" and
+            resolution["source_proposals"]["scientific_design_draft_PR"] == 258 and
+            resolution["source_proposals"]["source_integrity_draft_PR"] == 260,
+            "Resolution not linked to the reviewed source proposals")
+    rows = resolution.get("recommendations")
+    names = [
+        "S1_DATASETS_AND_HISTORICAL_EXPOSURE",
+        "S2_TARGET_FEATURES_AND_PROVENANCE",
+        "S3_PREPROCESSING", "S4_GRAPH_REPRESENTATION",
+        "S5_MASK_SEEDS_AND_OBSERVATION", "S6_ANALYSIS_AND_DECISION",
+    ]
+    require(type(rows) is list and [r["id"] for r in rows] == names and
+            all(r["recommend"].startswith("RECOMMEND") and
+                len(r["needs_human_acknowledgment"]) >= 2 for r in rows),
+            "All six independent scientific decisions require review")
+    require(rows[0]["proposed_uci_ids"] == [212, 850, 292] and
+            len(set(rows[0]["domains"])) == 3 and
+            "not a claim" in rows[0]["mandatory_disclosure"] and
+            "Region" in rows[1]["feature_rule"] and
+            "Channel" in rows[1]["feature_rule"] and
+            "log1p" in rows[2]["numeric_rule"] and
+            "ddof=0" in rows[2]["numeric_rule"] and
+            "neib_list" in rows[3]["graph"] and
+            "CSR" in rows[3]["graph"] and
+            "72 fits" in rows[4]["proposed_work"] and
+            "Exploratory" in rows[5]["recommend"].capitalize(),
+            "Unexpected proposed data/graph/statistical policy")
+    require(draft["experimental_design"]["number_of_fits_if_approved_and_feasible"] == 72 and
+            packet["candidate_shortlist_proposed_not_selected"][0]["dataset_id"] == 212 and
+            packet["candidate_shortlist_proposed_not_selected"][1]["dataset_id"] == 850 and
+            packet["candidate_shortlist_proposed_not_selected"][2]["dataset_id"] == 292 and
+            packet["dataset_registry_selected"] == [] and
+            draft["dataset_registry"]["selected"] == [],
+            "Candidate options must not masquerade as selected study sets")
+    decision = resolution.get("human_decision")
+    require(type(decision) is dict and
+            decision["maintainer_approval"] is None and
+            decision["approval_timestamp"] is None and
+            decision["selected_dataset_ids"] == [] and
+            decision["scientific_protocol_frozen"] is False and
+            decision["scientific_protocol_sha256"] is None and
+            decision["P2_execution_preflight_sha256"] is None and
+            decision["execution_authorized"] is False and
+            decision["real_PCC_fits_performed"] == 0 and
+            decision["new_generation_of_source_masks_or_graphs_authorized"] is False,
+            "The scientific decision memo is NOT a signed P1/P2 authorization")
+    require(len(resolution["remaining_nonnegotiable_gates"]) == 4 and
+            resolution["scope_only"].startswith("NONE") and
+            "explicit" in resolution["next_action"].lower(),
+            "No bypass of explicit human and P2 approval gates")
+    return {
+        "scientific_resolution_review": "PASS_PENDING_HUMAN_DECISION",
+        "proposals_for_explicit_approval": len(rows),
+        "proposed_dataset_ids_not_selected": rows[0]["proposed_uci_ids"],
+        "all_six_recommendations_human_approved": False,
+        "resolution_checksum_NOT_scientific_protocol_approval":
+            canonical_sha256(resolution),
+        "P1_ready_to_freeze": False,
+        "P2_execution_preflight_sha256": None,
+        "real_PCC_fits_executed": 0,
+        "execution_authorized": False,
     }
 
 
@@ -373,6 +449,12 @@ def main():
     )
     exposure = json.loads(EXPOSURE.read_text(encoding="utf-8"))
     report.update(review_public_literature_evidence(exposure))
+    resolution = json.loads(RESOLUTION.read_text(encoding="utf-8"))
+    report.update(review_scientific_resolution(
+        resolution,
+        json.loads(args.draft.read_text(encoding="utf-8")),
+        json.loads(args.packet.read_text(encoding="utf-8")),
+    ))
     rendered = json.dumps(report, sort_keys=True, indent=2) + "\n"
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
