@@ -1,0 +1,58 @@
+name: Research P2-01A read-only backend source and runtime metadata
+
+on:
+  pull_request:
+    paths:
+      - 'docs/current_p2_01_source_identity_2026-11-12.json'
+      - 'docs/current_p2_01_source_review_2026-11-12.md'
+      - 'experiments/p2_01_source_platform_preflight.py'
+      - 'experiments/test_p2_01_source_platform_preflight.py'
+      - '.github/workflows/research-p2-01-source-platform-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-no-data:
+    name: source-only (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Fetch exact public research branches WITHOUT checkout or build
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Verify four source-only exact Git heads, production blobs, runner metadata
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-01-source-only.json
+      - name: Adversarial no-P2/no-native/no-fit source gates
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01_source_platform_preflight -v
+      - name: Refuse fake science or executable P2 approval
+        shell: bash
+        run: |
+          python -c "import json; x=json.load(open('p2-01-source-only.json')); assert x['result']=='SOURCE_GIT_PINS_PASS_RUNTIME_NATIVE_P2_NOT_READY'; assert x['P1_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'; assert set(x['git_sources_checked'])=={'master','numpy','numba','cython','source_p0'}; assert not x['P2_01_entire_gate_passed']; assert not x['P2_execution_authorized']; assert x['P2_preflight_sha256'] is None; assert x['Cython_research_binary_SHA256'] is None; assert x['Numba_compiled_signature_pins'] is None; assert x['real_PCC_fits_executed']==0; assert x['real_datasets_loaded']==0; assert x['graphs_or_masks_generated']==0"
+      - name: Upload SOURCE-only no-fit evidence, not an execution seal
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01-source-only-${{ matrix.os }}-py${{ matrix.python }}
+          path: p2-01-source-only.json
+          if-no-files-found: error
