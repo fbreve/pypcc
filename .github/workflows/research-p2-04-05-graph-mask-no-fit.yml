@@ -1,0 +1,140 @@
+name: Research P2-04 + P2-05 frozen graph and mask SHA preflight (NO PCC FIT)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_04_05_graph_mask_no_fit.py'
+      - 'experiments/test_p2_04_05_graph_mask_no_fit.py'
+      - 'docs/current_p2_04_05_graph_mask_no_fit_review_2026-11-13.md'
+      - '.github/workflows/research-p2-04-05-graph-mask-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-graph-mask-per-platform:
+    name: frozen kNN and PCG64 masks (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch exact immutable original P1 parser and source Git objects
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12 \
+            refs/heads/research/current-p1-offline-fixture-and-matlab-audit-2026-11-12
+      - name: Independently check frozen P1 digest and unmodified graph/production source blobs
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-0405-source-audit.json
+      - name: Install exact candidate Python dependencies and original XLSX parser without compiling PCC
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt "openpyxl==3.1.5"
+          python -m pip check
+      - name: Restore ONLY immutable original audited P1 source parser modules to ephemeral checkout
+        shell: bash
+        run: |
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_offline_candidate_integrity.py > experiments/p1_offline_candidate_integrity.py
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_alternative_domain_source_quality.py > experiments/p1_alternative_domain_source_quality.py
+      - name: Adversarial synthetic tests for unchanged graph route, dense padding, symmetry and masks
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_04_05_graph_mask_no_fit -v
+      - name: Construct three frozen real-source graphs and 24 masks, compute 72 seeds NO PCC FIT
+        shell: bash
+        run: |
+          python -m experiments.p2_04_05_graph_mask_no_fit --output p2-0405-graph-mask-seed-digests.json
+      - name: Enforce no-PCC, no-record-export and no P2/03 execution authorization
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p2-0405-graph-mask-seed-digests.json')); assert r['status']=='EXACT_THREE_KNN_GRAPHS_AND_24_MASKS_WITH_72_NATIVE_SEEDS_NO_PCC_FITS'; assert r['selected_UCI_order']==[212,850,292]; assert r['graphs_built_on_real_source_features']==3; assert r['real_source_label_masks_generated']==24; assert r['backend_domain_separated_seeds_derived_not_used']==72; assert r['P2_04_graph_candidate_pass'] and r['P2_05_mask_and_seeds_candidate_pass']; assert not r['P2_04_05_cross_platform_hash_gate_pass']; assert r['graph_padding_preserved_minus_one'] and r['graph_is_undirected']; assert r['PCC_propagations_executed']==0 and r['PCC_real_data_fits_executed']==0 and r['graph_fits_and_early_stops_executed']==0; assert r['P2_execution_preflight_SHA256'] is None and not r['P2_execution_authorized']; assert not r['raw_source_rows_or_labels_exported'] and not r['raw_graph_or_mask_arrays_exported']; assert all(len(x['masks'])==8 and len(x['propagation_seeds_not_executed'])==24 for x in r['datasets'])"
+      - name: Preserve ONLY graph/mask hashes, native seed integers and safe aggregate provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-0405-frozen-graph-mask-hashes-${{ matrix.os }}-py312
+          path: |
+            p2-0405-source-audit.json
+            p2-0405-graph-mask-seed-digests.json
+          retention-days: 30
+          if-no-files-found: error
+
+  graph-mask-hash-concordance:
+    name: Exact cross-platform graph/mask/72-seed SHA agreement
+    needs: frozen-graph-mask-per-platform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-0405-frozen-graph-mask-hashes-*-py312
+          path: p2-0405-aggregate
+          merge-multiple: false
+      - name: Compare frozen P1, original transformed-X, 3 dense graph and all 24 mask hashes and 72 seeds
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("p2-0405-aggregate")
+          def load(os):
+              return json.loads((root /
+                ("p2-0405-frozen-graph-mask-hashes-" + os + "-py312") /
+                "p2-0405-graph-mask-seed-digests.json").read_text(encoding="utf-8"))
+          linux, windows = load("ubuntu-latest"), load("windows-latest")
+          for key in ("P1_scientific_SHA256", "original_graph_function_git_blob",
+                      "source_parser_original_git_blobs", "frozen_P1_seed_recipe_source_git_blob",
+                      "graph_build_and_install_route", "selected_UCI_order", "candidate_installed_versions",
+                      "graphs_built_on_real_source_features", "real_source_label_masks_generated",
+                      "backend_domain_separated_seeds_derived_not_used", "datasets"):
+              assert linux[key] == windows[key], "Linux/Windows mismatch in "+key
+          for source in linux["datasets"]:
+              assert source["graph"]["dense_unused_padding_all_minus_one"]
+              assert source["graph"]["edges_without_reciprocals"] == 0
+              assert source["graph"]["self_loops_found"] == 0
+              assert len(source["masks"]) == 8
+              assert len(source["propagation_seeds_not_executed"]) == 24
+              assert source["graph"]["exact_full_dense_graph_SHA256"]
+          assert linux["PCC_propagations_executed"] == 0 == windows["PCC_propagations_executed"]
+          assert not linux["P2_execution_authorized"] and not windows["P2_execution_authorized"]
+          report = {
+              "schema": "pypcc-P2-04-05-cross-platform-hash-concordance/v1",
+              "P1_scientific_sha256": linux["P1_scientific_SHA256"],
+              "platforms": ["ubuntu-latest", "windows-latest"],
+              "selected_uci_ids": linux["selected_UCI_order"],
+              "dense_graph_hashes": [
+                  x["graph"]["exact_full_dense_graph_SHA256"] for x in linux["datasets"]],
+              "mask_hashes_by_dataset": {
+                  str(x["uci_id"]): [m["mask_sha256"] for m in x["masks"]]
+                  for x in linux["datasets"]},
+              "verified_native_seed_count": 72,
+              "P2_04_05_cross_platform_hash_gate_pass": True,
+              "P2_07_resource_gate_pass": False,
+              "P2_08_approved_execution_SHA256": None,
+              "PCC_propagations_executed": 0,
+              "P2_execution_authorized": False,
+          }
+          Path("p2-0405-cross-platform-concordance.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True)+"\n", encoding="utf-8")
+          print("PASS: 3 exact dense graph SHA, 24 masks and 72 backend-seed scalars match across Linux and Windows; zero PCC")
+          PY
+      - name: Archive cross-platform comparability evidence — hashes only
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-0405-frozen-cross-platform-concordance
+          path: p2-0405-cross-platform-concordance.json
+          retention-days: 30
+          if-no-files-found: error
