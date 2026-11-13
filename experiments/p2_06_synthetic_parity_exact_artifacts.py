@@ -56,7 +56,7 @@ def sha256(path):
 def native_header(path):
     """Inspect binary *architecture*, not claim complete linker ABI."""
     raw = Path(path).read_bytes()
-    if raw[:4] == b"\\x7fELF":
+    if raw[:4] == (bytes((127,)) + b"ELF"):
         require(len(raw) >= 20, "Truncated ELF")
         bits = {1: 32, 2: 64}.get(raw[4])
         require(bits is not None, "Unknown ELF class")
@@ -69,7 +69,7 @@ def native_header(path):
     if raw[:2] == b"MZ":
         require(len(raw) >= 64, "Truncated PE/DOS header")
         offset = struct.unpack("<I", raw[0x3c:0x40])[0]
-        require(offset + 6 <= len(raw) and raw[offset:offset+4] == b"PE\\x00\\x00",
+        require(offset + 6 <= len(raw) and raw[offset:offset+4] == (b"PE" + bytes((0, 0))),
                 "Missing PE signature")
         machine = struct.unpack("<H", raw[offset+4:offset+6])[0]
         require(machine == 0x8664, "Unexpected Windows native architecture")
@@ -84,7 +84,7 @@ def verify_git_test_sources():
         require(path.is_file(), "Missing pinned original research test: " + filename)
         data = path.read_bytes()
         # CRLF checkout normalization only, matching Git's canonical blob.
-        normalized = data.replace(b"\\r\\n", b"\\n")
+        normalized = data.replace(bytes((13, 10)), bytes((10,)))
         require(git_blob_sha(normalized) == expected,
                 "Research test bytes changed: " + filename)
         hashes[filename] = expected
