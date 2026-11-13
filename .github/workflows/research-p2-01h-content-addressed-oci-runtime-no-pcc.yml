@@ -130,7 +130,7 @@ jobs:
       - name: Run contained import-only selfcheck with NO network / read-only filesystem / no capabilities
         shell: bash
         run: |
-          mkdir p2-01h-first-container-receipt
+          install -d -m 0777 p2-01h-first-container-receipt
           docker run --rm --platform linux/amd64 --network none \
             --read-only --pids-limit 256 --cap-drop ALL \
             --security-opt no-new-privileges --memory 2g \
@@ -223,7 +223,7 @@ jobs:
       - name: In separate host run imported image read-only and network-disabled; require same exact CPython/new-native hashes
         shell: bash
         run: |
-          mkdir p2-01h-replay-receipt
+          install -d -m 0777 p2-01h-replay-receipt
           docker run --rm --platform linux/amd64 --network none \
             --read-only --pids-limit 256 --cap-drop ALL \
             --security-opt no-new-privileges --memory 2g \
