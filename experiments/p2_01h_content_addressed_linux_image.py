@@ -240,6 +240,7 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
             for key,value in checked["candidate_archived_wheels_sha256"].items()},
         "P2_01D_later_candidate_wheels_not_original_P2_01C":True,
         "P2_01F_exact_new_native":sources,
+        "exact_frozen_python_native_import_helpers":imported_helpers,
         "copied_host_native_runtime_libraries":selected_host_libraries,
         "host_libffi_bytes_copied_not_installed_or_recompiled":True,
         "native_modules_are_NEW_P2_01F_not_historical":True,
@@ -261,10 +262,12 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
         "COPY python-runtime/ /opt/hostedtoolcache/Python/3.12.16/x64/\n"
         "COPY new-native/ /opt/p2-native/\n"
         "COPY selected-host-libraries/ /opt/p2-hostlibs/\n"
+        "COPY source-only-native-import-helpers/ /opt/p2-source-helpers/\n"
         "COPY runtime-manifest.json /opt/p2-runtime-manifest.json\n"
         "COPY oci-import-only-selfcheck.py /opt/p2-oci-selfcheck.py\n"
         "ENV PATH=/opt/hostedtoolcache/Python/3.12.16/x64/bin:$PATH\n"
         "ENV LD_LIBRARY_PATH=/opt/p2-hostlibs:/opt/hostedtoolcache/Python/3.12.16/x64/lib\n"
+        "ENV PYTHONPATH=/opt/p2-source-helpers\n"
         "ENV PYTHONDONTWRITEBYTECODE=1\n"
         "ENV PYTHONNOUSERSITE=1\n"
         "WORKDIR /opt\n"
