@@ -53,6 +53,15 @@ ORIGINAL_OBSERVERS = {
                "af34f50ebabb0a7204d3f30679adaf3f00169742",
                "281daf0e66a567e587d0bd3e21dc34329a234b95"),
 }
+# Original fullfit helpers are imported ONLY for their existing RNG fingerprints.
+ORIGINAL_HELPER_SOURCE = {
+    "numpy_rng_reference": ("experiments/bench_live_numpy_fullfit.py",
+        "6d908e78878c4922674277e3313dbfe7f7924146",
+        "cc35e3e3107b2f24b419a6d04efe35ebd8b2d4d5"),
+    "numba_rng_reference": ("experiments/bench_live_numba_fullfit.py",
+        "4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5",
+        "241a0500ac4ed33d8c348ac29bb74d62cb98bf4b"),
+}
 NATIVE_BUILD_RUN = 43488066633
 SYNTHETIC_ONLY_CHILD_CAP_SECONDS = 240
 POLL_SECONDS = .1
@@ -81,7 +90,9 @@ def atomic_json(path, value):
 
 def original_observers_verified():
     checked = {}
-    for backend, (source, commit, blob) in ORIGINAL_OBSERVERS.items():
+    for backend, (source, commit, blob) in {
+        **ORIGINAL_OBSERVERS, **ORIGINAL_HELPER_SOURCE
+    }.items():
         p = ROOT/source
         require(p.is_file(), "Missing original observer source " + source)
         content = p.read_bytes().replace(b"\r\n", b"\n")
