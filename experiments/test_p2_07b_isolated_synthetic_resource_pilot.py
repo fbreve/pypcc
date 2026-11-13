@@ -61,7 +61,7 @@ class SyntheticResourceBudgetTests(unittest.TestCase):
     def test_accept_compiled_paired_samples_and_disallow_wrong_cython_mode(self):
         common = {
             "nodes": 500, "particles": 6,
-            "fits_per_sample": 10,
+            "fits_per_sample": testee.COMPILED_BATCH,
             "milestones": [0,1,10,50,100,250,500,1000],
             "snapshot_bytes_per_fit": 21000,
             "pairs": [
