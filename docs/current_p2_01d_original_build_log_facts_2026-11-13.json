@@ -1,0 +1,80 @@
+{
+  "schema": "pypcc-P2-01D-historical-compiler-command-extraction/v1",
+  "original_P2_01C_run_id": 43434870932,
+  "original_PR": 262,
+  "original_PR_head": "fa71adb7c4defa54de9d233de4b0bc84544d1c24",
+  "actual_original_pr_merge_checkout": "24990f1e48c12cf2afd1d18bbf42f3de6cd1944c",
+  "original_job_ids": {
+    "Linux": 131917249775,
+    "Windows": 131917249362
+  },
+  "compiler_commands_not_derived_from_current_runner": true,
+  "original_wheel_SHA256_verified": false,
+  "fact_origin": "Decoded GitHub Actions build job logs, not a new/rebuilt toolchain; source Cython research pcc_step_live_research compile/link commands only",
+  "observations": {
+    "Linux": {
+      "python": "3.12.16",
+      "Cython": "3.3.1",
+      "compiler_banner": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+      "compiler_executable_in_command": "gcc",
+      "C_compile_flags_observed": [
+        "-fno-strict-overflow",
+        "-Wsign-compare",
+        "-DNDEBUG",
+        "-g",
+        "-O3",
+        "-Wall",
+        "-fPIC",
+        "-O3"
+      ],
+      "linker_executable_in_command": "gcc",
+      "link_flags_observed": [
+        "-shared",
+        "-Wl,--rpath=/opt/hostedtoolcache/Python/3.12.16/x64/lib"
+      ],
+      "compiler_executable_sha256": null,
+      "linker_executable_sha256": null,
+      "libc_linked_binary_SHA256": null,
+      "evidence_job_url": "https://github.com/fbreve/pypcc/actions/runs/43434870932/job/131917249775",
+      "scope": "Original isolated Cython research module compile and link; installed/shared dependency bytes and original production-module command not fully preserved"
+    },
+    "Windows": {
+      "python": "3.12.10",
+      "Cython": "3.3.1",
+      "compiler_path_observed": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX86\\x64\\cl.exe",
+      "linker_path_observed": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX86\\x64\\link.exe",
+      "MSVC_tools_directory_version": "14.51.36231",
+      "Windows_Kits_SDK_directory_version": "10.0.26100.0",
+      "C_compile_flags_observed": [
+        "/c",
+        "/nologo",
+        "/O2",
+        "/W3",
+        "/GL",
+        "/DNDEBUG",
+        "/MD",
+        "/O2"
+      ],
+      "link_flags_observed": [
+        "/nologo",
+        "/INCREMENTAL:NO",
+        "/LTCG",
+        "/DLL",
+        "/MANIFEST:EMBED,ID=2",
+        "/MANIFESTUAC:NO"
+      ],
+      "compiler_executable_sha256": null,
+      "linker_executable_sha256": null,
+      "SDK_byte_manifest_sha256": null,
+      "evidence_job_url": "https://github.com/fbreve/pypcc/actions/runs/43434870932/job/131917249362",
+      "scope": "Original isolated Cython research module compile and link; MSVC/SDK directories are evidenced, but actual compiler executable/SDK bytes and original production-module command not fully preserved"
+    }
+  },
+  "limitations": [
+    "Only original Cython research module compile/link commands were directly extracted from preserved logs.",
+    "The existing P2-01C native extensions are the ones with preserved byte SHA256; later rebuilds are NOT equivalent.",
+    "No original installed wheel archive/hashes were retained in P2-01C; later pip download is only a new candidate wheel inventory.",
+    "SDK shared library and linker object bytes were not sealed in historical build.",
+    "No real PCC scientific fits or data processing is authorized by this metadata."
+  ]
+}
