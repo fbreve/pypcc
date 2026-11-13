@@ -56,6 +56,24 @@ def retention_policy(observed_setting_days, observed_maximum_days):
     }
 
 
+def unverified_policy_request(requested_days=90):
+    """Endpoint may deny GITHUB_TOKEN (HTTP 403); 90 is a REQUEST, not policy.
+    Only GitHub's actual upload+artifact.expires_at can confirm acceptance.
+    """
+    require(type(requested_days) is int and requested_days==90,
+            "Unknown repository setting only permits explicit 90-day TRY")
+    return {
+        "repo_configured_retention_days":None,
+        "repo_maximum_allowed_days":MAX_PUBLIC_REPO_DAYS,
+        "requested_new_artifact_retention_days":requested_days,
+        "new_artifact_90day_retention_available":False,
+        "actual_expiry_is_unverified_until_GitHub_returns_it":True,
+        "GITHUB_TOKEN_could_not_read_repository_retention_setting":True,
+        "not_permanent_storage":True,
+        "not_a_retroactive_extension_of_original_artifact":True,
+    }
+
+
 def validate_receipt(receipt):
     require(receipt.get("schema")==
             "pypcc-P2-01J-exact-archived-image-interim-backup-receipt/v1"
@@ -77,11 +95,17 @@ def validate_receipt(receipt):
     require(type(file_size) is int and 200*1024**2<=file_size<2*1024**3,
             "Whole original OCI image bytes absent or nonsensical size")
     policy=receipt.get("repo_artifact_retention_policy",{})
-    for key in ("repo_configured_retention_days","repo_maximum_allowed_days",
+    require(policy.get("repo_configured_retention_days") is None or
+            type(policy.get("repo_configured_retention_days")) is int,
+            "Repository config must be an integer only if verified")
+    for key in ("repo_maximum_allowed_days",
                 "requested_new_artifact_retention_days"):
         require(type(policy.get(key)) is int, "Retention setting missing")
-    expected=retention_policy(policy["repo_configured_retention_days"],
-                              policy["repo_maximum_allowed_days"])
+    if policy["repo_configured_retention_days"] is None:
+        expected=unverified_policy_request(policy["requested_new_artifact_retention_days"])
+    else:
+        expected=retention_policy(policy["repo_configured_retention_days"],
+                                  policy["repo_maximum_allowed_days"])
     require(policy==expected, "Repository retention budget was silently modified")
     require(receipt.get("new_GitHub_artifact_is_durable_forever") is False and
             receipt.get("new_GitHub_artifact_replaces_original") is False and
@@ -115,7 +139,8 @@ def verify_source(artifact_root,prior_replay_root,setting_days,max_days):
     path=original.only_file(artifact_root,"p2-01h-exact-runtime-image.tar.gz")
     require(path.stat().st_size>=200*1024**2,
             "Invalid imported original Docker archive size")
-    policy=retention_policy(setting_days,max_days)
+    policy=(unverified_policy_request(90) if setting_days is None
+            else retention_policy(setting_days,max_days))
     report={
         "schema":"pypcc-P2-01J-exact-archived-image-interim-backup-receipt/v1",
         "status":"EXACT_PREVIOUS_CANDIDATE_OCI_BYTES_VERIFIED_FOR_TEMPORARY_ACTIONS_ARTIFACT",
@@ -159,8 +184,9 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source-artifact-dir",required=True,type=Path)
     p.add_argument("--prior-replay-dir",required=True,type=Path)
-    p.add_argument("--repo-retention-days",required=True,type=int)
-    p.add_argument("--repo-max-days",required=True,type=int)
+    p.add_argument("--repo-retention-days",type=int,default=None,
+                   help="Required only if verified by repo policy REST; omit after 403")
+    p.add_argument("--repo-max-days",type=int,default=90)
     p.add_argument("--output",required=True,type=Path)
     args=p.parse_args()
     report=verify_source(args.source_artifact_dir,
@@ -172,7 +198,7 @@ def main():
         "status":report["status"],
         "preserved_docker_save_gzip_sha256":report["preserved_docker_save_gzip_SHA256"],
         "preserved_image_bytes":report["preserved_docker_save_gzip_bytes"],
-        "allowed_retention_days":report["repo_artifact_retention_policy"][
+        "REQUESTED_NOT_YET_CONFIRMED_retention_days":report["repo_artifact_retention_policy"][
             "requested_new_artifact_retention_days"],
         "permanent_copy_created":False,
         "P2_execution_authorized":False,
