@@ -202,6 +202,28 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
             "not_in_original_content_addressed_minimal_ubuntu_base":True,
         }
     }
+    # Original Cython modules import these two original read-only Python
+    # helpers on module initialization. Seal exact original Git objects;
+    # never copy experiment runners, UCI rows or propagation source.
+    helper_sources = {
+        "pcc_metrics.py":"967353fc0f6ee88c8f26bbde6266645e6de9aa3b",
+        "pcc_validation.py":"b98510431c2281463988321fb7f1b6b159a5f77d",
+    }
+    helper_dir=context/"source-only-native-import-helpers"
+    helper_dir.mkdir()
+    imported_helpers={}
+    for name,blob in helper_sources.items():
+        data=(ROOT/name).read_bytes()
+        actual=hashlib.sha1(
+            b"blob "+str(len(data)).encode("ascii")+b"\0"+data).hexdigest()
+        require(actual==blob,"Original Cython import helper Git blob drift: "+name)
+        target=helper_dir/name
+        target.write_bytes(data)
+        imported_helpers[name]={
+            "original_git_blob_SHA1":blob,
+            "source_file_SHA256":sha_file(target),
+            "bytes":len(data),
+        }
     shutil.copy2(
         ROOT/"experiments/p2_01h_import_only_oci_selfcheck.py",
         context/"oci-import-only-selfcheck.py")
