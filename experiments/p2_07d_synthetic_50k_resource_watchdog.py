@@ -128,7 +128,7 @@ def archive_and_policy_checked(native_artifact_root):
     evidence = {}
     for name, data in native["new_native_byte_identity_verified"].items():
         file = (folder/"p2-01f-new-native-candidate"/"new-exact-native-seal"/
-                data["filename"])
+                "native"/data["filename"])
         require(file.is_file() and prior.file_sha(file)==data["sha256"],
                 "Prospectively built new module archive content drift")
         target = ROOT / file.name
