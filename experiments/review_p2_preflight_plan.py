@@ -69,7 +69,7 @@ def review(plan,manifest):
             manifest["P2_execution_authorized"] is False and
             manifest["any_real_PCC_fit_authorized"] is False,
             "Scientific P1 approval is not a P2 permission")
-    require("distinct explicit exact-P2-digest approval" in
+    require("request exact-SHA execution consent" in
             plan["next_action"] and
             "P1 science approved only" in plan["approval_boundary"],
             "Future P2 must require a new exact-SHA user approval")
