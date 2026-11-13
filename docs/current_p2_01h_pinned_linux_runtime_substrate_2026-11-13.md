@@ -20,6 +20,8 @@ The Python environment is **copied, not rebuilt** from archived Python source an
 
 The image is first started with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 --memory 2g`. Its sole entrypoint is a deliberately **import-only** verifier: it opens the embedded manifest, validates every copied Python file/symlink digest, checks that all 13 exact packages are present, imports NumPy/SciPy/scikit-learn/Numba/llvmlite (without compiling a model), imports both original P2-01F NEW Cython native modules directly by path **without invoking propagation**, and records the currently mapped native ELF files and their SHA256 values. The image contains neither official UCI rows nor a scientific PCC execution script.
 
+The initial import-only image passed its internal native/file checks but the hosted runner first denied writing the JSON to the bind-mounted `/out` directory. The corrected CI grants write permission **only** to that output mount, while retaining the image root filesystem as read-only, all capabilities dropped and networking disabled. This output directory is separate from the immutable Python/native files.
+
 A full `docker save | gzip` transportable image bundle is archived. **Another independent GitHub Actions runner** downloads that exact bundle, verifies the archive SHA256, `docker load`s it without any Docker registry pull, confirms the identical image config ID, and repeats the same network-free, read-only import-only selfcheck. This checks that the image can be moved between machines, not just referenced by a Dockerfile.
 
 ## Boundaries and explicit STOPs
