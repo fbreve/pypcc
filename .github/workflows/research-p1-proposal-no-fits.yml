@@ -7,6 +7,8 @@ on:
       - 'docs/current_p1_prospective_design_2026-11-12.md'
       - 'docs/current_p1_scientific_decision_packet_2026-11-12.json'
       - 'docs/current_p1_scientific_decisions_2026-11-12.md'
+      - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.json'
+      - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.md'
       - 'experiments/review_p1_scientific_decisions.py'
       - 'experiments/test_review_p1_scientific_decisions.py'
       - 'experiments/p1_exploratory_reference.py'
@@ -55,7 +57,7 @@ jobs:
       - name: Reject any false dataset selection, scientific seal, or real PCC fit
         shell: bash
         run: |
-          python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert r['public_full_text_papers_scoped_checked']==3; assert not r['all_history_or_private_matlab_checked']; assert not r['paper_20_dataset_inventory_exhaustive']; assert not r['data_independence_or_ethics_certified']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
+          python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert r['scientific_resolution_review']=='PASS_PENDING_HUMAN_DECISION'; assert r['proposals_for_explicit_approval']==6; assert not r['all_six_recommendations_human_approved']; assert r['public_full_text_papers_scoped_checked']==3; assert not r['all_history_or_private_matlab_checked']; assert not r['paper_20_dataset_inventory_exhaustive']; assert not r['data_independence_or_ethics_certified']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
       - name: Reject false full historical coverage, source independence and science approval
         shell: bash
         run: |
