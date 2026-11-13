@@ -156,6 +156,13 @@ def run():
     installed={key:importlib.metadata.version(key) for key in expected}
     require(installed=={key:x["version"] for key,x in expected.items()},
             "Container copied runtime package versions differ from archived wheels")
+    # Verify the original exact extra library needed by this minimal base.
+    extra = doc.get("copied_host_native_runtime_libraries", {})
+    require(set(extra) == {"libffi.so.8"}, "Required sealed libffi unavailable")
+    lib = Path("/opt/p2-hostlibs/libffi.so.8")
+    info = extra["libffi.so.8"]
+    require(lib.is_file() and lib.stat().st_size == info["bytes"] and
+            file_sha(lib) == info["sha256"], "Sealed libffi changed")
     import numpy, scipy, sklearn, numba, llvmlite
     del numpy,scipy,sklearn,numba,llvmlite
     exact=doc.get("P2_01F_exact_new_native",{})
