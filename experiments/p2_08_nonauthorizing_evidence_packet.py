@@ -216,7 +216,7 @@ def graph_mask_gate(linux,windows,concordance,p1,source):
                 report.get("status") ==
                 "EXACT_THREE_KNN_GRAPHS_AND_24_MASKS_WITH_72_NATIVE_SEEDS_NO_PCC_FITS" and
                 report.get("selected_UCI_order") == [212,850,292] and
-                report.get("P1_scientific_sha256") == P1_SHA and
+                report.get("P1_scientific_SHA256") == P1_SHA and
                 report.get("graphs_built_on_real_source_features") == 3 and
                 report.get("real_source_label_masks_generated") == 24 and
                 report.get("backend_domain_separated_seeds_derived_not_used") == 72 and
