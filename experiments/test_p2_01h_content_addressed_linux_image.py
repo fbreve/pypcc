@@ -85,6 +85,7 @@ class ContentAddressedCandidateTests(unittest.TestCase):
             },
             "copied_CP312_runtime_tree":{"sha256":"c"*64},
             "copied_host_native_runtime_libraries":{"libffi.so.8":{"sha256":"f"*64}},
+            "exact_frozen_python_native_import_helpers":{"pcc_metrics.py":{"original_git_blob_SHA1":"9"*40},"pcc_validation.py":{"original_git_blob_SHA1":"8"*40}},
         }
         receipt={
             "schema":"pypcc-P2-01H-pinned-container-import-only-receipt/v1",
@@ -96,6 +97,7 @@ class ContentAddressedCandidateTests(unittest.TestCase):
             "python_version":"3.12.16",
             "number_of_loaded_mapped_native_files":5,
             "copied_separately_sealed_host_libffi_SHA256":"f"*64,
+            "frozen_Cython_import_helper_git_blob_sha1":{"pcc_metrics.py":"9"*40,"pcc_validation.py":"8"*40},
             "candidate_package_versions":{"pkg"+str(i):"1.0" for i in range(13)},
             "P2_01F_exact_new_native_imports":{
                 "production_pcc_step":{},"isolated_pcc_step_live_research":{}},
