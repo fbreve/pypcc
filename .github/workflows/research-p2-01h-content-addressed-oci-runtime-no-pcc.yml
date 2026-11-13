@@ -233,7 +233,9 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import json
-          first=json.loads(Path("p2-01h-imported-candidate-image/p2-01h-first-import-only-receipt.json").read_text())
+          source_candidates=list(Path("p2-01h-imported-candidate-image").rglob("p2-01h-first-import-only-receipt.json"))
+          assert len(source_candidates)==1, "Required exact initial receipt not uniquely present in exported GitHub artifact"
+          first=json.loads(source_candidates[0].read_text(encoding="utf-8"))
           second=json.loads(Path("p2-01h-replay-receipt/replayed-image-import-only-receipt.json").read_text())
           for key in ("status","OCI_base_pinned_index_digest",
                       "copied_python_runtime_tree_sha256",
