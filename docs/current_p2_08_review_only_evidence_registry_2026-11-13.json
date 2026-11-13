@@ -1,0 +1,123 @@
+{
+  "schema": "pypcc-P2-08-review-only-evidence-registry/v1",
+  "purpose": "ASSEMBLE_NONAUTHORIZING_P2_REVIEW_PACKET_FROM_ALREADY_PASSED_CI_NO_NEW_PCC",
+  "P1_scientific_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+  "proposed_source_parent_PR": 273,
+  "original_P2_planning_steps": [
+    "P2_01_CODE_AND_VERSIONS",
+    "P2_02_OFFICIAL_SOURCES",
+    "P2_03_TRANSFORMED_FEATURES",
+    "P2_04_KNN_GRAPH",
+    "P2_05_MASKS_AND_SEEDS",
+    "P2_06_NATIVE_OBSERVERS",
+    "P2_07_RESOURCE_AND_EXPORT_LIMITS",
+    "P2_08_SEALED_EXECUTION_GATE"
+  ],
+  "evidence": [
+    {
+      "key": "source_linux",
+      "run_id": 43453332637,
+      "artifact_id": 14053501109,
+      "artifact_name": "p2-02b03-ordered-hashes-ubuntu-latest-py312",
+      "archive_zip_sha256": "57f31427296c6abbd25633c5580d0ecc14080ce993939f31843e462d6373655f",
+      "json_basename": "p2-02b03-ordered-data-and-float64-sha.json",
+      "extracted_destination": "p2-08-prior-evidence/source_linux"
+    },
+    {
+      "key": "source_windows",
+      "run_id": 43453332637,
+      "artifact_id": 14053715816,
+      "artifact_name": "p2-02b03-ordered-hashes-windows-latest-py312",
+      "archive_zip_sha256": "78e50abcf14a6470f37f83ffc925857a5afd544504ddcc0f79876ff319033753",
+      "json_basename": "p2-02b03-ordered-data-and-float64-sha.json",
+      "extracted_destination": "p2-08-prior-evidence/source_windows"
+    },
+    {
+      "key": "graph_linux",
+      "run_id": 43475652889,
+      "artifact_id": 14063840028,
+      "artifact_name": "p2-0405-frozen-graph-mask-hashes-ubuntu-latest-py312",
+      "archive_zip_sha256": "f0c49280718daf259b022c810c82e7aebe61dddbfe7ad851f96f079fa3f3cbb7",
+      "json_basename": "p2-0405-graph-mask-seed-digests.json",
+      "extracted_destination": "p2-08-prior-evidence/graph_linux"
+    },
+    {
+      "key": "graph_windows",
+      "run_id": 43475652889,
+      "artifact_id": 14063660306,
+      "artifact_name": "p2-0405-frozen-graph-mask-hashes-windows-latest-py312",
+      "archive_zip_sha256": "57b015c15e44c0912838068c8dcd26ecae1cb2c8f8e3ebc12ebaec359ea9a877",
+      "json_basename": "p2-0405-graph-mask-seed-digests.json",
+      "extracted_destination": "p2-08-prior-evidence/graph_windows"
+    },
+    {
+      "key": "graph_concordance",
+      "run_id": 43475652889,
+      "artifact_id": 14063161582,
+      "artifact_name": "p2-0405-frozen-cross-platform-concordance",
+      "archive_zip_sha256": "006736577b6dedff8fa5bb910701bf1f65282e6f35e5a991e789eb7e5114a49b",
+      "json_basename": "p2-0405-cross-platform-concordance.json",
+      "extracted_destination": "p2-08-prior-evidence/graph_concordance"
+    },
+    {
+      "key": "parity_linux",
+      "run_id": 43444184702,
+      "artifact_id": 14048080950,
+      "artifact_name": "p2-06-synthetic-parity-ubuntu-latest-py312-run43444184702",
+      "archive_zip_sha256": "318ffa84d834369400fe43962364340036e9ea1bb3c6615155e0660b3c03fb07",
+      "json_basename": "p2-06-synthetic-parity.json",
+      "extracted_destination": "p2-08-prior-evidence/parity_linux"
+    },
+    {
+      "key": "parity_windows",
+      "run_id": 43444184702,
+      "artifact_id": 14046528279,
+      "artifact_name": "p2-06-synthetic-parity-windows-latest-py312-run43444184702",
+      "archive_zip_sha256": "719e69ad203a4be1f8360f62bfdf2b3d4c76d308ca92db58e78784ac6978cf2e",
+      "json_basename": "p2-06-synthetic-parity.json",
+      "extracted_destination": "p2-08-prior-evidence/parity_windows"
+    },
+    {
+      "key": "resource_draft",
+      "run_id": 43491838488,
+      "artifact_id": 14069414165,
+      "artifact_name": "p2-07c-candidate-resource-admission-dry-run-no-PCC",
+      "archive_zip_sha256": "d4843152a9f8111818e140929ce2148e8e2a8904c273f345ac86f93e55576d2d",
+      "json_basename": "p2-07c-proposed-execution-envelope-no-fit.json",
+      "extracted_destination": "p2-08-prior-evidence/resource_draft"
+    },
+    {
+      "key": "synthetic_linux",
+      "run_id": 43495144447,
+      "artifact_id": 14071123334,
+      "artifact_name": "p2-07d-nine-synthetic-50k-watched-cases-ubuntu-latest-py312",
+      "archive_zip_sha256": "12e30c4a2e39d4dc3cfd46d3ceb24a148d090120eef265d0ec0c0c4c43595411",
+      "json_basename": "p2-07d-nine-synthetic-50k-resource-results.json",
+      "extracted_destination": "p2-08-prior-evidence/synthetic_linux"
+    },
+    {
+      "key": "synthetic_windows",
+      "run_id": 43495144447,
+      "artifact_id": 14070854067,
+      "artifact_name": "p2-07d-nine-synthetic-50k-watched-cases-windows-latest-py312",
+      "archive_zip_sha256": "486c71af42e36f30cbb183f5dd35bc7cb3bee20d3cf49c488fd41939abcaf3a6",
+      "json_basename": "p2-07d-nine-synthetic-50k-resource-results.json",
+      "extracted_destination": "p2-08-prior-evidence/synthetic_windows"
+    },
+    {
+      "key": "synthetic_concordance",
+      "run_id": 43495144447,
+      "artifact_id": 14071451884,
+      "artifact_name": "p2-07d-two-platform-synthetic-50k-resource-scope",
+      "archive_zip_sha256": "86037c7499095bdbb6495ebbbbf5ffc26aeb9349d0ed53d52ee64463265314e5",
+      "json_basename": "p2-07d-cross-platform-synthetic-50k-scope.json",
+      "extracted_destination": "p2-08-prior-evidence/synthetic_concordance"
+    }
+  ],
+  "candidate_p2_08_review_packet_sha256": null,
+  "final_approved_P2_execution_preflight_sha256": null,
+  "explicit_maintainer_approval_of_distinct_exact_P2_sha": false,
+  "final_P2_08_gate_pass": false,
+  "P2_execution_authorized": false,
+  "PCC_real_source_fits_executed": 0
+}

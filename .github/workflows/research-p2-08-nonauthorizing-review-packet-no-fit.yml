@@ -1,0 +1,184 @@
+name: Research P2-08 non-authorizing technical evidence REVIEW packet — NO FIT
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_08_nonauthorizing_evidence_packet.py'
+      - 'experiments/test_p2_08_nonauthorizing_evidence_packet.py'
+      - 'docs/current_p2_08_review_only_evidence_registry_2026-11-13.json'
+      - 'docs/current_p2_08_review_only_decision_packet_2026-11-13.md'
+      - '.github/workflows/research-p2-08-nonauthorizing-review-packet-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-false-go-tests:
+    name: Strict source-only review/authorization tests (${{ matrix.os }}, 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run six adversarial stdlib-only tests; NO Python PCC or UCI imports
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_08_nonauthorizing_evidence_packet -v
+      - name: Explicitly require unfrozen final SHA and absence of execution permission
+        shell: bash
+        run: |
+          python -c "from experiments import p2_08_nonauthorizing_evidence_packet as p; r=p.read_json(p.REGISTRY)[0]; p.validate_registry(r); q=p.read_json(p.PLAN)[0]; p.validate_original_p2_plan(q); assert r['final_approved_P2_execution_preflight_sha256'] is None; assert not r['final_P2_08_gate_pass'] and not r['P2_execution_authorized']; print('PASS: P2-08 review-only protocol does not authorize actual PCC')"
+
+  prior-evidence-decision-packet:
+    name: Recheck 11 exact prior source/graph/mask/observer/synthetic-resource artifacts (NO PCC)
+    needs: source-only-false-go-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve prior verified safe metadata only — source_linux
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-02b03-ordered-hashes-ubuntu-latest-py312
+          path: p2-08-prior-evidence/source_linux
+          run-id: 43453332637
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — source_windows
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-02b03-ordered-hashes-windows-latest-py312
+          path: p2-08-prior-evidence/source_windows
+          run-id: 43453332637
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — graph_linux
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-0405-frozen-graph-mask-hashes-ubuntu-latest-py312
+          path: p2-08-prior-evidence/graph_linux
+          run-id: 43475652889
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — graph_windows
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-0405-frozen-graph-mask-hashes-windows-latest-py312
+          path: p2-08-prior-evidence/graph_windows
+          run-id: 43475652889
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — graph_concordance
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-0405-frozen-cross-platform-concordance
+          path: p2-08-prior-evidence/graph_concordance
+          run-id: 43475652889
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — parity_linux
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-06-synthetic-parity-ubuntu-latest-py312-run43444184702
+          path: p2-08-prior-evidence/parity_linux
+          run-id: 43444184702
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — parity_windows
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-06-synthetic-parity-windows-latest-py312-run43444184702
+          path: p2-08-prior-evidence/parity_windows
+          run-id: 43444184702
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — resource_draft
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07c-candidate-resource-admission-dry-run-no-PCC
+          path: p2-08-prior-evidence/resource_draft
+          run-id: 43491838488
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — synthetic_linux
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07d-nine-synthetic-50k-watched-cases-ubuntu-latest-py312
+          path: p2-08-prior-evidence/synthetic_linux
+          run-id: 43495144447
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — synthetic_windows
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07d-nine-synthetic-50k-watched-cases-windows-latest-py312
+          path: p2-08-prior-evidence/synthetic_windows
+          run-id: 43495144447
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve prior verified safe metadata only — synthetic_concordance
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07d-two-platform-synthetic-50k-resource-scope
+          path: p2-08-prior-evidence/synthetic_concordance
+          run-id: 43495144447
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify P1 plus all eleven archived safe digests, 3 source graphs, 24 masks, 72 seeds and pending final GO
+        shell: bash
+        run: |
+          python -m experiments.p2_08_nonauthorizing_evidence_packet \
+            --archive-root p2-08-prior-evidence \
+            --output p2-08-candidate-review-packet-NOT-EXECUTION-SHA.json
+      - name: Recompute independent review-only hash and fail closed if any completion or approval is forged
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path("p2-08-candidate-review-packet-NOT-EXECUTION-SHA.json")
+          d=json.loads(p.read_text(encoding="utf-8"))
+          obj=d["review_packet"]
+          blob=json.dumps(obj,sort_keys=True,ensure_ascii=True,allow_nan=False,separators=(",",":")).encode("ascii")
+          assert d["review_packet_SHA256_NOT_P2_execution_SHA"]==hashlib.sha256(blob).hexdigest()
+          assert obj["status"]=="SOURCE_GRAPH_MASK_SYNTHETIC_CANDIDATE_EVIDENCE_REVIEWED_FINAL_P2_BLOCKED"
+          assert obj["approved_scientific_design_fit_count"]==72
+          assert len(obj["stage_gate_assessment"])==8
+          assert all(not x["final_execution_gate_pass"] for x in obj["stage_gate_assessment"])
+          assert len(obj["source_evidence"])==11
+          assert len(obj["verified_original_UCI_source_and_transformed_matrix_fingerprints"])==3
+          assert len(obj["verified_original_UCI_dense_graph_and_mask_fingerprints"])==3
+          assert sum(x["n_masks"] for x in obj["verified_original_UCI_dense_graph_and_mask_fingerprints"])==24
+          assert len(obj["verified_original_backend_synthetic_parity"])==2
+          assert len(obj["verified_synthetic_50k_OS_process_resource_pilots"])==2
+          assert len(obj["remaining_MANDATORY_blockers_before_final_execution_manifest"])==5
+          assert obj["final_execution_preflight_SHA256"] is None
+          assert d["P2_execution_preflight_sha256"] is None
+          assert not obj["all_eight_P2_execution_gates_pass"] and not obj["P2_execution_authorized"]
+          assert not obj["final_execution_preflight_manifest_created"]
+          assert obj["P2_review_dossier_is_NOT_an_execution_preflight_SHA"]
+          assert not d["P2_execution_authorized"]
+          assert d["real_PCC_fits_executed"]==obj["real_PCC_fits_executed"]==0
+          assert obj["this_review_only_stage_UCI_downloads"]==0
+          assert obj["this_review_only_stage_real_graph_or_mask_construction"]==0
+          assert obj["this_review_only_stage_synthetic_or_real_PCC_fits"]==0
+          print("PASS: 11 archived source-free reports and candidate dossier SHA verified; immutable P2 execution SHA remains NULL, authorization FALSE")
+          PY
+      - name: Preserve ONLY the source-free review dossier (no UCI, graph, mask or particle bytes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-08-NONAUTHORITATIVE-source-bound-review-packet-NO-PCC
+          path: p2-08-candidate-review-packet-NOT-EXECUTION-SHA.json
+          retention-days: 30
+          if-no-files-found: error
