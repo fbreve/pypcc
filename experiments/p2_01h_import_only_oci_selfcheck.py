@@ -211,6 +211,8 @@ def run():
         "copied_python_runtime_file_count":runtime["filesystem_entries"],
         "candidate_package_versions":installed,
         "P2_01F_exact_new_native_imports":imports,
+        "copied_separately_sealed_host_libffi_SHA256":info["sha256"],
+        "libffi_was_not_part_of_pinned_minimal_ubuntu_base":True,
         "actually_loaded_mapped_native_file_sha256":mapped,
         "number_of_loaded_mapped_native_files":len(mapped),
         "not_an_entire_compiler_SDK_header_OS_source_rebuild":True,
