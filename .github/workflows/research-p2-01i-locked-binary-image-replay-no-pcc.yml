@@ -1,0 +1,124 @@
+name: Research P2-01I exact OCI archive LOCK and offline independent binary replay (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'docs/current_p2_01i_exact_OCI_binary_replay_lock_2026-11-13.json'
+      - 'docs/current_p2_01i_exact_OCI_binary_replay_review_2026-11-13.md'
+      - 'experiments/p2_01i_verify_exact_exported_runtime_image.py'
+      - 'experiments/test_p2_01i_verify_exact_exported_runtime_image.py'
+      - '.github/workflows/research-p2-01i-locked-binary-image-replay-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-original-OCI-artifact-lock:
+    name: Source-only exact-image digest/false-GO contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run six source-only adversarial tests, absolutely NO Docker registry access or PCC
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01i_verify_exact_exported_runtime_image -v
+      - name: Require an exact existing GitHub artifact SHA, not a floating Ubuntu rebuild
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from experiments import p2_01i_verify_exact_exported_runtime_image as x
+          d=x.lock_checked(json.loads(x.LOCK_PATH.read_text(encoding="utf-8")))
+          assert d["docker_save_gzip_archive"]["sha256"]==x.EXPECTED_IMAGE_SHA
+          assert not d["floating_base_tag_re_resolution_for_THIS_binary_replay_allowed"]
+          assert not d["P2_execution_authorized"] and d["P2_execution_preflight_sha256"] is None
+          print("PASS: immutable original exported OCI input selected by source-committed SHA, P2 execution still blocked")
+          PY
+
+  replay-only-same-original-image-no-rebuild:
+    name: Import exactly locked OCI tar.gz on independent host WITHOUT ANY rebuilding or registry pulls
+    runs-on: ubuntu-latest
+    needs: validate-original-OCI-artifact-lock
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Download EXACT preexisting P2-01H full OCI archive, never rebuild image or resolve tag
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-transportable-OCI-image-and-safe-provenance
+          path: p2-01i-source-immutable-OCI-binary
+          run-id: 43516085668
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download original P2-01H SEPARATE host native/Python import receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-separate-host-reloaded-container-import-only-receipt
+          path: p2-01i-original-second-host-receipt
+          run-id: 43516085668
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fail closed on artifact SHA, original source image ID, prior two-host Python/native import hashes and missing prior blocks
+        shell: bash
+        run: |
+          python -m experiments.p2_01i_verify_exact_exported_runtime_image \
+            --artifact-root p2-01i-source-immutable-OCI-binary \
+            --previous-replay-root p2-01i-original-second-host-receipt \
+            --output p2-01i-source-archive-byte-lock-preload.json
+      - name: Docker load EXACT preexisting image bytes offline; NO Dockerfile, base tag or new install
+        shell: bash
+        run: |
+          docker load --input p2-01i-source-immutable-OCI-binary/p2-01h-exact-runtime-image.tar.gz
+      - name: Test immutable imported OCI image entrypoint without network, with read-only rootfs and only writable /out mount
+        shell: bash
+        run: |
+          install -d -m 0777 p2-01i-replay-only-import-receipt
+          docker run --rm --platform linux/amd64 --network none \
+            --read-only --pids-limit 256 --cap-drop ALL \
+            --security-opt no-new-privileges --memory 2g \
+            -e P2_01H_OUTPUT=/out/p2-01i-original-image-import-only-receipt.json \
+            -v "$PWD/p2-01i-replay-only-import-receipt:/out" \
+            pypcc-p2-01h-candidate:immutable
+      - name: Reverify exact imported old-image ID, copied Python/native and source-helper SHA in THIRD no-network host
+        shell: bash
+        run: |
+          python -m experiments.p2_01i_verify_exact_exported_runtime_image \
+            --artifact-root p2-01i-source-immutable-OCI-binary \
+            --previous-replay-root p2-01i-original-second-host-receipt \
+            --new-receipt p2-01i-replay-only-import-receipt/p2-01i-original-image-import-only-receipt.json \
+            --output p2-01i-sealed-OCI-binary-third-host-import-check.json
+          python - <<'PY'
+          import json
+          obj=json.load(open("p2-01i-sealed-OCI-binary-third-host-import-check.json"))
+          assert obj["status"]=="EXACT_BINARY_ARCHIVE_RELOADED_IN_NEW_HOST_IMPORT_ONLY"
+          assert obj["locked_original_container_config_id"]=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          assert obj["locked_exact_exported_runtime_tar_SHA256"]=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          assert obj["new_OCI_binary_import_only_pass"] is True
+          assert obj["archive_not_durable_beyond_original_GHA_retention"] is True
+          assert not obj["P2_01_final_execution_toolchain_lock_pass"] and not obj["P2_07_full_resources_gate_pass"]
+          assert obj["P2_execution_preflight_sha256"] is None and not obj["P2_execution_authorized"]
+          assert obj["real_UCI_data_loaded"] is False and obj["synthetic_PCC_fits_executed"]==obj["real_PCC_fits_executed"]==0
+          print("PASS: exact source-committed OCI archive SHA, config ID and new host Cython/Python import unchanged. ZERO UCI/PCC activity.")
+          PY
+      - name: Archive ONLY binary-lock audit metadata, not a duplicate of 290MB original OCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01i-immutable-OCI-export-byte-lock-third-host-import-only-proof
+          path: |
+            p2-01i-source-archive-byte-lock-preload.json
+            p2-01i-sealed-OCI-binary-third-host-import-check.json
+          retention-days: 30
+          if-no-files-found: error
