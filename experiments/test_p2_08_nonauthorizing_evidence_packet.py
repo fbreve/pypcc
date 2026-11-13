@@ -77,7 +77,7 @@ class P208EvidencePacketProtocolTests(unittest.TestCase):
         self.assertEqual(self.p1["fit"]["total_proposed_fits"],72)
         self.assertEqual(self.p1["fit"]["milestones"],
                          [0,1,10,100,1000,5000,25000,50000])
-        self.assertFalse(self.p1["approvals"]["P2_execution_approved"])
+        self.assertFalse(self.p1["approvals_and_execution"]["P2_execution_approved"])
         self.assertTrue(gate.BLOCKERS)
         self.assertTrue(all(isinstance(x,str) and len(x)>30
                             for x in gate.BLOCKERS))
