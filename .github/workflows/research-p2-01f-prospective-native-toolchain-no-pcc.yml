@@ -1,0 +1,155 @@
+name: Research P2-01F NEW native compile with invoked compiler byte hashes (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01f_prospective_native_build_ledger.py'
+      - 'experiments/test_p2_01f_prospective_native_build_ledger.py'
+      - 'docs/current_p2_01f_prospective_native_build_provenance_2026-11-13.md'
+      - '.github/workflows/research-p2-01f-prospective-native-toolchain-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prospective-platform-native-build:
+    name: P2-01F NEW Cython sources + compiler executable bytes (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.12.16'
+          - os: windows-latest
+            python: '3.12.10'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify frozen scientific P1 and original untouched production Git blobs
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight --output p2-01f-original-P1-source-audit.json
+      - name: Download only the exact archived P2-01D candidate wheelhouse (NOT original P2-01C build wheels)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-${{ matrix.os }}-run43447245129
+          path: p2-01d-candidate-wheelhouse
+          run-id: 43447245129
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify exact 13 candidate wheel file bytes and generate platform hash-locked requirements
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-candidate-wheelhouse \
+            --requirements-out p2-01f-offline-candidate-hashes.txt
+      - name: Install exact 13 candidate dependency wheel bytes OFFLINE — no native build yet
+        shell: bash
+        run: |
+          python -m pip install --no-index --no-deps --require-hashes --only-binary=:all: \
+            --find-links=p2-01d-candidate-wheelhouse/p2-01d-candidate-wheels \
+            -r p2-01f-offline-candidate-hashes.txt
+          python -m pip check
+      - name: Restore exactly frozen independent research observers and Cython generator
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/build_live_cython.py > experiments/build_live_cython.py
+      - name: Run adversarial synthetic compiler-command and executable hashing tests (NO PCC)
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01f_prospective_native_build_ledger -v
+      - name: Prospectively compile BOTH NEW extensions; preserve logs, invoked tool bytes and full binary seal
+        shell: bash
+        run: |
+          python -m experiments.p2_01f_prospective_native_build_ledger \
+            --wheelhouse p2-01d-candidate-wheelhouse \
+            --hash-requirements p2-01f-offline-candidate-hashes.txt \
+            --output-dir p2-01f-new-native-candidate
+      - name: Reject missing actual compiler evidence, rebuilt-old identity confusion, or any false P2 GO
+        shell: bash
+        run: |
+          python -c "import json,pathlib,hashlib; p=pathlib.Path('p2-01f-new-native-candidate'); r=json.loads((p/'p2-01f-prospective-build-ledger.json').read_text()); assert r['status']=='NEW_NATIVE_BINARIES_BUILT_COMPILER_BYTES_RECORDED_PARTIAL_SDK_LEDGER'; assert len(r['new_Cython_production_and_research_binaries'])==2; assert len(r['logged_compiler_and_linker_executable_byte_hashes']['observed_compile_tool_paths'])>=2; assert all(k in r['actual_recorded_compile_and_link_commands'] for k in ('new_production_pcc_step','new_isolated_pcc_step_live_research')); assert r['new_native_exact_source_smoke_proved']; assert r['new_Cython_binaries_not_claimed_to_be_old_P2_01C_bytes']; assert not r['complete_compiler_SDK_system_include_and_binary_link_closure_sealed']; assert not r['P2_01_final_execution_toolchain_lock_pass']; assert r['original_UCI_datasets_loaded']==0 and r['graphs_or_masks_generated']==0 and r['synthetic_PCC_fits_executed']==0 and r['real_PCC_fits_executed']==0; assert r['P2_execution_preflight_sha256'] is None and not r['P2_execution_authorized']; seal=p/'new-exact-native-seal'; assert all(hashlib.sha256((seal/b['relative_path']).read_bytes()).hexdigest()==b['sha256'] for b in r['new_Cython_production_and_research_binaries'].values())"
+      - name: Archive NEW candidate .so/.pyd files and compiler invocation provenance (NOT old native artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01f-PROSPECTIVE-new-native-toolchain-${{ matrix.os }}-py312-run${{ github.run_id }}
+          path: |
+            p2-01f-original-P1-source-audit.json
+            p2-01f-offline-candidate-hashes.txt
+            p2-01f-new-native-candidate/
+          retention-days: 30
+          if-no-files-found: error
+
+  verify-new-compiled-candidates:
+    name: Verify two independent NEW native build reports; no final P2 GO
+    needs: prospective-platform-native-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-01f-PROSPECTIVE-new-native-toolchain-*-py312-run*
+          path: p2-01f-cross
+      - name: Compare original sources/13 wheel versions and ensure distinct platform build provenance
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("p2-01f-cross")
+          def load(os):
+              matches=list(root.glob("p2-01f-PROSPECTIVE-new-native-toolchain-"+os+"-py312-run*/p2-01f-new-native-candidate/p2-01f-prospective-build-ledger.json"))
+              assert len(matches)==1
+              return json.loads(matches[0].read_text(encoding="utf-8"))
+          linux,windows=load("ubuntu-latest"),load("windows-latest")
+          assert linux["P1_scientific_sha256"]==windows["P1_scientific_sha256"]
+          assert linux["candidate_installed_package_versions"]==windows["candidate_installed_package_versions"]
+          assert len(linux["candidate_installed_package_versions"])==13
+          assert linux["original_observer_sources_git_sha1"]==windows["original_observer_sources_git_sha1"]
+          assert linux["candidate_platform"]["python"]=="3.12.16"
+          assert windows["candidate_platform"]["python"]=="3.12.10"
+          for p in (linux,windows):
+              assert p["new_native_exact_source_smoke_proved"]
+              assert len(p["new_Cython_production_and_research_binaries"])==2
+              assert not p["complete_compiler_SDK_system_include_and_binary_link_closure_sealed"]
+              assert not p["P2_01_final_execution_toolchain_lock_pass"]
+              assert p["P2_execution_preflight_sha256"] is None
+              assert not p["P2_execution_authorized"]
+          out={
+              "schema":"pypcc-P2-01F-two-platform-new-native-build-attestation/v1",
+              "frozen_P1_scientific_sha256":linux["P1_scientific_sha256"],
+              "both_OS_new_compilation_and_invoked_compiler_hashes_captured":True,
+              "two_new_native_Cython_binaries_archived_per_OS":True,
+              "same_13_candidate_package_versions_not_same_wheel_bytes":True,
+              "Linux_Python":"3.12.16","Windows_Python":"3.12.10",
+              "complete_compiler_SDK_OS_and_linker_input_closure_hashed":False,
+              "P2_01_final_execution_toolchain_lock_pass":False,
+              "P2_execution_preflight_sha256":None,
+              "P2_execution_authorized":False,
+              "PCC_real_data_fits_executed":0,
+          }
+          Path("p2-01f-cross-platform-prospective-build-summary.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print("PASS: new compiled Cython artifacts plus invoked tool executable hashes retained on Linux and Windows; P2 full native lock still BLOCKED")
+          PY
+      - name: Preserve cross-platform bounded prospective native toolchain candidate summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01f-two-platform-prospective-native-build-summary
+          path: p2-01f-cross-platform-prospective-build-summary.json
+          retention-days: 30
+          if-no-files-found: error
