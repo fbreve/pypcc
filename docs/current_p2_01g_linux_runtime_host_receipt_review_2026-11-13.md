@@ -1,0 +1,25 @@
+# PyPCC — P2-01G Linux host/runtime DSO receipt for a candidate, NOT a final execution host (2026-11-13)
+
+**Research-only stacked DRAFT on P2-08 review #274.** No changes to original production kernels, no UCI retrieval, real graph or mask building, compilation, synthetic propagation or real PCC fits. Frozen EXPLORATORY P1 SHA256 `f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166`. The earlier review-only dossier checksum `1a563c9263c96bbfc26063ab5cc66a927910e950272329d4188b877d21a9a096` remains a **review fingerprint, NOT an execution permit**.
+
+## Why this step
+
+The #271 P2-01F prospective native build recorded NEW Cython `.so` file bytes and several compiler files, but it did not resolve which runtime ELF/DSO files were actually loaded when using those modules on the eventual execution host. P2-01G narrows this gap for **one candidate** without inventing immutable hosted infrastructure:
+
+- CI runs on GitHub `ubuntu-latest`, using **exact Linux CPython 3.12.16 x86-64**, and separately records the reported `ImageOS`, `ImageVersion`, Linux kernel, `/etc/os-release`, glibc banner, Python SOABI/extension suffix, and exact CPython executable file SHA. These runner labels are *not* Docker image digests or immutable machine identifiers.
+- Replays **exactly 13 already archived P2-01D candidate wheels** (Linux archive ID `14049265732`, workflow run `43447245129`); SHA checks individual wheel bytes, derives local hash-locked requirements and installs **`pip --no-index --no-deps --require-hashes --only-binary=:all:`**. These are the *later candidate* wheels, never retroactively claimed to be the ones installed at the old P2-01C historical build.
+- Downloads existing **NEW P2-01F prospective native Cython binaries** (Linux archive ID `14068871078`, run `43488066633`), revalidates their archived byte SHA, and **imports both** original production `pcc_step` and isolated `pcc_step_live_research` extensions using exact file paths. Does **not** invoke any kernel, model `fit` or `fit_predict`, Cython code generator or Numba JIT specialization.
+- Imports the candidate runtime packages NumPy, Numba, SciPy, scikit-learn and llvmlite **without using them** to take a snapshot of **actually mapped file-backed objects in `/proc/self/maps`**. Every mapped regular file gets exact current file byte SHA256 + length + resolved path. The test requires the two original NEW Cython binaries to be among those actual mappings, with SHA matching the #271 archive, and verifies the observed libc file. It rejects deleted mappings and missing/unhashable loaded files; checks native files again before archiving the receipt.
+- Reports candidate host physical RAM from `sysconf(SC_PHYS_PAGES)*SC_PAGE_SIZE` and currently available filesystem space from `statvfs` versus the unapproved #272 P2-07C draft threshold (**≥8 GiB RAM**, **≥12 GiB free disk**). This is a *host observation*, not a guarantee of later availability or any approved execution cap.
+
+## Scientific and technical limits
+
+The receipt can show exactly which libraries/extension files were mapped **during this import-only process** on that hosted runner. It cannot demonstrate that other code paths or later real PCC propagation will not `dlopen` further native dependencies or trigger new Numba JIT code/memory; it does not hash the full OS image, container, Python build toolchain, compiler headers/SDK, all files linked into `.so`, nor the entire potential DSO transitive closure. The hosted `ubuntu-latest` label may resolve to another image on future runs, and exact original artifacts may expire around **2026-12-13**.
+
+The report explicitly records the SHA of the Linux Python executable, the actual load-mapped native files and the 13 later wheel files, but must preserve all final resource/approval claims as **false**. To make a genuinely durable execution environment, the maintainer must select a host/VM/container by content digest or equivalent reproducible storage, preserve exact wheel/native bytes beyond ephemeral Actions retention, and approve a source-compatible runtime receipt. Any new native dependency map must be reviewed, not silently accepted.
+
+The existing #273 P2-07D watcher **already tested forced termination** of artificial CPU/RAM/wall/disk overrun processes; this new task deliberately does **not** rerun that expensive synthetic 50k study. It records actual **host capacity**, not actual real-graph CPU/RAM/disk bounds.
+
+**Final flags required even after CI PASS:** `P2_01_final_execution_toolchain_lock_pass=false`, `P2_07_full_resources_gate_pass=false`, `P2_execution_preflight_sha256=null`, `P2_execution_authorized=false`, `real_PCC_fits_executed=0`. The original P1 72-case design remains unchanged, including `neib_list` dense int64 with `-1` padding, eight milestones and within-backend comparators only. No merge into master.
+
+A passing run means **replayable candidate dependency imports and concrete machine capacity observed**; it does **not** mean all eight P2 gates have passed or justify requesting P3 execution immediately.
