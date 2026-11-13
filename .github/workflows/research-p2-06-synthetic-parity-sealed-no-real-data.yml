@@ -1,0 +1,86 @@
+name: Research P2-06 sealed candidate binaries / original synthetic within-backend parity
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_06_synthetic_parity_exact_artifacts.py'
+      - 'experiments/test_p2_06_synthetic_parity_exact_artifacts.py'
+      - '.github/workflows/research-p2-06-synthetic-parity-sealed-no-real-data.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  exact-sealed-native-synthetic-parity:
+    name: sealed-original-parity (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch exact original PR observer and test Git commits
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Independently check frozen P1 and unchanged production blobs
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-06-source-audit.json
+      - name: Install exact candidate Python 3.12 runtime packages (no PyPCC build)
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt
+          python -m pip check
+      - name: Copy only exact Git-observer and corresponding original synthetic test sources
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/build_live_cython.py > experiments/build_live_cython.py
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:tests/test_live_numpy_milestones.py > tests/test_live_numpy_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:tests/test_live_numba_milestones.py > tests/test_live_numba_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:tests/test_live_cython_milestones.py > tests/test_live_cython_milestones.py
+      - name: Fetch EXACT separately archived P2-01C production/observer binaries (NOT rebuild)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01c-candidate-native-${{ matrix.os }}-py312-run43434870932
+          path: p2-01c-restored
+          run-id: 43434870932
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Stdlib-only adversarial binary parser / pin tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_06_synthetic_parity_exact_artifacts -v
+      - name: Verify sealed native SHA/ABI/Python patch, run original 3 synthetic parity suites, record JIT specializations
+        shell: bash
+        run: |
+          python -m experiments.p2_06_synthetic_parity_exact_artifacts --sealed-artifact-dir p2-01c-restored --output p2-06-synthetic-parity.json
+      - name: Reject false real-data fits or global P2 authorization
+        shell: bash
+        run: |
+          python -c "import json; x=json.load(open('p2-06-synthetic-parity.json')); assert x['result']=='THREE_ORIGINAL_SYNTHETIC_BACKEND_TEST_SUITES_PASS'; assert x['P2_06_synthetic_parity_candidate_pass']; assert not x['P2_06_full_execution_gate_pass']; assert x['synthetic_PCC_executed_in_tests']; assert x['real_PCC_fits_executed']==0; assert x['real_source_datasets_loaded']==0; assert x['P2_execution_preflight_sha256'] is None; assert not x['P2_execution_authorized']; assert set(x['exact_native_binary_used'])=={'production_pcc_step','isolated_pcc_step_live_research'}; assert len(x['numba_synthetic_real_kernel_compilation_observed'])==3"
+      - name: Archive provenance, parity and Numba signatures (not old binaries)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-06-synthetic-parity-${{ matrix.os }}-py312-run${{ github.run_id }}
+          path: |
+            p2-06-source-audit.json
+            p2-06-synthetic-parity.json
+          retention-days: 30
+          if-no-files-found: error
