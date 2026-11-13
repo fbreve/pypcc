@@ -187,6 +187,9 @@ def run():
     require(runtime==doc["copied_CP312_runtime_tree"],
             "Python runtime tree differs after COPY or image import")
     mapped=loaded_file_backed_ELFs()
+    require(any(m["path"] == str(lib.resolve()) and
+                m["sha256"] == info["sha256"] for m in mapped),
+            "Exact copied libffi missing from mapped native files")
     require(all(any(Path(m["path"]).name==item["filename"] and
                     m["sha256"]==item["sha256"] for m in mapped)
                 for item in imports.values()),
