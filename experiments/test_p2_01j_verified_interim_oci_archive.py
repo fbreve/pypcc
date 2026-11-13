@@ -63,6 +63,17 @@ class InterimArchiveReceiptTests(unittest.TestCase):
             "requested_new_artifact_retention_days"],10)
         self.assertFalse(archive.retention_policy(30,90)[
             "new_artifact_90day_retention_available"])
+        tentative=archive.unverified_policy_request()
+        self.assertEqual(tentative["requested_new_artifact_retention_days"],90)
+        self.assertIsNone(tentative["repo_configured_retention_days"])
+        self.assertFalse(tentative["new_artifact_90day_retention_available"])
+        self.assertTrue(tentative[
+            "actual_expiry_is_unverified_until_GitHub_returns_it"])
+        unknown=candidate()
+        unknown["repo_artifact_retention_policy"]=tentative
+        self.assertTrue(archive.validate_receipt(unknown))
+        with self.assertRaises(archive.InterimArchiveBlocked):
+            archive.unverified_policy_request(91)
         for setting,maximum in ((0,90),(-1,90),(None,90),(30,"90"),(401,90)):
             with self.subTest(setting=setting,maximum=maximum):
                 with self.assertRaises(archive.InterimArchiveBlocked):
