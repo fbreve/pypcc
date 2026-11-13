@@ -177,6 +177,31 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
     require(set(sources)=={"production_pcc_step",
                            "isolated_pcc_step_live_research"},
             "Both NEW native modules mandatory")
+    # Minimal Ubuntu 26 OCI base omits libffi.so.8, which the copied
+    # CPython _ctypes extension requires. Copy ONLY its exact host bytes,
+    # without apt/network/build; seal and disclose it as an additional
+    # host-sourced dependency, NOT as part of the pinned Ubuntu base.
+    ffi_candidates = (
+        Path("/usr/lib/x86_64-linux-gnu/libffi.so.8"),
+        Path("/lib/x86_64-linux-gnu/libffi.so.8"),
+    )
+    libffi = next((x for x in ffi_candidates if x.is_file()), None)
+    require(libffi is not None,
+            "Host has no existing exact libffi.so.8; do not use unpinned apt")
+    host_libraries = context/"selected-host-libraries"
+    host_libraries.mkdir()
+    copied_libffi = host_libraries/"libffi.so.8"
+    shutil.copy2(libffi.resolve(strict=True), copied_libffi)
+    require(sha_file(copied_libffi)==sha_file(libffi),
+            "Selected host libffi changed on COPY")
+    selected_host_libraries = {
+        "libffi.so.8": {
+            "sha256":sha_file(copied_libffi),
+            "bytes":copied_libffi.stat().st_size,
+            "host_original_resolved_path":str(libffi.resolve(strict=True)),
+            "not_in_original_content_addressed_minimal_ubuntu_base":True,
+        }
+    }
     shutil.copy2(
         ROOT/"experiments/p2_01h_import_only_oci_selfcheck.py",
         context/"oci-import-only-selfcheck.py")
@@ -193,6 +218,8 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
             for key,value in checked["candidate_archived_wheels_sha256"].items()},
         "P2_01D_later_candidate_wheels_not_original_P2_01C":True,
         "P2_01F_exact_new_native":sources,
+        "copied_host_native_runtime_libraries":selected_host_libraries,
+        "host_libffi_bytes_copied_not_installed_or_recompiled":True,
         "native_modules_are_NEW_P2_01F_not_historical":True,
         "P2_01H_selfcheck_source_sha256":
             sha_file(context/"oci-import-only-selfcheck.py"),
@@ -211,9 +238,11 @@ def prepare_context(base_doc, wheelhouse, hash_lock, sealed_native, context):
         "FROM "+base["reference"]+"\n"
         "COPY python-runtime/ /opt/hostedtoolcache/Python/3.12.16/x64/\n"
         "COPY new-native/ /opt/p2-native/\n"
+        "COPY selected-host-libraries/ /opt/p2-hostlibs/\n"
         "COPY runtime-manifest.json /opt/p2-runtime-manifest.json\n"
         "COPY oci-import-only-selfcheck.py /opt/p2-oci-selfcheck.py\n"
         "ENV PATH=/opt/hostedtoolcache/Python/3.12.16/x64/bin:$PATH\n"
+        "ENV LD_LIBRARY_PATH=/opt/p2-hostlibs:/opt/hostedtoolcache/Python/3.12.16/x64/lib\n"
         "ENV PYTHONDONTWRITEBYTECODE=1\n"
         "ENV PYTHONNOUSERSITE=1\n"
         "WORKDIR /opt\n"
