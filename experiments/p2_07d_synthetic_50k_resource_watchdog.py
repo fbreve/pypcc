@@ -440,6 +440,46 @@ def scratch_bytes(directory):
     return sum(x.stat().st_size for x in Path(directory).rglob("*") if x.is_file())
 
 
+def poll_subprocess_and_enforce(process,directory,bounds,seconds_cap):
+    """Actual OS polling + termination, including deliberate synthetic fault probes."""
+    start=time.perf_counter()
+    max_peak=max_cpu=max_disk=0
+    samples=0
+    failure=None
+    while process.poll() is None:
+        elapsed=time.perf_counter()-start
+        metrics=measure_child(process)
+        if metrics is not None:
+            max_peak=max(max_peak,metrics["peak_bytes"])
+            max_cpu=max(max_cpu,metrics["cpu_s"])
+            samples+=1
+        max_disk=max(poll["max_disk_bytes"],scratch_bytes(directory))
+        if elapsed>seconds_cap:
+            failure="watchdog_wall_time"
+        elif max_peak>bounds["max_one_fit_peak_process_resident_bytes"]:
+            failure="watchdog_peak_process_memory"
+        elif max_cpu>bounds["max_one_fit_process_cpu_seconds"]:
+            failure="watchdog_process_CPU"
+        elif max_disk>bounds["max_one_fit_scratch_bytes"]:
+            failure="watchdog_scratch_disk"
+        if failure:
+            process.kill()
+            break
+        time.sleep(POLL_SECONDS)
+    stdout,stderr=process.communicate()
+    return {
+        "failure":failure,
+        "returncode":process.returncode,
+        "wall_s":time.perf_counter()-start,
+        "max_peak_bytes":max_peak,
+        "max_cpu_s":max_cpu,
+        "max_disk_bytes":max(max_disk,scratch_bytes(directory)),
+        "samples":samples,
+        "stdout":stdout,
+        "stderr":stderr,
+    }
+
+
 def run_monitored_child(uci_id,backend,bounds,directory):
     """Parent OS watchdog; child is synthetic-only, never a real P1 seed/graph."""
     directory=Path(directory)
@@ -449,43 +489,18 @@ def run_monitored_child(uci_id,backend,bounds,directory):
              "experiments.p2_07d_synthetic_50k_resource_watchdog",
              "--child","--uci-id",str(uci_id),"--backend",backend,
              "--output",str(out)]
-    start=time.perf_counter()
     process=subprocess.Popen(command,cwd=ROOT,stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,text=True,errors="replace")
-    max_measured_peak=0
-    max_cpu=0.0
-    max_disk=0
-    samples=0
-    failure=None
-    while process.poll() is None:
-        elapsed=time.perf_counter()-start
-        metrics=measure_child(process)
-        if metrics is not None:
-            max_measured_peak=max(max_measured_peak,metrics["peak_bytes"])
-            max_cpu=max(max_cpu,metrics["cpu_s"])
-            samples+=1
-        max_disk=max(max_disk,scratch_bytes(directory))
-        if elapsed>min(SYNTHETIC_ONLY_CHILD_CAP_SECONDS,
-                       2*bounds["max_one_fit_wall_seconds"]):
-            failure="Synthetic-only child exceeded separate bounded pilot watchdog"
-        elif max_measured_peak>bounds["max_one_fit_peak_process_resident_bytes"]:
-            failure="Observed whole process peak working set/RSS exceeded candidate cap"
-        elif max_cpu>bounds["max_one_fit_process_cpu_seconds"]:
-            failure="Observed synthetic child process CPU exceeded candidate cap"
-        elif max_disk>bounds["max_one_fit_scratch_bytes"]:
-            failure="Synthetic scratch directory exceeded candidate cap"
-        if failure:
-            process.kill()
-            break
-        time.sleep(POLL_SECONDS)
-    stdout,stderr=process.communicate()
-    wall=time.perf_counter()-start
-    if process.returncode != 0 or failure:
+    poll=poll_subprocess_and_enforce(
+        process,directory,bounds,
+        min(SYNTHETIC_ONLY_CHILD_CAP_SECONDS,
+            2*bounds["max_one_fit_wall_seconds"]))
+    if poll["returncode"] != 0 or poll["failure"]:
         raise SyntheticGuardBlocked(
-            (failure or "Synthetic-only child exited with nonzero status")+
-            "; rc="+str(process.returncode)+"; tail="+stderr[-2000:])
-    require(len(stdout.encode("utf-8"))<=bounds["max_one_fit_text_log_bytes"] and
-            len(stderr.encode("utf-8"))<=bounds["max_one_fit_text_log_bytes"],
+            (poll["failure"] or "Synthetic-only child exited with nonzero status")+
+            "; rc="+str(poll["returncode"])+"; tail="+poll["stderr"][-2000:])
+    require(len(poll["stdout"].encode("utf-8"))<=bounds["max_one_fit_text_log_bytes"]
+            and len(poll["stderr"].encode("utf-8"))<=bounds["max_one_fit_text_log_bytes"],
             "Synthetic process emitted an unexpectedly large stdout/stderr log")
     require(out.is_file() and
             out.stat().st_size<=bounds["max_one_fit_aggregate_json_bytes"],
@@ -500,9 +515,9 @@ def run_monitored_child(uci_id,backend,bounds,directory):
             and result.get("backend")==backend,
             "Child produced no valid bounded artificial 50k case")
     require(0<peak<=bounds["max_one_fit_peak_process_resident_bytes"] and
-            max(max_cpu,result["entire_child_CPU_seconds"]) <=
+            max(poll["max_cpu_s"],result["entire_child_CPU_seconds"]) <=
             bounds["max_one_fit_process_cpu_seconds"] and
-            wall<=min(SYNTHETIC_ONLY_CHILD_CAP_SECONDS,
+            poll["wall_s"]<=min(SYNTHETIC_ONLY_CHILD_CAP_SECONDS,
                       2*bounds["max_one_fit_wall_seconds"]) and
             scratch_bytes(directory)<=bounds["max_one_fit_scratch_bytes"],
             "Final synthetic resource cap check failed")
@@ -523,12 +538,12 @@ def run_monitored_child(uci_id,backend,bounds,directory):
             result["per_fit_original_and_observer_evidence"]["observed"][
                 "snapshot_arrays_bytes"],
         "whole_process_peak_bytes":peak,
-        "OS_parent_max_observed_peak_bytes":max_measured_peak,
-        "OS_parent_max_observed_CPU_s":max_cpu,
-        "OS_parent_sample_count":samples,
+        "OS_parent_max_observed_peak_bytes":poll["max_peak_bytes"],
+        "OS_parent_max_observed_CPU_s":poll["max_cpu_s"],
+        "OS_parent_sample_count":poll["samples"],
         "entire_child_process_cpu_s":result["entire_child_CPU_seconds"],
-        "parent_observed_entire_child_wall_s":wall,
-        "peak_scratch_directory_bytes":max(max_disk,scratch_bytes(directory)),
+        "parent_observed_entire_child_wall_s":poll["wall_s"],
+        "peak_scratch_directory_bytes":max(poll["max_disk_bytes"],scratch_bytes(directory)),
         "same_backend_full_state_and_prediction_parity":True,
         "NumPy_or_Numba_next_RNG_check":
             backend in ("numpy","numba"),
