@@ -1,0 +1,159 @@
+name: Research P2-01E replay EXACT archived candidate wheels and original Cython native bytes (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01e_replay_archived_wheelhouse.py'
+      - 'experiments/test_p2_01e_replay_archived_wheelhouse.py'
+      - 'docs/current_p2_01e_exact_candidate_wheel_replay_2026-11-13.md'
+      - '.github/workflows/research-p2-01e-offline-wheelhouse-original-native-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  archive-exact-candidate-wheels:
+    name: exact prior candidate wheels/native (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.12.16'
+          - os: windows-latest
+            python: '3.12.10'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify original P1 and unchanged production source Git blobs, no graph/fit
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight --output p2-01e-original-source-check.json
+      - name: Download EXACT already archived 13 wheels + SHA manifest from original P2-01D #264
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-${{ matrix.os }}-run43447245129
+          path: p2-01d-exact-wheelhouse
+          run-id: 43447245129
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Stdlib-only adversarial archive/package metadata and no-execution tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01e_replay_archived_wheelhouse -v
+      - name: Validate all 13 exact prior wheel bytes/SHA and derive hash-locked offline requirements
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-exact-wheelhouse \
+            --requirements-out p2-01e-exact-offline-sha256-requirements.txt
+      - name: Install dependencies entirely from archived wheelhouse (NO PyPI, no unpinned wheels)
+        shell: bash
+        run: |
+          python -m pip install --no-index --no-deps --require-hashes --only-binary=:all: \
+            --find-links=p2-01d-exact-wheelhouse/p2-01d-candidate-wheels \
+            -r p2-01e-exact-offline-sha256-requirements.txt
+          python -m pip check
+      - name: Download and reuse original P2-01C imported native binaries, never rebuild
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01c-candidate-native-${{ matrix.os }}-py312-run43434870932
+          path: p2-01c-original-native
+          run-id: 43434870932
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify exact imported native .so/.pyd hashes, ABI, static dependency names and candidate wheel compatibility
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-exact-wheelhouse \
+            --requirements-out p2-01e-exact-offline-sha256-requirements.txt \
+            --original-native-artifact p2-01c-original-native \
+            --output p2-01e-exact-wheel-replay-import-report.json
+          python -m pip freeze --all > p2-01e-pip-freeze-all.txt
+      - name: Fail closed on missing wheels, original native import, retroactive claim or final P2 approval
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p2-01e-exact-wheel-replay-import-report.json')); assert r['status']=='EXACT_P2_01D_CANDIDATE_WHEELS_REPLAYED_P2_01C_NATIVE_BYTES_IMPORTED_NO_FITS'; assert r['wheel_bytes_for_THIS_new_candidate_replay_verified'] and r['no_network_dependency_wheel_install_in_this_workflow']; assert len(r['exact_archived_candidate_wheel_inventory'])==13 and len(r['original_native_imports_and_dependency_names'])==2; assert r['real_wheel_archive_older_P2_01C_identity_NOT_proved']; assert r['resolved_OS_or_SDK_DSO_bytes_NOT_sealed'] and r['compiler_or_SDK_executable_bytes_NOT_sealed']; assert not r['P2_01_final_execution_environment_lock_pass'] and not r['P2_07_full_resources_gate_pass']; assert r['real_source_datasets_loaded']==0 and r['graph_mask_constructed']==0 and r['PCC_propagations_executed']==0 and r['PCC_real_data_fits_executed']==0; assert r['P2_execution_preflight_sha256'] is None and not r['P2_execution_authorized']"
+      - name: Archive only verified wheel SHA manifest and native ABI/import proof, never duplicate wheel binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01e-offline-wheel-replay-native-import-${{ matrix.os }}-py312
+          path: |
+            p2-01e-original-source-check.json
+            p2-01e-exact-offline-sha256-requirements.txt
+            p2-01e-exact-wheel-replay-import-report.json
+            p2-01e-pip-freeze-all.txt
+          retention-days: 30
+          if-no-files-found: error
+
+  verify-two-candidate-OS:
+    name: Verify both platform candidate hashes/imports and preserve false final GO
+    needs: archive-exact-candidate-wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-01e-offline-wheel-replay-native-import-*-py312
+          path: p2-01e-two-platforms
+      - name: Ensure same 13 version pins and different OS-correct original native bytes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("p2-01e-two-platforms")
+          def load(os):
+              return json.loads((root/
+                 ("p2-01e-offline-wheel-replay-native-import-"+os+"-py312")/
+                 "p2-01e-exact-wheel-replay-import-report.json").read_text(encoding="utf-8"))
+          linux, windows=load("ubuntu-latest"),load("windows-latest")
+          assert linux["P1_scientific_sha256"]==windows["P1_scientific_sha256"]
+          assert linux["python"]["version"]=="3.12.16"
+          assert windows["python"]["version"]=="3.12.10"
+          assert linux["installed_candidate_versions"]==windows["installed_candidate_versions"]
+          assert len(linux["installed_candidate_versions"])==13
+          for p in (linux,windows):
+              assert p["reused_old_native_binaries_not_recompiled"]
+              assert p["wheel_bytes_for_THIS_new_candidate_replay_verified"]
+              assert p["real_wheel_archive_older_P2_01C_identity_NOT_proved"]
+              assert not p["P2_01_final_execution_environment_lock_pass"]
+              assert p["P2_execution_preflight_sha256"] is None
+              assert not p["P2_execution_authorized"]
+          report={
+              "schema":"pypcc-P2-01E-exact-offline-candidate-OS-replay/v1",
+              "P1_scientific_sha256":linux["P1_scientific_sha256"],
+              "candidate_package_version_pins_equal_across_OS":True,
+              "exact_platform_candidate_wheel_bytes_and_original_native_SHA_imported":True,
+              "Linux_Python_patch":"3.12.16","Windows_Python_patch":"3.12.10",
+              "original_P2_01C_wheel_bytes_retroactively_proved":False,
+              "full_build_toolchain_OS_ABI_hash_lock_proved":False,
+              "P2_01_final_execution_environment_lock_pass":False,
+              "P2_execution_preflight_sha256":None,
+              "P2_execution_authorized":False,
+              "real_PCC_fits_executed":0,
+          }
+          Path("p2-01e-candidate-cross-os-replay.json").write_text(
+              json.dumps(report,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print("PASS: original archived candidate wheel bytes replayed offline; original native imports verified on both OS; P2 execution still BLOCKED")
+          PY
+      - name: Preserve two-platform dependency byte replay proof, no native/wheel files
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01e-exact-offline-candidate-two-OS-proof
+          path: p2-01e-candidate-cross-os-replay.json
+          retention-days: 30
+          if-no-files-found: error
