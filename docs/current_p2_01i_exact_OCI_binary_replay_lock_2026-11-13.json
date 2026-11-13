@@ -1,0 +1,53 @@
+{
+  "schema": "pypcc-P2-01I-verified-OCI-binary-only-replay-lock/v1",
+  "status": "LOCK_EXACT_ALREADY_TRANSPORTED_OCI_ARCHIVE_NOT_A_NEW_OS_BUILD_OR_P2_GO",
+  "P1_scientific_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+  "source_PR": 276,
+  "source_PR_head": "70ddf6b398df5ddf0cc89766c5e01c7822fdbdf5",
+  "validated_source_workflow_run": 43516085668,
+  "source_action_artifact": {
+    "id": 14081565237,
+    "name": "p2-01h-transportable-OCI-image-and-safe-provenance",
+    "github_archive_sha256": "cbca5754de9b32048254b0875bffb30ac3bd6510df3168eeff6fb44fe203dead",
+    "expires_utc": "2026-12-13T22:06:39Z"
+  },
+  "validated_separate_host_receipt_artifact": {
+    "id": 14080014146,
+    "name": "p2-01h-separate-host-reloaded-container-import-only-receipt",
+    "github_archive_sha256": "826a6e89cf9e6bc9eb778ddd199d34fb92c7960e4c54eb757d3b0f72832af0dd"
+  },
+  "docker_save_gzip_archive": {
+    "filename": "p2-01h-exact-runtime-image.tar.gz",
+    "sha256": "008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8",
+    "original_image_config_id": "sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+  },
+  "base_oci_ref_exact": "ubuntu@sha256:065aa8626841f16057b78b027b464cd59c4fac36c204c72dcbf48d66f5fa8a96",
+  "copied_CP312_runtime_tree_SHA256": "cd4be74d169340445a87c34c1dace8e92598ab87b1625ea52ee8d31bad1590a7",
+  "copied_CP312_runtime_file_entries": 19199,
+  "candidate_python_version": "3.12.16",
+  "later_P2_01D_wheels_count": 13,
+  "exact_new_P2_01F_Cython_native_SHA256": {
+    "production_pcc_step": "cec70629e10b1f6e9f53274d571a52ad2177d31b89d2c189840f3abda2944a8a",
+    "isolated_pcc_step_live_research": "1ea9f1c151df795071b3fe449df2a3e35ab72bb79156b073df9f8297c66d899f"
+  },
+  "original_native_python_import_helper_Git_blob_SHA1": {
+    "pcc_metrics.py": "967353fc0f6ee88c8f26bbde6266645e6de9aa3b",
+    "pcc_validation.py": "b98510431c2281463988321fb7f1b6b159a5f77d"
+  },
+  "last_successful_import_only_mapped_file_count": 170,
+  "exact_archived_image_reimport_from_second_CI_runner_pass": true,
+  "different_image_rebuilds_had_different_Python_tree_SHA256": true,
+  "floating_base_tag_re_resolution_for_THIS_binary_replay_allowed": false,
+  "candidate_base_digest_locked_to_exported_binary": true,
+  "full_CPython_source_build_reproducibility_proven": false,
+  "full_OS_compiler_SDK_Numba_native_specialization_lock_proven": false,
+  "approved_execution_host_selected": false,
+  "real_UCI_50k_resource_bound_proven": false,
+  "durable_image_binary_archive_beyond_GHA_retention": false,
+  "P2_01_final_execution_toolchain_lock_pass": false,
+  "P2_07_full_resources_gate_pass": false,
+  "P2_08_final_execution_manifest_SHA256": null,
+  "P2_execution_preflight_sha256": null,
+  "P2_execution_authorized": false,
+  "real_PCC_fits_executed": 0
+}
