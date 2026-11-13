@@ -220,7 +220,7 @@ def review_scientific_resolution(resolution, draft, packet):
             "neib_list" in rows[3]["graph"] and
             "CSR" in rows[3]["graph"] and
             "72 fits" in rows[4]["proposed_work"] and
-            "Exploratory" in rows[5]["recommend"].capitalize(),
+            "EXPLORATORY" in rows[5]["recommend"],
             "Unexpected proposed data/graph/statistical policy")
     require(draft["experimental_design"]["number_of_fits_if_approved_and_feasible"] == 72 and
             packet["candidate_shortlist_proposed_not_selected"][0]["dataset_id"] == 212 and
@@ -243,7 +243,7 @@ def review_scientific_resolution(resolution, draft, packet):
             "The scientific decision memo is NOT a signed P1/P2 authorization")
     require(len(resolution["remaining_nonnegotiable_gates"]) == 4 and
             resolution["scope_only"].startswith("NONE") and
-            "explicit" in resolution["next_action"].lower(),
+            "reviewer approval/rejection" in resolution["next_action"].lower(),
             "No bypass of explicit human and P2 approval gates")
     return {
         "scientific_resolution_review": "PASS_PENDING_HUMAN_DECISION",
