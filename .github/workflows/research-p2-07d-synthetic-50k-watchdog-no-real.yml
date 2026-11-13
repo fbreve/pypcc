@@ -1,0 +1,179 @@
+name: Research P2-07D NEW-native 50k SYNTHETIC resource watchdog, NO REAL UCI data
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07d_synthetic_50k_resource_watchdog.py'
+      - 'experiments/test_p2_07d_synthetic_50k_resource_watchdog.py'
+      - 'docs/current_p2_07d_synthetic_50k_resource_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07d-synthetic-50k-watchdog-no-real.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  guarded-synthetic-50k:
+    name: 50k artificial 9-case synthetic pair + resource stops (${{ matrix.os }}, CPython ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.12.16'
+          - os: windows-latest
+            python: '3.12.10'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Fetch unchanged original NumPy/Numba/Cython observers and original RNG helpers
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Verify frozen P1 scientific protocol/source identity before any synthetic code
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-07d-original-P1-source-check.json
+      - name: Download exact archived candidate wheelhouse P2-01D (NO replacement wheels)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-${{ matrix.os }}-run43447245129
+          path: p2-01d-exact-candidate-wheelhouse
+          run-id: 43447245129
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reverify all original candidate wheel hashes and generate offline SHA lock
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-exact-candidate-wheelhouse \
+            --requirements-out p2-07d-exact-candidate-hash-lock.txt
+      - name: Install all 13 exact archived packages with NO PyPI, no native source edit
+        shell: bash
+        run: |
+          python -m pip install --no-index --no-deps --require-hashes --only-binary=:all: \
+            --find-links=p2-01d-exact-candidate-wheelhouse/p2-01d-candidate-wheels \
+            -r p2-07d-exact-candidate-hash-lock.txt
+          python -m pip check
+      - name: Restore exact audited milestone observers and original synthetic RNG digest helpers
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/bench_live_numpy_fullfit.py > experiments/bench_live_numpy_fullfit.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/bench_live_numba_fullfit.py > experiments/bench_live_numba_fullfit.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+      - name: Download exact two NEW P2-01F candidate Cython binaries and build ledger (NOT historical binaries)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01f-PROSPECTIVE-new-native-toolchain-${{ matrix.os }}-py312-run43488066633
+          path: p2-01f-new-native-sealed-artifact
+          run-id: 43488066633
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tests including ACTUAL kill of four forced synthetic CPU/RSS/wall/disk violation processes
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07d_synthetic_50k_resource_watchdog -v
+      - name: Run nine 50k synthetic baseline/observer pairs, each with separate OS watchdog and append-only ledger
+        shell: bash
+        run: |
+          python -m experiments.p2_07d_synthetic_50k_resource_watchdog \
+            --native-artifact p2-01f-new-native-sealed-artifact \
+            --scratch-root p2-07d-synthetic-temporary \
+            --output p2-07d-nine-synthetic-50k-resource-results.json
+      - name: Fail closed on incomplete 9-case series, lack of parity, threshold failures or any real P2 GO
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p2-07d-nine-synthetic-50k-resource-results.json')); rows=r['synthetic_50k_original_vs_observed_results']; assert r['status']=='NINE_THREE_BACKEND_50K_SYNTHETIC_RESOURCE_CASES_PASS_NO_REAL_DATA_GO'; assert len(rows)==9; assert [(x['uci_dimension_reference_only'],x['backend']) for x in rows]==[(n,b) for n in (212,850,292) for b in ('numpy','numba','cython')]; assert len(r['new_native_binary_bytes'])==2 and len(r['original_unmodified_observer_sources'])==5; assert all(x['status']=='SYNTHETIC_PASS_WITHIN_PROPOSED_CAPS_NOT_REAL_GO' and x['same_backend_full_state_and_prediction_parity'] and x['synthetic_fit_count_original_plus_observed']==2 and x['real_PCC_fits_executed']==0 and x['observed_eight_snapshots_array_bytes']>0 and x['whole_process_peak_bytes']<=2*1024**3 and x['complete_synthetic_50k_fit_observed_wall_s']<1800 and x['peak_scratch_directory_bytes']<=1024**3 for x in rows); assert r['synthetic_PCC_fits_executed']==18 and r['real_PCC_fits_executed']==0; assert not r['real_UCI_data_loaded'] and not r['real_source_graph_or_masks_loaded']; assert not r['P2_07_full_resources_gate_pass'] and not r['P2_01_final_execution_toolchain_lock_pass'] and r['P2_execution_preflight_sha256'] is None and not r['P2_execution_authorized']"
+      - name: Save ONLY hashes and synthetic timing/RSS/disk metrics plus immutable no-retry attempt ledger
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07d-nine-synthetic-50k-watched-cases-${{ matrix.os }}-py312
+          path: |
+            p2-07d-original-P1-source-check.json
+            p2-07d-nine-synthetic-50k-resource-results.json
+            p2-07d-synthetic-temporary/append-only-50k-synthetic-attempts.ndjson
+          retention-days: 30
+          if-no-files-found: error
+
+  compare-platform-scope-only:
+    name: Confirm Linux/Windows nine 50k SYNTHETIC case scopes; no cross-OS speed claims
+    needs: guarded-synthetic-50k
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-07d-nine-synthetic-50k-watched-cases-*-py312
+          path: p2-07d-cross-platform
+      - name: Check exact case shapes and 8 snapshot points, but NEVER require CPU/RSS equality
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("p2-07d-cross-platform")
+          def read(os):
+              filename=(root/
+               ("p2-07d-nine-synthetic-50k-watched-cases-"+os+"-py312")/
+               "p2-07d-nine-synthetic-50k-resource-results.json")
+              return json.loads(filename.read_text(encoding="utf-8"))
+          linux,windows=read("ubuntu-latest"),read("windows-latest")
+          assert linux["P1_scientific_sha256"]==windows["P1_scientific_sha256"]
+          assert linux["candidate_P2_07C_policy_sha256"]==windows["candidate_P2_07C_policy_sha256"]
+          assert linux["artificial_workloads"]==windows["artificial_workloads"]
+          assert linux["full_P1_milestones_exactly"]==windows["full_P1_milestones_exactly"]==[0,1,10,100,1000,5000,25000,50000]
+          assert linux["platform"]["os"]=="Linux" and windows["platform"]["os"]=="Windows"
+          for r in (linux,windows):
+              assert r["synthetic_PCC_fits_executed"]==18 and r["real_PCC_fits_executed"]==0
+              assert len(r["synthetic_50k_original_vs_observed_results"])==9
+              assert r["one_synthetic_case_at_a_time"]
+              assert r["real_UCI_data_loaded"] is False
+              assert r["P2_07_full_resources_gate_pass"] is False
+              assert r["P2_execution_authorized"] is False
+          L=linux["synthetic_50k_original_vs_observed_results"]
+          W=windows["synthetic_50k_original_vs_observed_results"]
+          for a,b in zip(L,W):
+              for key in ("uci_dimension_reference_only","backend",
+                          "synthetic_graph_nodes","synthetic_particles","dense_width",
+                          "observed_eight_snapshots_array_bytes",
+                          "same_backend_full_state_and_prediction_parity"):
+                  assert a[key]==b[key], "Cross-OS synthetic case identity mismatch "+key
+          report={
+              "schema":"pypcc-P2-07D-two-OS-exact-50k-synthetic-watchdog-evidence/v1",
+              "frozen_P1_sha256":linux["P1_scientific_sha256"],
+              "same_9_artificial_workloads_on_both_OS":True,
+              "observed_array_snapshot_shapes_agree":True,
+              "per_OS_synthetic_50k_cases":9,
+              "per_OS_synthetic_full_fits_including_baselines":18,
+              "total_synthetic_fits_across_both_OS":36,
+              "forced_four_resource_violation_termination_tests_required_per_OS":True,
+              "time_memory_CPU_disk_not_required_to_match_cross_OS":True,
+              "no_50k_real_UCI_resource_upper_bound_proved":True,
+              "P2_07_full_resources_gate_pass":False,
+              "P2_execution_preflight_sha256":None,
+              "P2_execution_authorized":False,
+              "real_PCC_fits_executed":0,
+          }
+          Path("p2-07d-cross-platform-synthetic-50k-scope.json").write_text(
+              json.dumps(report,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print("PASS: two OS independently enforced candidate 50k synthetic 9-case budgets and retained false real-data P2 GO")
+          PY
+      - name: Archive cross-OS bounded synthetic evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07d-two-platform-synthetic-50k-resource-scope
+          path: p2-07d-cross-platform-synthetic-50k-scope.json
+          retention-days: 30
+          if-no-files-found: error
