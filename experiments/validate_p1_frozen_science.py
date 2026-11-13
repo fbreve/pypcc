@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN = ROOT / "docs/current_p1_frozen_scientific_protocol_2026-11-12.json"
+MANIFEST = ROOT / "docs/current_p1_scientific_sha_manifest_2026-11-12.json"
 DRAFT = ROOT / "docs/current_p1_prospective_design_draft_2026-11-12.json"
 DECISIONS = ROOT / "docs/current_p1_scientific_decision_packet_2026-11-12.json"
 REVIEW = ROOT / "docs/current_p1_scientific_resolution_for_review_2026-11-12.json"
@@ -228,6 +229,46 @@ def validate(frozen, draft, decisions, review, graph_bytes):
     }
 
 
+def verify_scientific_manifest(manifest, science_result):
+    """Fail closed if the SCIENCE hash changes after explicit human consent.
+
+    Updating SHA after editing protocol is NOT approval; it would require
+    a new explicit scientific decision, not automatic CI acceptance.
+    """
+    require(type(manifest) is dict and
+            manifest.get("schema") ==
+            "pypcc-P1-scientific-payload-sha-manifest/v1" and
+            manifest.get("approved_science_scope") ==
+            "EXPLORATORY_S1_TO_S6_ONLY" and
+            manifest.get("approved_by") ==
+            "project_maintainer_direct_in_conversation" and
+            manifest.get("approved_date_local") == "2026-11-12" and
+            "Sim, prossiga." in manifest.get("approval_evidence","") and
+            manifest.get("approved_payload_path") ==
+            "docs/current_p1_frozen_scientific_protocol_2026-11-12.json",
+            "P1 requires an explicit scoped reviewer approval record")
+    require(manifest.get("approved_P1_scientific_protocol_sha256") ==
+            "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166" and
+            manifest.get("approved_P1_scientific_protocol_sha256") ==
+            science_result["scientific_protocol_sha256"],
+            "Frozen P1 scientific payload changed; NEW HUMAN REVIEW REQUIRED")
+    require(manifest.get("approved_uci_dataset_ids") == [212,850,292] and
+            manifest.get("real_source_data_mask_or_graph_work_authorized") is False and
+            manifest.get("any_real_PCC_fit_authorized") is False and
+            manifest.get("P2_execution_authorized") is False and
+            manifest.get("P2_preflight_sha256") is None and
+            manifest.get("separate_explicit_P2_approval_required") is True and
+            manifest.get("local_prior_PCC_use_on_selected_sets") ==
+            "UNKNOWN_NOT_DECLARED_OR_VERIFIED" and
+            manifest.get("group_identifiers_patient_grain_batch_customer") ==
+            "NOT_VERIFIED" and
+            manifest.get("real_PCC_fits_executed") == 0,
+            "Scientific P1 freeze may not bypass P2 or assert novelty")
+    science_result["scientific_P1_SHA_manifest_matches_exact_approved_digest"] = True
+    science_result["P2_execution_authorized"] = False
+    return science_result
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--protocol",type=Path,default=FROZEN)
@@ -239,6 +280,9 @@ def main():
         json.loads(DECISIONS.read_text(encoding="utf-8")),
         json.loads(REVIEW.read_text(encoding="utf-8")),
         GRAPH.read_bytes(),
+    )
+    result=verify_scientific_manifest(
+        json.loads(MANIFEST.read_text(encoding="utf-8")), result,
     )
     value=json.dumps(result,sort_keys=True,indent=2)+"\n"
     if args.out:
