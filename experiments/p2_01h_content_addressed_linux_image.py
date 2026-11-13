@@ -270,6 +270,8 @@ def validate_image_receipt(receipt, manifest, image_inspection):
             manifest["copied_CP312_runtime_tree"]["sha256"] and
             receipt.get("python_version")=="3.12.16" and
             receipt.get("number_of_loaded_mapped_native_files",0)>=5 and
+            receipt.get("copied_separately_sealed_host_libffi_SHA256")==
+            manifest["copied_host_native_runtime_libraries"]["libffi.so.8"]["sha256"] and
             len(receipt.get("candidate_package_versions",{}))==13 and
             set(receipt.get("P2_01F_exact_new_native_imports",{}))==
             {"production_pcc_step","isolated_pcc_step_live_research"} and
