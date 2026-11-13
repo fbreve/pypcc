@@ -270,7 +270,8 @@ def validate_synthetic_pilot(report, system):
     actual = {}
     for x in samples:
         backend = x["backend"]
-        require(x.get("synthetic_only") is not False and
+        require(x.get("synthetic_graph_only") is True and
+                x.get("no_UCI_source_downloaded_or_parsed") is True and
                 x.get("synthetic_nodes") == 500 and
                 x.get("synthetic_pcc_iterations_per_fit") == 1000 and
                 x.get("synthetic_PCC_fits_did_execute") is True and
@@ -319,10 +320,8 @@ def validate_new_native(report, folder, system):
             report.get("P2_execution_preflight_sha256") is None,
             "New native candidate provenance cannot be treated as complete toolchain")
     packages = report.get("candidate_installed_package_versions", {})
-    require(type(packages) is dict and len(packages) == 13 and
-            packages.get("numpy") == "2.5.4" and
-            packages.get("Cython") == "3.3.1" if False else True,
-            "Candidate wheel versions drifted")
+    require(type(packages) is dict and len(packages) == 13,
+            "Candidate wheel inventory must contain all 13 reviewed packages")
     # Frozen installed inventory uses normalized lowercase distribution keys.
     require(packages.get("numpy") == "2.5.4" and
             packages.get("cython") == "3.3.1" and
