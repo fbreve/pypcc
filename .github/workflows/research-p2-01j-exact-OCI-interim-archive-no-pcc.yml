@@ -46,15 +46,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12.16'
-      - name: Verify actual configured GitHub Actions artifact retention policy; never assume 90d is available
+      - name: Try to read repo retention setting; on API 403 request 90d explicitly WITHOUT claiming approval
         id: repo_policy
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api /repos/fbreve/pypcc/actions/permissions/artifact-and-log-retention \
-            > p2-01j-repository-current-artifact-policy.json
-          python - <<'PY' >> "$GITHUB_OUTPUT"
+          if gh api /repos/fbreve/pypcc/actions/permissions/artifact-and-log-retention \
+              > p2-01j-repository-current-artifact-policy.json 2> p2-01j-policy-probe-error.txt; then
+            python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from experiments import p2_01j_verified_interim_oci_archive as a
           d=json.load(open("p2-01j-repository-current-artifact-policy.json"))
@@ -63,6 +63,12 @@ jobs:
           print("configured_days="+str(obj["repo_configured_retention_days"]))
           print("maximum_days="+str(obj["repo_maximum_allowed_days"]))
           PY
+          else
+            echo "WARNING: GITHUB_TOKEN cannot read repository retention policy; 90 days is a REQUEST, not a verified setting."
+            echo 'days=90' >> "$GITHUB_OUTPUT"
+            echo 'configured_days=unknown' >> "$GITHUB_OUTPUT"
+            echo 'maximum_days=90' >> "$GITHUB_OUTPUT"
+          fi
       - name: Download exact original source P2-01H complete OCI binary, never rebuild or pull a base tag
         uses: actions/download-artifact@v4
         with:
@@ -82,10 +88,14 @@ jobs:
       - name: Verify whole existing 290MB tar SHA, exact image config ID, original lock SHA and prior two host receipts, ZERO PCC
         shell: bash
         run: |
+          EXTRA=()
+          if [ "${{ steps.repo_policy.outputs.configured_days }}" != "unknown" ]; then
+            EXTRA+=(--repo-retention-days "${{ steps.repo_policy.outputs.configured_days }}")
+          fi
           python -m experiments.p2_01j_verified_interim_oci_archive \
             --source-artifact-dir p2-01j-original-validated-OCI-archive \
             --prior-replay-dir p2-01j-original-P2-01H-second-host-proof \
-            --repo-retention-days ${{ steps.repo_policy.outputs.configured_days }} \
+            "${EXTRA[@]}" \
             --repo-max-days ${{ steps.repo_policy.outputs.maximum_days }} \
             --output p2-01j-original-OCI-temporary-archive-receipt.json
       - name: Upload ONE verified identical original archive, temporary and within repo policy (no external registry)
@@ -99,7 +109,7 @@ jobs:
           retention-days: ${{ steps.repo_policy.outputs.days }}
           compression-level: 0
           if-no-files-found: error
-      - name: Explicitly record source/new GitHub artifact IDs without claiming durable storage
+      - name: Verify GitHub-accepted artifact ID and actual expiry after tentative retention request
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
