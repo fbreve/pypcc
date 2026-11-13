@@ -74,8 +74,10 @@ class SyntheticResourceBudgetTests(unittest.TestCase):
             "median_observed_cpu_s_per_fit": .000033,
         }
         numba = {**common,
+                 "fits_per_batch": common["fits_per_sample"],
                  "observed_over_baseline_ratio": 1.081967,
                  "nopython_observer_verified": True}
+        numba.pop("fits_per_sample")
         cython = {**common,
                   "mode": "no-stop",
                   "observed_effective_iterations": 1000,
