@@ -1,0 +1,60 @@
+name: Research P2-02A official frozen UCI archive/member SHA ONLY — no rows or PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_02a_official_uci_byte_integrity.py'
+      - 'experiments/test_p2_02a_official_uci_byte_integrity.py'
+      - 'docs/current_p2_02a_source_integrity_review_2026-11-13.md'
+      - '.github/workflows/research-p2-02a-uci-bytes-no-rows-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-frozen-sources:
+    name: official-uci-byte-gate (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve Git source objects for independent read-only P1 and production verification
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight --output p2-02a-source-pins.json
+      - name: Stdlib-only adversarial synthetic ZIP and P1 digest tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_02a_official_uci_byte_integrity -v
+      - name: HTTPS download ONLY three frozen official ZIPs, hash selected file without examining rows
+        shell: bash
+        run: |
+          python -m experiments.p2_02a_official_uci_byte_integrity --output p2-02a-official-zip-member-digests.json
+      - name: Fail closed on source mismatch and any implied graph/mask/PCC authorization
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('p2-02a-official-zip-member-digests.json')); assert p['status']=='THREE_EXACT_OFFICIAL_ZIPS_AND_MEMBERS_VERIFIED_NO_ROWS_OR_FITS'; assert p['selected_uci_ids_in_approved_order']==[212,850,292]; assert len(p['sources'])==3; assert p['source_zip_and_selected_member_integrity_pass']; assert not p['P2_02_entire_gate_pass']; assert not p['P2_02B_rows_columns_targets_and_original_order_verified']; assert p['PCC_propagations_executed']==0; assert p['real_PCC_fits_executed']==0; assert p['real_graphs_generated']==0; assert p['real_label_masks_generated']==0; assert not p['P2_execution_authorized']; assert p['P2_execution_preflight_sha256'] is None"
+      - name: Archive hash/HTTP provenance reports ONLY — no ZIP, workbook, raw records, models or graphs
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-02a-uci-byte-digests-${{ matrix.os }}-py312-run${{ github.run_id }}
+          path: |
+            p2-02a-source-pins.json
+            p2-02a-official-zip-member-digests.json
+          retention-days: 30
+          if-no-files-found: error
