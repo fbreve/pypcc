@@ -1,0 +1,258 @@
+name: Research P2-01H content-addressed Ubuntu26 + exact CPython native OCI substrate, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01h_content_addressed_linux_image.py'
+      - 'experiments/p2_01h_import_only_oci_selfcheck.py'
+      - 'experiments/test_p2_01h_content_addressed_linux_image.py'
+      - 'docs/current_p2_01h_pinned_linux_runtime_substrate_2026-11-13.md'
+      - '.github/workflows/research-p2-01h-content-addressed-oci-runtime-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  resolve-immutable-ubuntu-base:
+    name: Resolve exact Ubuntu26 Linux AMD64 OCI digest (no PCC)
+    runs-on: ubuntu-latest
+    outputs:
+      base_ref: ${{ steps.base.outputs.base_ref }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Pure-stdlib adversarial tests against floating tag and false-P2 approval
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01h_content_addressed_linux_image -v
+      - name: Pull ubuntu:26.04 ONCE for discovery, verify AMD64 and archive exact sha256 digest (not the tag)
+        id: base
+        shell: bash
+        run: |
+          python -m experiments.p2_01h_content_addressed_linux_image resolve \
+            --output p2-01h-content-addressed-ubuntu26-base.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          d=json.load(open("p2-01h-content-addressed-ubuntu26-base.json"))
+          print("base_ref="+d["OCI_base"]["reference"])
+          PY
+      - name: Preserve base manifest digest and exact image-config SHA (NO source rows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01h-immutable-ubuntu26-digest-discovery
+          path: p2-01h-content-addressed-ubuntu26-base.json
+          retention-days: 30
+          if-no-files-found: error
+
+  compile-free-runtime-image:
+    name: Copy exact archived CPython 3.12.16 tree / 13 wheels / NEW Cython into pinned OCI image (NO PCC)
+    runs-on: ubuntu-latest
+    needs: resolve-immutable-ubuntu-base
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Frozen P1 production source Git identities are unchanged
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight \
+            --output p2-01h-original-P1-source-check.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-immutable-ubuntu26-digest-discovery
+          path: p2-01h-base-evidence
+      - name: Download ONLY exact previous P2-01D archived later candidate wheel bytes
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-ubuntu-latest-run43447245129
+          path: p2-01d-candidate-wheelhouse
+          run-id: 43447245129
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ONLY original P2-01F NEW Cython native candidate binaries, no recompilation
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01f-PROSPECTIVE-new-native-toolchain-ubuntu-latest-py312-run43488066633
+          path: p2-01f-new-native-original-seal
+          run-id: 43488066633
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Hash all 13 source wheels, prepare offline requirements
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-candidate-wheelhouse \
+            --requirements-out p2-01h-exact-13-candidate-wheel-hashes.txt
+      - name: Install all 13 EXACT previously archived candidate wheels strictly offline before binary runtime copy
+        shell: bash
+        run: |
+          python -m pip install --no-index --no-deps --require-hashes --only-binary=:all: \
+            --find-links=p2-01d-candidate-wheelhouse/p2-01d-candidate-wheels \
+            -r p2-01h-exact-13-candidate-wheel-hashes.txt
+          python -m pip check
+      - name: Resolve only pinned content-addressed base, not mutable ubuntu tag
+        shell: bash
+        env:
+          BASE_REF: ${{ needs.resolve-immutable-ubuntu-base.outputs.base_ref }}
+        run: |
+          python -c "import os,re; b=os.environ['BASE_REF']; assert re.fullmatch(r'ubuntu@sha256:[0-9a-f]{64}',b)"
+          docker pull --platform linux/amd64 "$BASE_REF"
+      - name: Stage FULL exact CPython tree and two verified NEW compiled modules, provenance manifest, digest-only Dockerfile
+        shell: bash
+        run: |
+          python -m experiments.p2_01h_content_addressed_linux_image prepare \
+            --base-json p2-01h-base-evidence/p2-01h-content-addressed-ubuntu26-base.json \
+            --wheelhouse p2-01d-candidate-wheelhouse \
+            --hash-requirements p2-01h-exact-13-candidate-wheel-hashes.txt \
+            --native-artifact p2-01f-new-native-original-seal \
+            --context-dir p2-01h-OCI-build-context \
+            --output p2-01h-exact-source-input-tree-ledger.json
+      - name: Build OCI candidate WITHOUT network or pulling mutable dependencies
+        shell: bash
+        run: |
+          docker build --network=none --pull=false --platform linux/amd64 \
+            --tag pypcc-p2-01h-candidate:immutable \
+            p2-01h-OCI-build-context
+      - name: Run contained import-only selfcheck with NO network / read-only filesystem / no capabilities
+        shell: bash
+        run: |
+          install -d -m 0777 p2-01h-first-container-receipt
+          docker run --rm --platform linux/amd64 --network none \
+            --read-only --pids-limit 256 --cap-drop ALL \
+            --security-opt no-new-privileges --memory 2g \
+            -e P2_01H_OUTPUT=/out/p2-01h-first-import-only-receipt.json \
+            -v "$PWD/p2-01h-first-container-receipt:/out" \
+            pypcc-p2-01h-candidate:immutable
+      - name: Verify actual image config SHA/arch, original archived runtime tree and strictly false final P2 GO
+        shell: bash
+        run: |
+          python -m experiments.p2_01h_content_addressed_linux_image verify \
+            --context-dir p2-01h-OCI-build-context \
+            --container-selfcheck p2-01h-first-container-receipt/p2-01h-first-import-only-receipt.json \
+            --output p2-01h-image-build-and-import-attestation.json
+      - name: Export WHOLE concrete image bytes in gzip tar bundle, not only a reproducible recipe
+        shell: bash
+        run: |
+          docker save pypcc-p2-01h-candidate:immutable | gzip -n -1 > p2-01h-exact-runtime-image.tar.gz
+          gzip -t p2-01h-exact-runtime-image.tar.gz
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          file=Path("p2-01h-exact-runtime-image.tar.gz")
+          d=json.load(open("p2-01h-image-build-and-import-attestation.json"))
+          d["exported_full_OCI_runtime_archive"]={
+            "filename":file.name,
+            "bytes":file.stat().st_size,
+            "sha256":hashlib.file_digest(file.open("rb"),"sha256").hexdigest(),
+            "compressed_format":"Docker save tar.gz",
+            "retention_only_30_days_not_durable_offsite_storage":True,
+          }
+          Path("p2-01h-image-build-and-import-attestation.json").write_text(
+            json.dumps(d,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+          print("Exported pinned-base candidate image:",d["newly_built_candidate_image_config_id"],
+                "file_sha256:",d["exported_full_OCI_runtime_archive"]["sha256"])
+          PY
+      - name: Retain COMPLETE importable OCI tar.gz and SAFE source/native identity reports (temporary)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01h-transportable-OCI-image-and-safe-provenance
+          path: |
+            p2-01h-exact-runtime-image.tar.gz
+            p2-01h-image-build-and-import-attestation.json
+            p2-01h-first-container-receipt/p2-01h-first-import-only-receipt.json
+            p2-01h-original-P1-source-check.json
+            p2-01h-exact-13-candidate-wheel-hashes.txt
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+
+  replay-exported-immutable-image:
+    name: Separate runner loads exported exact image OFFLINE and repeats full native import/byte hash (NO PCC)
+    runs-on: ubuntu-latest
+    needs: compile-free-runtime-image
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-transportable-OCI-image-and-safe-provenance
+          path: p2-01h-imported-candidate-image
+      - name: Check exported full image bytes, Docker load without network and require exact original config image identity
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib
+          root=Path("p2-01h-imported-candidate-image")
+          att=json.loads((root/"p2-01h-image-build-and-import-attestation.json").read_text(encoding="utf-8"))
+          image=root/"p2-01h-exact-runtime-image.tar.gz"
+          expected=att["exported_full_OCI_runtime_archive"]
+          assert image.is_file() and image.stat().st_size==expected["bytes"]
+          assert hashlib.file_digest(image.open("rb"),"sha256").hexdigest()==expected["sha256"]
+          assert att["P2_execution_preflight_sha256"] is None
+          assert not att["P2_execution_authorized"]
+          print("PASS: exact archived transportable image bytes are intact")
+          PY
+          docker load --input p2-01h-imported-candidate-image/p2-01h-exact-runtime-image.tar.gz
+          python - <<'PY'
+          import subprocess,json
+          from pathlib import Path
+          att=json.loads(Path("p2-01h-imported-candidate-image/p2-01h-image-build-and-import-attestation.json").read_text())
+          img=json.loads(subprocess.check_output(["docker","image","inspect","pypcc-p2-01h-candidate:immutable"],text=True))[0]
+          assert img["Id"]==att["newly_built_candidate_image_config_id"]
+          assert img["Os"]=="linux" and img["Architecture"]=="amd64"
+          print("PASS: exact original image config SHA reconstructed in a SEPARATE CI host")
+          PY
+      - name: In separate host run imported image read-only and network-disabled; require same exact CPython/new-native hashes
+        shell: bash
+        run: |
+          install -d -m 0777 p2-01h-replay-receipt
+          docker run --rm --platform linux/amd64 --network none \
+            --read-only --pids-limit 256 --cap-drop ALL \
+            --security-opt no-new-privileges --memory 2g \
+            -e P2_01H_OUTPUT=/out/replayed-image-import-only-receipt.json \
+            -v "$PWD/p2-01h-replay-receipt:/out" \
+            pypcc-p2-01h-candidate:immutable
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          source_candidates=list(Path("p2-01h-imported-candidate-image").rglob("p2-01h-first-import-only-receipt.json"))
+          assert len(source_candidates)==1, "Required exact initial receipt not uniquely present in exported GitHub artifact"
+          first=json.loads(source_candidates[0].read_text(encoding="utf-8"))
+          second=json.loads(Path("p2-01h-replay-receipt/replayed-image-import-only-receipt.json").read_text())
+          for key in ("status","OCI_base_pinned_index_digest",
+                      "copied_python_runtime_tree_sha256",
+                      "candidate_package_versions",
+                      "P2_01F_exact_new_native_imports"):
+              assert first[key]==second[key],key
+          assert first["P1_scientific_sha256"]==second["P1_scientific_sha256"]
+          assert first["P2_execution_preflight_sha256"] is None
+          assert second["P2_execution_preflight_sha256"] is None
+          assert not first["P2_execution_authorized"] and not second["P2_execution_authorized"]
+          assert first["real_PCC_fits_executed"]==second["real_PCC_fits_executed"]==0
+          print("PASS: separate runner imports exact same archived Python/native bytes without any network or PCC fit")
+          PY
+      - name: Archive only separate-host image transportability proof and false-P2-GO receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01h-separate-host-reloaded-container-import-only-receipt
+          path: p2-01h-replay-receipt/replayed-image-import-only-receipt.json
+          retention-days: 30
+          if-no-files-found: error
