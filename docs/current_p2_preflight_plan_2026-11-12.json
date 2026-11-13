@@ -1,0 +1,77 @@
+{
+  "schema": "pypcc-P2-execution-preflight-plan/v1",
+  "status": "PLANNED_NOT_EXECUTED_NO_FIT_NO_EXECUTION_APPROVAL",
+  "date": "2026-11-12",
+  "parent_science": {
+    "P1_approved_payload": "docs/current_p1_frozen_scientific_protocol_2026-11-12.json",
+    "P1_approved_manifest": "docs/current_p1_scientific_sha_manifest_2026-11-12.json",
+    "P1_scientific_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+    "P1_scope": "scientifically approved EXPLORATORY-only S1–S6",
+    "no_inference_or_source_changes": true
+  },
+  "technical_steps": [
+    {
+      "id": "P2_01_CODE_AND_VERSIONS",
+      "status": "NOT_EXECUTED",
+      "required": "Pin exact source and observer SHA for NumPy #253, Numba #255 and Cython #256, plus source-only backend preflight #257; record Python3.10/3.12, NumPy, SciPy, scikit-learn, Numba, Cython, C compiler/linker/ABI/OS architecture versions; do not assume current `master` has observer PRs merged.",
+      "blocking_rule": "Changed source ABI or unavailable native observer => STOP; no implicit fallback from Cython/Numba to other backend."
+    },
+    {
+      "id": "P2_02_OFFICIAL_SOURCES",
+      "status": "NOT_EXECUTED",
+      "required": "Retrieve only selected official UCI ZIP/files from P1 pinned hashes; fail closed on changed source/member; verify 310/900/440 rows, class code supports, original row order, seven Raisin features/worksheet and 3-class Vertebral task, derived Wholesale Channel excluded from X.",
+      "blocking_rule": "Source hash/label order/file names differ => STOP; no replacement, sorting or drift acceptance without new P1 science review."
+    },
+    {
+      "id": "P2_03_TRANSFORMED_FEATURES",
+      "status": "NOT_EXECUTED",
+      "required": "Compute exact approved float64 ddof=0 zscore for Vertebral/Raisin, log1p then ddof=0 zscore for six Wholesale spend features; reject missing/nonfinite/zero-variance; record raw X and transformed X content-order/dtype/shape SHA256.",
+      "blocking_rule": "Any implied row exclusion/clipping/outcome-informed processing => STOP. Never expose clinical rows in CI artifacts."
+    },
+    {
+      "id": "P2_04_KNN_GRAPH",
+      "status": "NOT_EXECUTED",
+      "required": "Build once per source using approved unchanged build_knn_graph k=10 Minkowski p=2 n_jobs=1; inspect self exclusion, positive degrees, undirected symmetry, exact ordered int64 dense neib_list with -1 padding and neib_qt. Pin graph SHA256 and build_graph installation path/consumer identity per backend.",
+      "blocking_rule": "Any ordering/tie differences between environments or active adjacency mismatches => STOP and report; no silent CSR or directed graph change."
+    },
+    {
+      "id": "P2_05_MASKS_AND_SEEDS",
+      "status": "NOT_EXECUTED",
+      "required": "Generate eight masks per dataset using approved PCG64 SeedSequence and exact per-class row ordering; 3 labels/class and identical active nodes per backend; serialize 24 mask hashes; verify domain-separated 72 native uint32 propagation seed values, backend names and label mapping; no particle propagation.",
+      "blocking_rule": "Masked-source labels, class supports, RNG implementation, mask or graph hash mismatch => STOP; no alternative seed after any outcome."
+    },
+    {
+      "id": "P2_06_NATIVE_OBSERVERS",
+      "status": "NOT_EXECUTED",
+      "required": "Compile and smoke-test isolated NumPy/Numba/Cython checkpoint observers against frozen synthetic fixtures, provenance and source hashes; require equivalence with unobserved same-backend trajectory, including seed state and state restore; check exact backend resolution, avoid silent fallback.",
+      "blocking_rule": "Observer/checkpoint parity or build fails in either required platform => STOP, no real-data fit."
+    },
+    {
+      "id": "P2_07_RESOURCE_AND_EXPORT_LIMITS",
+      "status": "NOT_EXECUTED",
+      "required": "Measure/estimate per dataset/backend graph, labels, state, eight snapshots, Python/native buffers, optional disk/CSV, CPU and memory, before a fit. Honor P1 draft 64MiB checkpoint snapshots per fit; separately budget whole-run peak resident memory, elapsed time, disk and log output for 72 prospective fits. No user records in export.",
+      "blocking_rule": "No verified CPU/RAM/disk budget or capacity, excessive checkpoint memory, exposure of original source rows, or undefined P2 time cap => STOP."
+    },
+    {
+      "id": "P2_08_SEALED_EXECUTION_GATE",
+      "status": "NOT_EXECUTED",
+      "required": "Create separate technical P2 immutable manifest/hash with versions, source/graph/mask/backend hashes, resource thresholds and complete preflight log; require explicit maintainer approval of exact P2 SHA before P3 first real PCC fit.",
+      "blocking_rule": "Without a distinct approved P2 SHA, real-data fit count stays zero. P1 science SHA is not execution authorization."
+    }
+  ],
+  "current_checks": {
+    "preflight_started": false,
+    "native_binaries_built_for_P2": false,
+    "source_data_loaded_under_P2": false,
+    "label_masks_generated_under_P2": false,
+    "real_knn_graph_generated_under_P2": false,
+    "actual_72_case_resource_budget_verified": false,
+    "all_8_gates_passed": false,
+    "preflight_SHA256": null,
+    "user_execution_approval_for_P2_SHA": false,
+    "any_real_PCC_fit_authorized": false,
+    "real_PCC_fit_count": 0
+  },
+  "approval_boundary": "P1 science approved only. Work under this document is planned technical preparation; executing actual PCC propagation against real data is forbidden until distinct explicit exact-P2-digest approval.",
+  "next_action": "Implement source/version/observer and graph/mask preflight within a separate NO-FIT technical branch or PR, with resource budget, then request exact-SHA execution consent. Do not merge experiment-only observers into production merely to run P1."
+}
