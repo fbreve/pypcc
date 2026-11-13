@@ -1,0 +1,139 @@
+name: Research P2-07B sealed native three-backend synthetic CPU / peak working-set (NO REAL DATA)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07b_isolated_synthetic_resource_pilot.py'
+      - 'experiments/test_p2_07b_isolated_synthetic_resource_pilot.py'
+      - 'docs/current_p2_07b_synthetic_cpu_rss_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07b-synthetic-cpu-rss-no-real-data.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sealed-benchmarks:
+    name: original paired synthetic CPU peak memory (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch immutable original observer/benchmark source commits without any production edit
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Verify frozen P1 and all original production/source hashes
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-07b-source-audit.json
+      - name: Install candidate 13-package Python3.12 dependency versions without rebuilding PCC
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt
+          python -m pip check
+      - name: Restore EXACT research observers and full-fit paired benchmark sources, not modified versions
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/bench_live_numpy_fullfit.py > experiments/bench_live_numpy_fullfit.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/bench_live_numba_fullfit.py > experiments/bench_live_numba_fullfit.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/bench_live_cython_fullfit.py > experiments/bench_live_cython_fullfit.py
+      - name: Download exact archived original+research Cython native bytes, never recompile
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01c-candidate-native-${{ matrix.os }}-py312-run43434870932
+          path: p2-01c-restored
+          run-id: 43434870932
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Adversarial synthetic input/CPU-measurement metadata contract unit tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07b_isolated_synthetic_resource_pilot -v
+      - name: In three distinct child processes run immutable SYNTHETIC full-fit A/B CPU and peak RAM only
+        shell: bash
+        run: |
+          python -m experiments.p2_07b_isolated_synthetic_resource_pilot \
+            --sealed-artifact-dir p2-01c-restored \
+            --output p2-07b-three-backend-synthetic-process-resource.json
+      - name: Require three exact sealed-original backends and false P2 GO
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('p2-07b-three-backend-synthetic-process-resource.json')); assert p['status']=='THREE_SYNTHETIC_BACKEND_PROCESS_MEASUREMENTS_NO_REAL_P2_GO'; assert set(x['backend'] for x in p['samples'])=={'numpy','numba','cython'}; assert p['P1_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'; assert p['no_real_UCI_data_loaded']; assert p['all_synthetic_observer_pair_parity_pass']; assert len(p['original_Cython_prod_and_research_binary_SHA256'])==2; assert all(x['synthetic_PCC_fits_did_execute'] and x['real_PCC_fits_executed']==0 and x['child_process_peak_resident_or_working_set']['peak_memory_bytes']>0 and x['verified_paired_cpu']['original_paired_benchmark_checked_within_own_backend'] for x in p['samples']); assert not p['P2_07_full_resources_gate_pass'] and not p['P2_07_real_fit_CPU_wall_budget_verified'] and not p['P2_07_real_fit_peak_RSS_budget_verified']; assert p['real_PCC_fits_executed']==0 and p['P2_execution_preflight_sha256'] is None and not p['P2_execution_authorized']"
+      - name: Preserve only synthetic timing/working-set metadata and native source provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07b-synthetic-three-backend-cpu-memory-${{ matrix.os }}-py312
+          path: |
+            p2-07b-source-audit.json
+            p2-07b-three-backend-synthetic-process-resource.json
+          retention-days: 30
+          if-no-files-found: error
+
+  two-platform-report-contract:
+    name: Verify both OS ran three different sealed original benchmark sources
+    runs-on: ubuntu-latest
+    needs: sealed-benchmarks
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-07b-synthetic-three-backend-cpu-memory-*-py312
+          path: p2-07b-reports
+      - name: Cross-platform provenance/parity scope only; do NOT equate RSS or CPU across operating systems
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("p2-07b-reports")
+          def load(os):
+              file=root/("p2-07b-synthetic-three-backend-cpu-memory-"+os+"-py312")/"p2-07b-three-backend-synthetic-process-resource.json"
+              return json.loads(file.read_text(encoding="utf-8"))
+          linux, windows=load("ubuntu-latest"),load("windows-latest")
+          assert linux["P1_scientific_sha256"]==windows["P1_scientific_sha256"]
+          assert linux["original_three_fullfit_benchmark_and_observer_pins"]==windows["original_three_fullfit_benchmark_and_observer_pins"]
+          assert [x["backend"] for x in linux["samples"]]==[x["backend"] for x in windows["samples"]]==["numpy","numba","cython"]
+          assert linux["candidate_python_patch_and_OS"]["os"]=="Linux"
+          assert windows["candidate_python_patch_and_OS"]["os"]=="Windows"
+          assert linux["all_synthetic_observer_pair_parity_pass"] and windows["all_synthetic_observer_pair_parity_pass"]
+          assert linux["memory_measurement_not_equivalent_across_Windows_Linux"]
+          assert windows["memory_measurement_not_equivalent_across_Windows_Linux"]
+          assert not linux["P2_07_full_resources_gate_pass"] and not windows["P2_07_full_resources_gate_pass"]
+          out={"schema":"pypcc-P2-07B-two-OS-synthetic-measurement-scope/v1",
+               "frozen_P1_scientific_SHA256":linux["P1_scientific_sha256"],
+               "both_OS_have_three_original_synthetic_backend_benchmarks":True,
+               "same_original_source_pins_across_OS":True,
+               "not_a_cross_OS_CPU_or_memory_equivalence_claim":True,
+               "not_a_real_P2_72_fit_CPU_or_RAM_bound":True,
+               "P2_07_full_resources_gate_pass":False,
+               "P2_execution_preflight_sha256":None,
+               "P2_execution_authorized":False,
+               "real_PCC_fits_executed":0}
+          Path("p2-07b-two-OS-synthetic-scope.json").write_text(
+              json.dumps(out,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print("PASS: 3 original synthetic same-backend parity/CPU/working-set pilots per OS; not P2 resource authorization")
+          PY
+      - name: Retain two-OS synthetic scope report, not raw source data
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07b-two-platform-synthetic-scope
+          path: p2-07b-two-OS-synthetic-scope.json
+          retention-days: 30
+          if-no-files-found: error
