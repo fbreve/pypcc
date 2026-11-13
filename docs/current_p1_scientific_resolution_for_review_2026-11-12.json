@@ -1,0 +1,114 @@
+{
+  "schema": "pypcc-p1-scientific-resolution-for-review/v1",
+  "as_of": "2026-11-12",
+  "status": "RECOMMENDED_FOR_EXPLICIT_SCIENTIFIC_DECISION_NOT_APPROVED",
+  "intent": "Complete finite scientific decision review for an exploratory 3-domain PCC label-stability experiment; a recommendation is not an approval, not a registry selection, and never a real-data fit authorization.",
+  "source_proposals": {
+    "design": "docs/current_p1_prospective_design_draft_2026-11-12.json",
+    "decisions": "docs/current_p1_scientific_decision_packet_2026-11-12.json",
+    "seed_analysis": "docs/current_p1_rng_and_exploratory_analysis_2026-11-12.md",
+    "public_history_one": "docs/current_p1_public_literature_exposure_2026-11-12.json",
+    "public_history_two": "docs/current_p1_additional_public_papers_2026-11-12.json",
+    "source_integrity_draft_PR": 260,
+    "scientific_design_draft_PR": 258
+  },
+  "recommendations": [
+    {
+      "id": "S1_DATASETS_AND_HISTORICAL_EXPOSURE",
+      "recommend": "RECOMMEND_FOR_EXPLORATORY_ONLY",
+      "proposed_uci_ids": [
+        212,
+        850,
+        292
+      ],
+      "domains": [
+        "patient_biomechanics",
+        "image_derived_grain_morphology",
+        "wholesale_customer_spending"
+      ],
+      "rationale": "Three distinct application domains, using one grain source (Raisin) rather than Rice plus Raisin. Resource-driven preference for smaller Raisin does not constitute performance-based selection.",
+      "mandatory_disclosure": "Public experimental-dataset descriptions examined in exactly TEN delimited sources (nine published studies plus one arXiv preprint) do not name these three candidates; other historical papers, theses, aliases, local/unpublished MATLAB/Python and collaborators were not exhaustively checked. This is an exploratory study, not a claim that datasets are novel or independently out-of-sample.",
+      "needs_human_acknowledgment": [
+        "Disclose any known earlier local PCC experiments on these datasets; if any, identify them as already-exposed and describe interpretation of P1 outcomes.",
+        "Accept that the absence of all undisclosed prior experiments cannot be certified."
+      ]
+    },
+    {
+      "id": "S2_TARGET_FEATURES_AND_PROVENANCE",
+      "recommend": "RECOMMEND_WITH_DISCLOSED_LIMITATIONS",
+      "proposed_targets": [
+        "Vertebral 3-class original ARFF Class",
+        "Raisin original Class",
+        "Wholesale derived Channel 1=HoReCa, 2=Retail"
+      ],
+      "feature_rule": "Use original numeric features; for Wholesale X=Fresh,Milk,Grocery,Frozen,Detergents_Paper,Delicassen, never Region or Channel as predictive feature. UCI metadata lists Region as target, so Channel is a prospectively defined derived task, NOT its default UCI target.",
+      "provenance_rule": "Attribute the CC BY 4.0 UCI sources appropriately, describe clinical patient-origin measurements, grains derived from images, customer spending records; no clinical reidentification or attempts to recover protected IDs.",
+      "limitations": "No subject, grain-acquisition-batch or customer-group IDs are verified; exact numeric duplicate screens and weak Region/Channel association do not establish statistical independence or a patient-level/generalization claim.",
+      "needs_human_acknowledgment": [
+        "Approve/reject the derived Channel task and the three-class Vertebral task.",
+        "Accept a strictly descriptive analysis given unavailable verified grouping identifiers, or reject the datasets that do not meet scientific provenance standards."
+      ]
+    },
+    {
+      "id": "S3_PREPROCESSING",
+      "recommend": "RECOMMEND_PROPOSED_OUTCOME_BLIND_RULE",
+      "numeric_rule": "All source rows in fixed original order. No label-informed feature processing or outlier removal. Apply population per-column z-score with ddof=0 to Vertebral and Raisin. Wholesale: require six nonnegative spending values, apply elementwise log1p, then the same ddof=0 population z-score. Fail closed on unexpected missing/nonfinite or zero-variance features; do not silently exclude rows.",
+      "transduction": "Potential unsupervised use of the entire X is a declared transductive protocol assumption; these transforms must be mathematically fixed before any outcomes, with exact versions and transformed X SHA sealed in later P2.",
+      "needs_human_acknowledgment": [
+        "Approve the log1p + z-score Wholesale transformation and per-column z-scores on other sources, with the transductive all-X scope.",
+        "Reject any post-hoc preprocessing changes driven by PCC results."
+      ]
+    },
+    {
+      "id": "S4_GRAPH_REPRESENTATION",
+      "recommend": "RECOMMEND_CURRENT_PRODUCTION_BEHAVIOR",
+      "graph": "Call unchanged build_knn_graph(X,k_nn=10,metric='minkowski',p=2,n_jobs=1) on transformed X. Preserve undirected symmetric neighbor relationships and deliberately dense ordered neib_list padded with -1. Temporary CSR creation is only an implementation detail of builder, not a propagation-format replacement.",
+      "integrity_checks": "Before first real fit, seal Git source blob and versions, verify no self-loop, symmetry, positive degree, correct actual active edges and exact ordered neighbor/mask/content SHA across backends; NearestNeighbors(algorithm='auto') may vary with tie ordering. Explicitly fix build_graph versus set_graph installation route and any inactive-padding conversion.",
+      "needs_human_acknowledgment": [
+        "Approve k=10 and unchanged production graph builder; any other choice requires prior revised science design.",
+        "Accept P2 no-fit graph identity checks as prerequisite and block on disagreement."
+      ]
+    },
+    {
+      "id": "S5_MASK_SEEDS_AND_OBSERVATION",
+      "recommend": "RECOMMEND_FIXED_HORIZON_REPLICATES",
+      "proposed_work": "3 candidate domains × 8 label masks × 3 backends = 72 fits if later approved and technically feasible; exactly 3 original nodes labeled per class, same source row/order and mask per dataset/replicate across backends.",
+      "rng": "PCG64 SeedSequence([20261112, dataset_registry_index, mask_replicate]) for sorted-class mask sampling, independently domain-separated nonzero uint32 SHA-256 seed per dataset/mask/backend native propagation. No expectation of cross-backend bitwise identity.",
+      "observation": "50000 iterations, no early stop; observe at [0,1,10,100,1000,5000,25000,50000], primary originally-unlabeled argmax flips at 5000→50000. Report exact tied maxima separately; first-class-index argmax on ties; label/feature/graph/mask hashes must be fixed before outcomes.",
+      "needs_human_acknowledgment": [
+        "Approve 3 labels/class, 8 masks, all native backends, fixed horizon and milestones only after an independent P2 resource budget.",
+        "Approve deterministic mask/native-seed recipes and cross-backend pairing on shared graph/mask rather than RNG trajectories."
+      ]
+    },
+    {
+      "id": "S6_ANALYSIS_AND_DECISION",
+      "recommend": "RECOMMEND_EXPLORATORY_DESCRIPTIVE_ONLY",
+      "primary": "Within each dataset×mask×backend: proportion of initially unlabeled nodes whose predicted argmax class changed at 5000 versus 50000.",
+      "summary": "Disclose every run and failure; per dataset/backend 8-mask values and mean, median, min, max; per backend unweighted average of three dataset means. Do not treat nodes or masks as independent application domains.",
+      "limits": "No CI, significance test, equivalence threshold, generalization claim, performance backend ranking, or stopping-rule optimization based on only 3 deliberately selected domains. Failure/partial execution remains in ledger; do not report unqualified 72-unit summary with missing cases.",
+      "needs_human_acknowledgment": [
+        "Approve an exploratory-only description and limits on claims.",
+        "If confirmatory inference is desired instead, design a separate prospectively approved study with independent domains and justified uncertainty."
+      ]
+    }
+  ],
+  "remaining_nonnegotiable_gates": [
+    "Maintainer explicitly reviews these six recommendations and acknowledges known unpublished/local prior use and missing patient/customer/batch IDs; no blind/automatic approval.",
+    "After scientific decisions, prepare versioned immutable P1 protocol payload and its separate scientific SHA; a draft or source-quality checksum is not a scientific approval.",
+    "Before any PCC fit, separate P2 exact-source/native-compiled-binary/environment/mask/graph/resource/output-privacy preflight and distinct P2 SHA.",
+    "Actual first-fit execution needs explicit authorization for the approved exact P2 SHA; no output can be retrospectively used to choose the design."
+  ],
+  "human_decision": {
+    "maintainer_approval": null,
+    "approval_timestamp": null,
+    "selected_dataset_ids": [],
+    "scientific_protocol_frozen": false,
+    "scientific_protocol_sha256": null,
+    "P2_execution_preflight_sha256": null,
+    "execution_authorized": false,
+    "real_PCC_fits_performed": 0,
+    "new_generation_of_source_masks_or_graphs_authorized": false
+  },
+  "scope_only": "NONE of these recommendations or tests certify data independence, establish scientific novelty, or imply permission to run real PCC data.",
+  "next_action": "Record reviewer approval/rejection or requested changes for S1–S6; only after decisions build frozen P1 protocol and later separately preflight P2. Do not spawn more unbounded historical audits or model runs in this stage."
+}
