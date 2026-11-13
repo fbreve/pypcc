@@ -1,0 +1,117 @@
+name: Research P2-01G Linux exact-native runtime DSO and host resource receipt — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01g_linux_host_runtime_receipt.py'
+      - 'experiments/test_p2_01g_linux_host_runtime_receipt.py'
+      - 'docs/current_p2_01g_linux_runtime_host_receipt_review_2026-11-13.md'
+      - '.github/workflows/research-p2-01g-linux-host-runtime-receipt-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  candidate-linux-runtime:
+    name: Observe actual Linux host + imported exact new native ELF/DSO bytes (no PCC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Fetch exact original research provenance and verify frozen P1 / production Git blobs
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight --output p2-01g-original-P1-production-source-check.json
+      - name: Test six stdlib-only native-source/false-GO failure-mode contracts
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01g_linux_host_runtime_receipt -v
+      - name: Download ONLY exact already archived P2-01D later 13-wheel candidate files
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-ubuntu-latest-run43447245129
+          path: p2-01d-later-candidate-wheelhouse
+          run-id: 43447245129
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ONLY the previously compiled NEW P2-01F candidate native binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01f-PROSPECTIVE-new-native-toolchain-ubuntu-latest-py312-run43488066633
+          path: p2-01f-new-sealed-native
+          run-id: 43488066633
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Derive hashed offline requirements from all thirteen original archived candidate wheel bytes
+        shell: bash
+        run: |
+          python -m experiments.p2_01e_replay_archived_wheelhouse \
+            --wheelhouse p2-01d-later-candidate-wheelhouse \
+            --requirements-out p2-01g-offline-original-candidate-sha-lock.txt
+      - name: Reinstall 13 exact archived wheel distributions OFFLINE / NO new native compile
+        shell: bash
+        run: |
+          python -m pip install --no-index --no-deps --require-hashes --only-binary=:all: \
+            --find-links=p2-01d-later-candidate-wheelhouse/p2-01d-candidate-wheels \
+            -r p2-01g-offline-original-candidate-sha-lock.txt
+          python -m pip check
+      - name: Import exactly archived P2-01F Cython without any propagation and hash actually mapped Linux DSO files + host RAM/disk
+        shell: bash
+        run: |
+          python -m experiments.p2_01g_linux_host_runtime_receipt \
+            --native-artifact p2-01f-new-sealed-native \
+            --wheelhouse p2-01d-later-candidate-wheelhouse \
+            --requirements-out p2-01g-offline-original-candidate-sha-lock.txt \
+            --output p2-01g-linux-import-only-host-native-file-byte-receipt.json
+      - name: Require 13 exact installed wheels, both NEW native imports and strictly false full environment/real execution GO
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, hashlib
+          f=Path('p2-01g-linux-import-only-host-native-file-byte-receipt.json')
+          r=json.loads(f.read_text(encoding='utf-8'))
+          assert r['schema']=='pypcc-P2-01G-linux-exact-native-runtime-DSO-receipt/v1'
+          assert r['P1_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'
+          assert r['Python']['system']=='Linux' and r['Python']['version']=='3.12.16'
+          assert r['candidate_policy_canonical_sha256']=='b2b7a969cf6349ec4c315cb2a91b72bf9a82868d4304a0575af246e9d85afc04'
+          assert len(r['candidate_exact_13_wheel_distribution_versions'])==13
+          assert len(r['exact_new_native_Cython_modules_imported_without_fit'])==2
+          assert r['number_of_file_backed_mapped_objects_observed']>=5
+          assert any('libc.so' in x['path'] for x in r['exact_file_backed_mapped_native_and_executable_hashes'])
+          assert all(len(x['sha256'])==64 and x['bytes']>0 for x in r['exact_file_backed_mapped_native_and_executable_hashes'])
+          host=r['host_observed_candidate_resource_capacity']
+          assert host['physical_RAM_bytes']>0 and host['free_space_on_work_dir_bytes']>0
+          assert host['candidate_limits_from_P2_07C_have_not_been_approved']
+          assert r['P2_01G_host_observation_not_an_immutable_OS_image']
+          assert not r['P2_01G_complete_lazy_dynamic_dependency_closure_hashed']
+          assert not r['P2_01_final_execution_toolchain_lock_pass']
+          assert not r['P2_07_full_resources_gate_pass']
+          assert r['P2_execution_preflight_sha256'] is None
+          assert not r['P2_execution_authorized']
+          assert r['official_UCI_sources_loaded']==0 and r['graph_or_mask_created']==0
+          assert r['synthetic_PCC_fits_executed']==r['real_PCC_fits_executed']==0
+          print('PASS: actual Linux imported-file hashes and resource receipt recorded; complete OS/toolchain/Numba JIT and final P2 execution remain BLOCKED')
+          PY
+      - name: Preserve ONLY runtime receipt hashes and exact source evidence (no wheel/native byte reuploads)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01g-Linux-import-only-mapped-DSO-and-candidate-host-receipt
+          path: |
+            p2-01g-original-P1-production-source-check.json
+            p2-01g-linux-import-only-host-native-file-byte-receipt.json
+            p2-01g-offline-original-candidate-sha-lock.txt
+          retention-days: 30
+          if-no-files-found: error
