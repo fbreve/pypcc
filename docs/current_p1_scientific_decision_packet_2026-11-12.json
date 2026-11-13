@@ -1,0 +1,213 @@
+{
+  "schema": "pypcc-p1-protocol-decision-packet/v0.1",
+  "status": "PROPOSAL_FOR_INDEPENDENT_SCIENTIFIC_REVIEW_NOT_APPROVED",
+  "date": "2026-11-12",
+  "purpose": "Turn the P1 scientific design into a finite review checklist with outcome-blind candidate and preprocessing proposals; this is not the frozen scientific protocol or an execution preflight.",
+  "linked_existing_draft": "docs/current_p1_prospective_design_draft_2026-11-12.json",
+  "linked_current_master_commit": "ea69f690208620d5563c8efece6b2e04369f52c0",
+  "evidence_branch": "research/current-p1-offline-fixture-and-matlab-audit-2026-11-12",
+  "evidence_head_commit": "096a6c127eeeaa6b37171c99824a7a80a040aa72",
+  "evidence_files": [
+    "docs/current_p1_official_uci_quality_results_2026-11-12.json",
+    "docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json",
+    "docs/current_p1_alternative_domain_quality_results_2026-11-12.json",
+    "docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json",
+    "docs/current_p1_public_literature_exposure_2026-11-12.json",
+    "docs/current_p1_additional_public_papers_2026-11-12.json"
+  ],
+  "candidate_shortlist_proposed_not_selected": [
+    {
+      "dataset_id": 212,
+      "name": "Vertebral Column",
+      "domain": "biomechanical_patient_measures",
+      "source_url": "https://archive.ics.uci.edu/static/public/212/vertebral%2Bcolumn.zip",
+      "source_zip_sha256": "899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f",
+      "selected_file_name": "column_3C_weka.arff",
+      "selected_file_sha256": "cf768854cf4cf42b3a3b792a239a81ebfd4fbfafc25fbe2a19d15b3f73249879",
+      "n_rows": 310,
+      "n_features": 6,
+      "class_support": {
+        "Hernia": 60,
+        "Normal": 100,
+        "Spondylolisthesis": 150
+      },
+      "original_target": "Class (three-class task; not the two-class ARFF)",
+      "proposed_X": "six numeric ARFF features in original source order",
+      "proposed_preprocessing": "population_zscore_original_numeric_features",
+      "scientific_blockers": [
+        "clinical patient provenance and reuse ethics",
+        "independence of patient records unverified",
+        "historical publications/local MATLAB data exposure audit incomplete"
+      ]
+    },
+    {
+      "dataset_id": 850,
+      "name": "Raisin",
+      "domain": "grain_image_shape",
+      "source_url": "https://archive.ics.uci.edu/static/public/850/raisin.zip",
+      "source_zip_sha256": "5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db",
+      "selected_file_name": "Raisin_Dataset.xlsx",
+      "selected_file_sha256": "9370b5f749a572a0bbeae15c93bf2e15c859b06d2626ae401b844c0a925fa553",
+      "n_rows": 900,
+      "n_features": 7,
+      "class_support": {
+        "Besni": 450,
+        "Kecimen": 450
+      },
+      "original_target": "Class",
+      "proposed_X": "seven numeric fields of Raisin_Grains_Dataset data worksheet only",
+      "proposed_preprocessing": "population_zscore_original_numeric_features",
+      "scientific_blockers": [
+        "independence of photographed grains/acquisition batches unverified",
+        "review prior research/publication exposure",
+        "one grain-image domain only: exclude Rice if Raisin later approved"
+      ]
+    },
+    {
+      "dataset_id": 292,
+      "name": "Wholesale Customers",
+      "domain": "annual_wholesale_spending",
+      "source_url": "https://archive.ics.uci.edu/static/public/292/wholesale%2Bcustomers.zip",
+      "source_zip_sha256": "647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8",
+      "selected_file_name": "Wholesale customers data.csv",
+      "selected_file_sha256": "c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef",
+      "n_rows": 440,
+      "n_features": 6,
+      "class_support": {
+        "1": 298,
+        "2": 142
+      },
+      "proposed_target": "Channel (1=HoReCa, 2=Retail), PROPOSED reinterpretation",
+      "source_metadata_target": "Region (must not present derived Channel task as original UCI default target)",
+      "proposed_X": [
+        "Fresh",
+        "Milk",
+        "Grocery",
+        "Frozen",
+        "Detergents_Paper",
+        "Delicassen"
+      ],
+      "excluded_X": [
+        "Region",
+        "Channel"
+      ],
+      "proposed_preprocessing": "log1p_nonnegative_then_population_zscore",
+      "scientific_blockers": [
+        "derived target Channel versus UCI metadata Region requires review",
+        "independence of customers and buying-group identities unverified",
+        "heavy-tail preprocessing not approved",
+        "review prior publication/local research exposure"
+      ]
+    }
+  ],
+  "not_shortlisted": [
+    {
+      "dataset_id": 545,
+      "name": "Rice Cammeo and Osmancik",
+      "reason": "Same grain-morphology domain as Raisin; 3810 rows versus Raisin 900; preference is resource/domain driven, not PCC outcomes; valid alternative if independently reviewed."
+    },
+    {
+      "dataset_id": 379,
+      "name": "Website Phishing",
+      "reason": "Nine categorical-coded predictors not continuous, 677 excess duplicate-feature rows and 48 distinct feature patterns with conflicting classes; requires categorical graph methodology."
+    }
+  ],
+  "preprocessing_candidate_rule_not_approved": {
+    "common": "No label-informed preprocessing, no row exclusion, no imputation if source values absent, no class balancing, no outlier clipping; preserve source row order. Each feature transformation uses all originally unlabeled-and-labeled source features only as a declared transductive unsupervised step.",
+    "population_zscore_original_numeric_features": "for each original numeric column: (x - mean_all_rows)/std_all_rows(ddof=0); refuse zero variance, nonfinite input or output",
+    "log1p_nonnegative_then_population_zscore": "for Wholesale only: require finite x>=0, x'=log1p(x), then columnwise population z-score as above; no clipping, deletion or fitted supervised step",
+    "implementation_versions": "Exact floating order, library versions, transformed X bytes and hash must be specified/frozen independently before P2",
+    "reviewed_and_approved": false
+  },
+  "graph_candidate_rule_not_approved": {
+    "source_file": "pcc_graph.py",
+    "source_git_blob_sha1": "3e8943462555b4feafbd162125b51e41f29d7ab7",
+    "call": "build_knn_graph(X, k_nn=10, metric='minkowski', p=2, n_jobs=1)",
+    "effective_nearest_neighbors_algorithm": "auto (internal sklearn.NearestNeighbors)",
+    "algorithm_note": "Production constructs k+1 nearest neighbors, drops first as presumed self, symmetrizes, temporarily uses CSR only to assemble adjacency, then returns dense padded neib_list(-1) and neib_qt. The PCC propagation consumes the dense representation; no CSR substitution.",
+    "undirected_symmetric": true,
+    "dense_padded_minus_one": true,
+    "cross_platform_graph_identity_not_yet_verified": true,
+    "before_P2_required": [
+      "confirm self-exclusion and absence of off-diagonal self-loops for each derived X",
+      "check all nodes positive degree and symmetry of active neighbors",
+      "hash complete ordered int64 neib_list/neib_qt, source features and transformed features",
+      "record exact sklearn/NumPy/SciPy/Python versions and source hash; fail closed on neighbor ordering drift",
+      "budget graph and checkpoint memory without a real PCC fit"
+    ],
+    "reviewed_and_approved": false
+  },
+  "scientific_design_preserved_from_P1_draft": {
+    "backend_count": 3,
+    "mask_repeats_per_dataset": 8,
+    "labeled_per_class": 3,
+    "horizon_iterations": 50000,
+    "early_stop": false,
+    "milestones": [
+      0,
+      1,
+      10,
+      100,
+      1000,
+      5000,
+      25000,
+      50000
+    ],
+    "primary_flip_window": [
+      5000,
+      50000
+    ],
+    "proposed_fit_count_if_all_approved": 72,
+    "evaluation_unit": "dataset x frozen mask x backend; nodes not independent replicates",
+    "per_backend_native_RNG": "different native streams, no cross-backend bitwise parity requirement"
+  },
+  "reviewer_decisions_remaining": [
+    "Review candidate shortlist after scoped TEN public experimental-source checks (9 published papers plus 2026 arXiv preprint) in two evidence registers; other articles, 2010 doctoral thesis, historical local MATLAB/Python/collaborator work and alternate dataset aliases remain unverified. The historical 20-dataset pypcc campaign is demonstrably nonexhaustive for all PCC publications. Explicitly disclose prior exposure; do not claim independently novel/confirmatory data from negative literal matches.",
+    "Approve task-specific label/feature mapping, especially Wholesale derived Channel and Vertebral three-class variant",
+    "Approve clinical/data-lineage/licensing attribution and whether subgroup identifiers can be obtained",
+    "Approve precise preprocessing mathematics/software implementations and k-NN graph construction, including observed graph hashes/ordering and undirected symmetry",
+    "Approve sample-size/8-mask/3-labeled-per-class and fixed horizon based on new independent resource estimates",
+    "Approve fixed label-mask and per-backend propagation seed generation without outcome-based tuning",
+    "Specify uncertainty/relevance reporting: descriptive exploratory by backend/dataset, no post-hoc inferential or equivalence claims",
+    "Issue separate explicit immutable scientific P1 approval after all blockers clear"
+  ],
+  "scientific_protocol_frozen": false,
+  "scientific_protocol_sha256": null,
+  "P2_execution_preflight_sha256": null,
+  "dataset_registry_selected": [],
+  "selected_dataset_count": 0,
+  "real_PCC_fits_executed": 0,
+  "execution_authorized": false,
+  "no_dataset_download_in_this_document": true,
+  "no_graph_construction_in_this_document": true,
+  "no_model_fit_in_this_document": true,
+  "publication_exposure_review_scope": {
+    "status": "THREE_PUBLIC_PAPERS_SCOPED_CHECK_ONLY",
+    "evidence_register": "docs/current_p1_public_literature_exposure_2026-11-12.json",
+    "reviewed_paper_ids": [
+      "BREVE_NEUROCOMPUTING_2015",
+      "GUERREIRO_ICCSA_2017",
+      "LETICIO_VISAPP_2025"
+    ],
+    "candidate_names_absent_in_these_three_papers_only": true,
+    "historical_20_dataset_inventory_is_exhaustive": false,
+    "all_prior_publications_or_unpublished_results_checked": false,
+    "patient_customer_batch_independence_verified": false,
+    "dataset_novelty_or_external_validation_approved": false,
+    "scientific_review_required_before_P1_freeze": true,
+    "additional_evidence_register": "docs/current_p1_additional_public_papers_2026-11-12.json",
+    "reviewed_additional_paper_ids": [
+      "BREVE_COMPLEX_2009",
+      "BREVE_IJCNN_2010",
+      "BREVE_TKDE_2012",
+      "BREVE_IJCNN_2012_CONCEPT_DRIFT",
+      "BREVE_IJCNN_2013_ACTIVE",
+      "BREVE_MLSP_2016",
+      "BREVE_PCC_GCN_ARXIV_2026"
+    ],
+    "sources_experiment_sections_checked_total": 10,
+    "additional_six_published_and_one_preprint_only": true,
+    "candidate_names_absent_in_ten_scoped_sources_only": true,
+    "all_pcc_papers_theses_or_local_experiments_checked": false
+  }
+}
