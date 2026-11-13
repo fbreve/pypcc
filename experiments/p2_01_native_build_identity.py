@@ -140,6 +140,14 @@ def record():
     require(generated.is_file(),
             "Isolated Cython research source did not materialize")
     source_generated_sha=sha256_file(generated)
+    # GitHub Actions on Windows can write the generated source as CRLF.
+    # This pinned LF digest proves the same Cython source was generated
+    # across platforms; actual platform-specific native binary SHAs differ.
+    canonical_generated=generated.read_bytes().replace(b"\r\n",b"\n")
+    canonical_generated_sha=hashlib.sha256(canonical_generated).hexdigest()
+    require(canonical_generated_sha ==
+            "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+            "Generated Cython observer source changed from exact frozen hotloops")
     versions=metadata_versions()
     require(all(versions[name] is not None for name in (
         "numpy","scipy","scikit-learn","numba","llvmlite",
@@ -164,6 +172,7 @@ def record():
         },
         "native_Cython_modules":compiled,
         "generated_isolated_Cython_pyx_sha256":source_generated_sha,
+        "generated_isolated_Cython_pyx_LF_canonical_sha256":canonical_generated_sha,
         "numba_synthetic_scalar_JIT":compiled_numba_smoke(),
         "P2_01_complete_native_version_lock":False,
         "cross_platform_exact_binary_identity_expected":False,
