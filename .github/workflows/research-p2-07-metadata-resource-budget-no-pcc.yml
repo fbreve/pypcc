@@ -1,0 +1,129 @@
+name: Research P2-07 metadata-only native snapshot/resource math NO DATA OR PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07_metadata_only_resource_budget.py'
+      - 'experiments/test_p2_07_metadata_only_resource_budget.py'
+      - 'docs/current_p2_07_metadata_only_resource_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07-metadata-resource-budget-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-observer-array-budget:
+    name: P2-07 archived-metadata-only budget (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch original frozen observer Git commits (source inspection only)
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12
+      - name: Retrieve only source-free P2-04/05 metadata archive from prior passing run
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-0405-frozen-graph-mask-hashes-${{ matrix.os }}-py312
+          path: p2-0405-input
+          run-id: 43475652889
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retrieve independently passing cross-platform concordance JSON only
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-0405-frozen-cross-platform-concordance
+          path: p2-0405-cross
+          run-id: 43475652889
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Adversarial synthetic accounting and false-GO fixture tests — NO model imports
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07_metadata_only_resource_budget -v
+      - name: Account 72 fitted-case plans from verified old hashes, WITHOUT DOWNLOADING DATASETS
+        shell: bash
+        run: |
+          python -m experiments.p2_07_metadata_only_resource_budget \
+            --p2-0405-metadata p2-0405-input/p2-0405-graph-mask-seed-digests.json \
+            --p2-0405-concordance p2-0405-cross/p2-0405-cross-platform-concordance.json \
+            --output p2-07-static-snapshot-and-budget.json
+      - name: Fail closed on unverified CPU/RSS/disk/whole-run budget and scientific authorization
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p2-07-static-snapshot-and-budget.json')); a=r['accounting']; g=r['safety_and_approval_gates']; assert a['total_intended_fits']==72 and a['total_proposed_PCC_iterations_all_fits']==3600000 and a['total_particle_update_opportunities_all_fits']==25200000; assert len(a['datasets'])==3 and len(r['original_frozen_model_and_observer_source_git_blobs'])==5; assert g['P2_07_snapshot_payload_within_original_64MiB_per_fit_cap']; assert not g['P2_07_full_resources_gate_pass'] and not g['P2_07_total_CPU_wall_time_budget_verified'] and not g['P2_07_native_backend_peak_RSS_budget_verified'] and not g['P2_07_real_fit_artifact_disk_and_log_budget_verified']; assert a['array_payload_not_a_process_RSS_upper_bound']; assert r['real_dataset_downloads_or_rows_loaded_in_P2_07']==0 and r['real_knn_graphs_built_in_P2_07']==0 and r['real_label_masks_sampled_in_P2_07']==0; assert r['PCC_particle_propagations_executed']==0 and r['PCC_real_data_fits_executed']==0; assert not r['P2_execution_authorized'] and r['P2_execution_preflight_sha256'] is None"
+      - name: Archive metadata-only resource accounting, no UCI source, graph, mask or PCC data
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07-metadata-only-snapshot-budget-${{ matrix.os }}-py312
+          path: p2-07-static-snapshot-and-budget.json
+          retention-days: 30
+          if-no-files-found: error
+
+  resource-concordance:
+    name: Compare static resource formulas across Linux/Windows (NO PCC)
+    needs: original-observer-array-budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-07-metadata-only-snapshot-budget-*-py312
+          path: p2-07-platforms
+      - name: Exact cross-OS equality of array budgets, while rejecting full-resource GO
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path("p2-07-platforms")
+          def report(os):
+              path=root/("p2-07-metadata-only-snapshot-budget-"+os+"-py312")/"p2-07-static-snapshot-and-budget.json"
+              return json.loads(path.read_text(encoding="utf-8"))
+          a,b=report("ubuntu-latest"),report("windows-latest")
+          assert a["original_frozen_model_and_observer_source_git_blobs"] == b["original_frozen_model_and_observer_source_git_blobs"]
+          assert a["actual_P2_04_05_graph_hashes"] == b["actual_P2_04_05_graph_hashes"]
+          assert a["accounting"] == b["accounting"]
+          assert a["safety_and_approval_gates"] == b["safety_and_approval_gates"]
+          assert a["safety_and_approval_gates"]["P2_07_snapshot_payload_within_original_64MiB_per_fit_cap"]
+          assert not a["safety_and_approval_gates"]["P2_07_full_resources_gate_pass"]
+          assert not a["P2_execution_authorized"] and not b["P2_execution_authorized"]
+          output={
+              "schema": "pypcc-P2-07-array-budget-cross-platform-concordance/v1",
+              "P1_scientific_sha256": a["P1_scientific_sha256"],
+              "source_P2_04_05_run_id": a["parent_P2_04_05_workflow_run"],
+              "static_budget_payloads_identical_cross_platform": True,
+              "total_planned_fits_not_executed": a["accounting"]["total_intended_fits"],
+              "maximum_one_fit_array_payload_bytes": a["accounting"]["maximum_hypothetical_co_resident_array_payload_bytes_any_one_fit"],
+              "all_72_full_snapshot_payload_bytes": a["accounting"]["total_eight_checkpoint_array_payloads_all_72_fits_bytes"],
+              "snapshot_64MiB_cap_pass": True,
+              "full_P2_07_resource_gate_pass": False,
+              "P2_execution_preflight_sha256": None,
+              "P2_execution_authorized": False,
+              "PCC_real_data_fits_executed": 0,
+          }
+          Path("p2-07-cross-platform-budget-concordance.json").write_text(
+              json.dumps(output,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          print("PASS: Static per-fit and 72-fit snapshot arithmetic agrees on both OS; full resource budget still BLOCKED.")
+          PY
+      - name: Retain cross-platform static accounting (NO SOURCE DATA)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07-cross-platform-resource-accounting-only
+          path: p2-07-cross-platform-budget-concordance.json
+          retention-days: 30
+          if-no-files-found: error
