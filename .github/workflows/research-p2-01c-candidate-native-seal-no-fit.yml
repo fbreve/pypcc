@@ -1,0 +1,83 @@
+name: Research P2-01C candidate Python 3.12 exact native byte archive (NO FITS)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01c_candidate_py312_requirements.txt'
+      - 'experiments/p2_01c_seal_artifacts.py'
+      - 'experiments/test_p2_01c_seal_artifacts.py'
+      - '.github/workflows/research-p2-01c-candidate-native-seal-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  py312-candidate-native-no-fit:
+    name: candidate-native-no-fit (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch independently pinned three-observer source heads
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+      - name: Read-only P1 and original production source-blob checks (NO FITS)
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-01c-source-audit.json
+      - name: Install candidate Python3.12 version pins without build isolation drift
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+          python -m pip check
+      - name: Copy only observer sources from original immutable Git objects
+        shell: bash
+        run: |
+          git show 6d908e78878c4922674277e3313dbfe7f7924146:experiments/live_numpy_milestones.py > experiments/live_numpy_milestones.py
+          git show 4c8e6df4e01d7a4dfc4efc31eb73db04d6e212e5:experiments/live_numba_milestones.py > experiments/live_numba_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/live_cython_milestones.py > experiments/live_cython_milestones.py
+          git show af34f50ebabb0a7204d3f30679adaf3f00169742:experiments/build_live_cython.py > experiments/build_live_cython.py
+      - name: Compile separate research Cython extension (NO PROPAGATION)
+        shell: bash
+        run: |
+          python -m experiments.build_live_cython
+      - name: Verify exact source, import extensions, compile scalar-only Numba smoke
+        shell: bash
+        run: |
+          python -m experiments.p2_01_native_build_identity --output p2-01c-native-smoke.json
+      - name: Stdlib-only adversarial seal unit tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01c_seal_artifacts -v
+      - name: Copy exact imported native binary bytes, record full provenance
+        shell: bash
+        run: |
+          python -m experiments.p2_01c_seal_artifacts --native-report p2-01c-native-smoke.json --output-dir p2-01c-seal
+          cp p2-01c-source-audit.json p2-01c-seal/source-audit.json
+      - name: Reject any false P2 approval or native artifact mismatch
+        shell: bash
+        run: |
+          python -c "import json,pathlib,hashlib; p=pathlib.Path('p2-01c-seal'); x=json.loads((p/'p2-01c-candidate-seal.json').read_text()); assert x['status']=='CANDIDATE_PY312_PACKAGE_PINS_AND_EXACT_NATIVE_BYTES_CAPTURED_NO_FITS'; assert not x['P2_execution_authorized']; assert x['P2_execution_preflight_sha256'] is None; assert not x['P2_01_complete_gate_pass']; assert not x['P2_06_observer_parity_pass']; assert x['PCC_fits_executed']==0; assert len(x['actual_imported_native_artifacts_retained'])==2; assert all(hashlib.sha256((p/b['relative_path']).read_bytes()).hexdigest()==b['sha256'] for b in x['actual_imported_native_artifacts_retained'].values())"
+      - name: Preserve *exact .so/.pyd bytes* and full JSON / freeze (temporary CI artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01c-candidate-native-${{ matrix.os }}-py312-run${{ github.run_id }}
+          path: p2-01c-seal/
+          retention-days: 30
+          if-no-files-found: error
