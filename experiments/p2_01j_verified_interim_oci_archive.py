@@ -60,7 +60,7 @@ def validate_receipt(receipt):
     require(receipt.get("schema")==
             "pypcc-P2-01J-exact-archived-image-interim-backup-receipt/v1"
             and receipt.get("status")==
-            "EXACT_PREVIOUS_CANDIDATE_OCI_BYTES_VERIFIED_FOR_TEMPORARY_PRIVATE_ACTIONS_ARTIFACT",
+            "EXACT_PREVIOUS_CANDIDATE_OCI_BYTES_VERIFIED_FOR_TEMPORARY_ACTIONS_ARTIFACT",
             "Not an original P2-01J research-only safe archive receipt")
     require(receipt.get("P1_scientific_sha256")==P1_SHA and
             receipt.get("locked_P2_01I_manifest_sha256")==LOCK_SHA and
@@ -118,7 +118,7 @@ def verify_source(artifact_root,prior_replay_root,setting_days,max_days):
     policy=retention_policy(setting_days,max_days)
     report={
         "schema":"pypcc-P2-01J-exact-archived-image-interim-backup-receipt/v1",
-        "status":"EXACT_PREVIOUS_CANDIDATE_OCI_BYTES_VERIFIED_FOR_TEMPORARY_PRIVATE_ACTIONS_ARTIFACT",
+        "status":"EXACT_PREVIOUS_CANDIDATE_OCI_BYTES_VERIFIED_FOR_TEMPORARY_ACTIONS_ARTIFACT",
         "P1_scientific_sha256":P1_SHA,
         "locked_P2_01I_manifest_sha256":LOCK_SHA,
         "original_P2_01H_successful_run":ORIGINAL_SOURCE_RUN,
