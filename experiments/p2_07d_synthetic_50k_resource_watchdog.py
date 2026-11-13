@@ -179,8 +179,7 @@ def synthetic_graph(nodes,width):
         dense[row,:len(active)] = active
     require(dense.flags.c_contiguous and
             int(degree.min())==10 and int(degree.max())==width and
-            bool((dense[np.arange(nodes)[:,None],
-                        np.arange(width)[None,:]>=degree[:,None]]==-1).all()),
+            bool((dense[np.arange(width)[None,:]>=degree[:,None]]==-1).all()),
             "Synthetic graph dense active/padding semantics drift")
     return dense,degree
 
