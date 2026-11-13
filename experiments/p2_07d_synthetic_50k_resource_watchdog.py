@@ -464,7 +464,7 @@ def poll_subprocess_and_enforce(process,directory,bounds,seconds_cap):
             max_peak=max(max_peak,metrics["peak_bytes"])
             max_cpu=max(max_cpu,metrics["cpu_s"])
             samples+=1
-        max_disk=max(poll["max_disk_bytes"],scratch_bytes(directory))
+        max_disk=max(max_disk,scratch_bytes(directory))
         if elapsed>seconds_cap:
             failure="watchdog_wall_time"
         elif max_peak>bounds["max_one_fit_peak_process_resident_bytes"]:
