@@ -1,0 +1,83 @@
+name: Research P2-01D retrospective compiler ledger + archived binary linkage and NEW wheel candidates (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01d_archived_binary_wheel_forensics.py'
+      - 'experiments/test_p2_01d_archived_binary_wheel_forensics.py'
+      - 'docs/current_p2_01d_original_build_log_facts_2026-11-13.json'
+      - '.github/workflows/research-p2-01d-forensic-wheel-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  historical-native-wheel-forensics-no-pcc:
+    name: archived-byte-linkage-wheel-candidates (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin unchanged P1 scientific protocol and original production source Git blobs
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12
+          python -m experiments.p2_01_source_platform_preflight --output p2-01d-source-audit.json
+      - name: Download newly selected platform-specific wheels, never mistake for original P2-01C installed bytes
+        shell: bash
+        run: |
+          mkdir -p p2-01d-candidate-wheels
+          python -m pip download --only-binary=:all: --no-deps \
+            -r experiments/p2_01c_candidate_py312_requirements.txt \
+            --dest p2-01d-candidate-wheels
+          python -m pip install --no-index --find-links=p2-01d-candidate-wheels \
+            -r experiments/p2_01c_candidate_py312_requirements.txt
+          python -m pip check
+      - name: Download exact preserved Cython native binaries from P2-01C, do not compile
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01c-candidate-native-${{ matrix.os }}-py312-run43434870932
+          path: p2-01c-restored
+          run-id: 43434870932
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify static ELF/PE and wheel parser against adversarial fabricated bytes
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01d_archived_binary_wheel_forensics -v
+      - name: Compare previously sealed SHA and read static dependencies, then inventory candidate wheel SHA
+        shell: bash
+        run: |
+          python -m experiments.p2_01d_archived_binary_wheel_forensics \
+            --sealed-artifact-dir p2-01c-restored \
+            --candidate-wheel-dir p2-01d-candidate-wheels \
+            --output p2-01d-native-and-wheels.json
+      - name: Reject any false final lock, PCC propagation, real-data fit or execution authorization
+        shell: bash
+        run: |
+          python -c "import json; x=json.load(open('p2-01d-native-and-wheels.json')); assert x['status']=='ARCHIVED_NATIVE_LINKAGE_OBSERVED_NEW_PLATFORM_WHEELS_HASHED_NOT_FINAL_P2_LOCK'; assert len(x['wheel_candidate_evidence'])==13; assert len(x['native_binaries_exactly_reused_not_recompiled'])==2; assert not x['original_compiler_toolchain_byte_hashes_sealed']; assert not x['original_dependency_wheel_bytes_sealed']; assert not x['system_DLL_or_SO_dependency_bytes_sealed']; assert not x['P2_01_entire_gate_pass']; assert x['P2_execution_preflight_sha256'] is None; assert not x['P2_execution_authorized']; assert not x['synthetic_PCC_invoked_in_this_workflow']; assert x['real_PCC_fits_executed']==0"
+      - name: Preserve new platform-specific candidate wheel bytes and retrospective static provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01d-new-candidate-wheels-and-native-static-${{ matrix.os }}-run${{ github.run_id }}
+          path: |
+            p2-01d-native-and-wheels.json
+            p2-01d-source-audit.json
+            p2-01d-candidate-wheels/*.whl
+          retention-days: 30
+          if-no-files-found: error
