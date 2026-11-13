@@ -1,0 +1,120 @@
+{
+  "schema": "pypcc-P2-01B-four-platform-native-observations/v1",
+  "status": "FOUR_NATIVE_BUILDS_AND_IMPORTS_PASS_NO_PCC_FITS_P2_NOT_APPROVED",
+  "date": "2026-11-12",
+  "research_PR": 261,
+  "exact_compiled_source_revision": "8cc129cf4ec969fc11238239a9a6431109f9ba2d",
+  "workflow_url": "https://github.com/fbreve/pypcc/actions/runs/43345609702",
+  "source_workflow_url": "https://github.com/fbreve/pypcc/actions/runs/43345609659",
+  "parent_approved_P1_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+  "target_env_proposed_only": "Python 3.12 with dependency-version locks across Linux/Windows; NOT approved as definitive execution environment",
+  "source_git_object_pins_verified_on_four_platforms": true,
+  "generated_source_canonical_lf_sha256": "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+  "native_builds": [
+    {
+      "os": "Linux",
+      "python": "3.10.22",
+      "dependency_versions": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "numba": "0.68.1",
+        "Cython": "3.3.1",
+        "setuptools": "79.0.1",
+        "llvmlite": "0.50.0",
+        "wheel": "0.48.0"
+      },
+      "cython_research_binary_sha256": "747fec50297da0373d97cad2cb18949109976dbcc04d747bf706f998a3046b0b",
+      "cython_production_binary_sha256": "31b8a8f703f450b5acc0c8c485d301bc9b89677b234ea6a35e42adb83c6af498",
+      "source_generated_canonical_LF_sha256": "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+      "isolated_extension_imported": true,
+      "production_extension_imported": true,
+      "numba_scalar_only_jit_compiled": true,
+      "PCC_kernel_executed": false,
+      "real_fits": 0
+    },
+    {
+      "os": "Windows",
+      "python": "3.10.11",
+      "dependency_versions": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "numba": "0.68.1",
+        "Cython": "3.3.1",
+        "setuptools": "65.5.0",
+        "llvmlite": "0.50.0",
+        "wheel": "0.48.0"
+      },
+      "cython_research_binary_sha256": "d800fff7522b9dafd2aee1e381e4c5261a6a06d2fb4c14ee58d61e800186ca3f",
+      "cython_production_binary_sha256": "6fa3cefcf54ff57cc5d00d72b0b167e91f8f332cd743d4e3f2d0102dc2d6a87d",
+      "source_generated_canonical_LF_sha256": "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+      "isolated_extension_imported": true,
+      "production_extension_imported": true,
+      "numba_scalar_only_jit_compiled": true,
+      "PCC_kernel_executed": false,
+      "real_fits": 0
+    },
+    {
+      "os": "Linux",
+      "python": "3.12.16",
+      "dependency_versions": {
+        "numpy": "2.5.4",
+        "scipy": "1.18.1",
+        "scikit-learn": "1.9.1",
+        "numba": "0.68.1",
+        "Cython": "3.3.1",
+        "setuptools": "84.2.1",
+        "llvmlite": "0.50.0",
+        "wheel": "0.48.0"
+      },
+      "cython_research_binary_sha256": "1ea9f1c151df795071b3fe449df2a3e35ab72bb79156b073df9f8297c66d899f",
+      "cython_production_binary_sha256": "3b2e25ea664b2e543352a4c14fed94880c3c2e3aff12be8ebbdd9bb1460fe728",
+      "source_generated_canonical_LF_sha256": "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+      "isolated_extension_imported": true,
+      "production_extension_imported": true,
+      "numba_scalar_only_jit_compiled": true,
+      "PCC_kernel_executed": false,
+      "real_fits": 0
+    },
+    {
+      "os": "Windows",
+      "python": "3.12.10",
+      "dependency_versions": {
+        "numpy": "2.5.4",
+        "scipy": "1.18.1",
+        "scikit-learn": "1.9.1",
+        "numba": "0.68.1",
+        "Cython": "3.3.1",
+        "setuptools": "84.2.1",
+        "llvmlite": "0.50.0",
+        "wheel": "0.48.0"
+      },
+      "cython_research_binary_sha256": "4f493e080cf809bf2cf421b4ecf8f667daca3ff2ebf7f64466ecda02df742d22",
+      "cython_production_binary_sha256": "6b405dd5362af64d7c5845165017caa26db0ca8b1ac3cf36bf3ff1497bc004d2",
+      "source_generated_canonical_LF_sha256": "40db83e8df030229c15b3660b6bea03f0b45e250a09872bfd40ebaa69d4f5abf",
+      "isolated_extension_imported": true,
+      "production_extension_imported": true,
+      "numba_scalar_only_jit_compiled": true,
+      "PCC_kernel_executed": false,
+      "real_fits": 0
+    }
+  ],
+  "repeat_build_experiment_note": "Different native binary SHA-256 values have been observed across separate CI runs even for the same OS/Python labels and identical pinned source, e.g. Windows Python3.10 research module SHA from prior run was 91fdc5b6b9d5d7f0b4f0211553ec9d005a6c8cc7d13441235ca51afd015d0273, versus current d800fff7522b9dafd2aee1e381e4c5261a6a06d2fb4c14ee58d61e800186ca3f. Building successfully is not binary bitwise reproducibility; freeze exact final artifacts, never silently rebuild after fit.",
+  "os_and_python_package_resolution_differs": true,
+  "P2_01_source_identification_pass": true,
+  "P2_01_native_build_smoke_pass": true,
+  "P2_01_complete_gate_pass": false,
+  "P2_06_observer_propagation_parity_for_future_P2": false,
+  "P2_execution_preflight_sha256": null,
+  "P2_execution_approved": false,
+  "real_source_datasets_loaded": 0,
+  "real_graphs_or_masks_generated": 0,
+  "real_PCC_fits_executed": 0,
+  "work_remaining": [
+    "Select exact intended execution target OS/Python (provisionally Python 3.12) and lock full dependency versions/compiler toolchain.",
+    "Seal final produced Cython native bytes and Numba compiler dispatch signatures at execution target; binary SHA can change across builds.",
+    "Run isolated synthetic SAME-BACKEND observer parity with exact frozen source and build, recording RNG/prefix/continuation, without touching real datasets.",
+    "Only later P2-02..P2-08 do controlled real-source bytes, feature transforms, graph and mask hashes, resource budgets and new explicit exact P2 SHA permission."
+  ]
+}
