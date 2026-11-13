@@ -165,6 +165,24 @@ def run():
             file_sha(lib) == info["sha256"], "Sealed libffi changed")
     import numpy, scipy, sklearn, numba, llvmlite
     del numpy,scipy,sklearn,numba,llvmlite
+    source_blobs = {
+        "pcc_metrics.py":"967353fc0f6ee88c8f26bbde6266645e6de9aa3b",
+        "pcc_validation.py":"b98510431c2281463988321fb7f1b6b159a5f77d",
+    }
+    helpers=doc.get("exact_frozen_python_native_import_helpers",{})
+    require(set(helpers)==set(source_blobs),
+            "Original two Cython import-only Python helpers missing")
+    for name, gitsha in source_blobs.items():
+        path=Path("/opt/p2-source-helpers")/name
+        require(path.is_file() and helpers[name]["original_git_blob_SHA1"]==gitsha,
+                "Original frozen native Python helper identity missing")
+        raw=path.read_bytes()
+        observed_git=hashlib.sha1(
+            b"blob "+str(len(raw)).encode("ascii")+b"\0"+raw).hexdigest()
+        require(observed_git==gitsha and
+                sha256(raw)==helpers[name]["source_file_SHA256"] and
+                len(raw)==helpers[name]["bytes"],
+                "Exact original frozen Cython import-only helper bytes drift")
     exact=doc.get("P2_01F_exact_new_native",{})
     require(set(exact)=={"production_pcc_step",
                         "isolated_pcc_step_live_research"},
