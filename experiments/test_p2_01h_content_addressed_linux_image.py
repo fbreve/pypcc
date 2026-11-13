@@ -84,6 +84,7 @@ class ContentAddressedCandidateTests(unittest.TestCase):
             "config_image_sha256":"b"*64,
             },
             "copied_CP312_runtime_tree":{"sha256":"c"*64},
+            "copied_host_native_runtime_libraries":{"libffi.so.8":{"sha256":"f"*64}},
         }
         receipt={
             "schema":"pypcc-P2-01H-pinned-container-import-only-receipt/v1",
@@ -94,6 +95,7 @@ class ContentAddressedCandidateTests(unittest.TestCase):
             "copied_python_runtime_tree_sha256":"c"*64,
             "python_version":"3.12.16",
             "number_of_loaded_mapped_native_files":5,
+            "copied_separately_sealed_host_libffi_SHA256":"f"*64,
             "candidate_package_versions":{"pkg"+str(i):"1.0" for i in range(13)},
             "P2_01F_exact_new_native_imports":{
                 "production_pcc_step":{},"isolated_pcc_step_live_research":{}},
