@@ -1,0 +1,111 @@
+name: Research P2-02B + P2-03 original source order and frozen float64 transform digests NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_02b_03_ordered_features_no_fit.py'
+      - 'experiments/test_p2_02b_03_ordered_features_no_fit.py'
+      - 'docs/current_p2_02b_03_ordered_feature_preflight_2026-11-13.md'
+      - '.github/workflows/research-p2-02b-03-source-and-transform-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ordered-data-frozen-transform:
+    name: original-order-and-float64 (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch exact original observer and original audited source-parser Git commits
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12 \
+            refs/heads/research/current-p1-offline-fixture-and-matlab-audit-2026-11-12
+      - name: Read-only verify production source blobs and frozen scientific P1 digest
+        shell: bash
+        run: |
+          python -m experiments.p2_01_source_platform_preflight --output p2-02b03-source-objects.json
+      - name: Install candidate NumPy version and fixed XLSX parser, never build or import PCC
+        shell: bash
+        run: |
+          python -m pip install "numpy==2.5.4" "openpyxl==3.1.5"
+          python -m pip check
+      - name: Materialize ONLY original audited P1 parser source files into ephemeral checkout
+        shell: bash
+        run: |
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_offline_candidate_integrity.py > experiments/p1_offline_candidate_integrity.py
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_alternative_domain_source_quality.py > experiments/p1_alternative_domain_source_quality.py
+      - name: Adversarial synthetic tests for original order, label leakage, z-score and matrix fingerprints
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_02b_03_ordered_features_no_fit -v
+      - name: Download ONLY frozen 3 official UCI ZIPs, parse row order, transform without PCC
+        shell: bash
+        run: |
+          python -m experiments.p2_02b_03_ordered_features_no_fit --output p2-02b03-ordered-data-and-float64-sha.json
+      - name: Refuse leaked rows, altered counts, missing hashes or implied P2 execution approval
+        shell: bash
+        run: |
+          python -c "import json; x=json.load(open('p2-02b03-ordered-data-and-float64-sha.json')); assert x['status']=='EXACT_SOURCE_SCHEMA_AND_APPROVED_FLOAT64_TRANSFORMS_HASHED_NO_PCC_FITS'; assert x['original_dataset_registry_order']==[212,850,292]; assert [s['original_source_rows'] for s in x['datasets']]==[310,900,440]; assert [len(s['ordered_numeric_predictor_names']) for s in x['datasets']]==[6,7,6]; assert x['P2_02_complete_gate_pass']; assert x['P2_03_transformed_X_and_hashes_candidate_pass']; assert not x['P2_03_complete_execution_environment_gate_pass']; assert all(s['observation_data_rows_exported']==0 and not s['raw_or_transformed_matrix_exported'] and s['original_source_rows']==s['raw_X']['representation']['shape'][0] for s in x['datasets']); assert all(len(s['approved_transformed_X']['shape_dtype_feature_order_and_numeric_bytes_sha256'])==64 for s in x['datasets']); assert x['graphs_generated']==0 and x['label_masks_generated']==0 and x['PCC_propagations_executed']==0 and x['PCC_real_source_fits_executed']==0; assert x['P2_execution_preflight_sha256'] is None and not x['P2_execution_authorized']"
+      - name: Archive metadata and SHA ONLY, never source rows, ZIP, workbook or transformed features
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-02b03-ordered-hashes-${{ matrix.os }}-py312
+          path: |
+            p2-02b03-source-objects.json
+            p2-02b03-ordered-data-and-float64-sha.json
+          retention-days: 30
+          if-no-files-found: error
+
+  exact-cross-platform-content-order-check:
+    name: Cross-platform raw/transformed SHA equality (hashes only)
+    needs: ordered-data-frozen-transform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p2-02b03-ordered-hashes-*-py312
+          path: p2-02b03-evidence
+          merge-multiple: false
+      - name: Compare only shape/column/label-order/raw/transformed fingerprints on Linux and Windows
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("p2-02b03-evidence")
+          def report(os):
+              p = root / ("p2-02b03-ordered-hashes-" + os + "-py312") / "p2-02b03-ordered-data-and-float64-sha.json"
+              return json.loads(p.read_text(encoding="utf-8"))
+          left = report("ubuntu-latest")
+          right = report("windows-latest")
+          assert left["P1_scientific_sha256"] == right["P1_scientific_sha256"]
+          assert left["source_parser_original_git_blobs"] == right["source_parser_original_git_blobs"]
+          assert left["numpy_version"] == right["numpy_version"] == "2.5.4"
+          assert left["openpyxl_version"] == right["openpyxl_version"] == "3.1.5"
+          assert len(left["datasets"]) == len(right["datasets"]) == 3
+          for a, b in zip(left["datasets"], right["datasets"]):
+              for name in ("uci_id", "registry_index", "source_zip_sha256", "member_sha256",
+                           "original_source_rows", "original_data_columns", "ordered_numeric_predictor_names",
+                           "target_class_support", "class_order", "original_target_index_order",
+                           "raw_X", "approved_transformed_X"):
+                  assert a[name] == b[name], "Cross-platform mismatch for " + str(a["uci_id"]) + " " + name
+          assert not left["P2_execution_authorized"] and not right["P2_execution_authorized"]
+          print("PASS: all three exact source-order, encoded-label, raw-X and transformed-X hashes match Linux/Windows")
+          PY
