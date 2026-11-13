@@ -183,6 +183,70 @@ class ScientificDecisionPacketTests(unittest.TestCase):
             "docs/current_p1_public_literature_exposure_2026-11-12.json"
         ))
 
+    def test_six_scientific_recommendations_are_review_ready_not_approved(self):
+        proposed = json.loads(gate.RESOLUTION.read_text(encoding="utf-8"))
+        report = gate.review_scientific_resolution(
+            proposed, self.draft, self.packet,
+        )
+        self.assertEqual(
+            report["scientific_resolution_review"],
+            "PASS_PENDING_HUMAN_DECISION",
+        )
+        self.assertEqual(report["proposals_for_explicit_approval"], 6)
+        self.assertEqual(
+            report["proposed_dataset_ids_not_selected"],
+            [212, 850, 292],
+        )
+        self.assertFalse(report["all_six_recommendations_human_approved"])
+        self.assertFalse(report["P1_ready_to_freeze"])
+        self.assertFalse(report["execution_authorized"])
+        self.assertEqual(report["real_PCC_fits_executed"], 0)
+        self.assertRegex(
+            report["resolution_checksum_NOT_scientific_protocol_approval"],
+            r"^[0-9a-f]{64}$",
+        )
+
+    def test_resolution_cannot_forge_science_approval_or_selection(self):
+        original = json.loads(gate.RESOLUTION.read_text(encoding="utf-8"))
+        changes = [
+            ("maintainer_approval", True),
+            ("approval_timestamp", "2026-11-12T21:30:00-03:00"),
+            ("selected_dataset_ids", [212, 850, 292]),
+            ("scientific_protocol_frozen", True),
+            ("scientific_protocol_sha256", "0" * 64),
+            ("P2_execution_preflight_sha256", "1" * 64),
+            ("execution_authorized", True),
+            ("real_PCC_fits_performed", 1),
+            ("new_generation_of_source_masks_or_graphs_authorized", True),
+        ]
+        for key, forged_value in changes:
+            item = json.loads(json.dumps(original))
+            item["human_decision"][key] = forged_value
+            with self.subTest(field=key):
+                with self.assertRaises(gate.ScientificDecisionInvalid):
+                    gate.review_scientific_resolution(item, self.draft, self.packet)
+
+    def test_six_review_gates_and_method_choices_cannot_change_silently(self):
+        original = json.loads(gate.RESOLUTION.read_text(encoding="utf-8"))
+        changes = [
+            lambda p: p["recommendations"].pop(),
+            lambda p: p["recommendations"][0].update(
+                proposed_uci_ids=[212, 545, 292]),
+            lambda p: p["recommendations"][0].update(
+                recommend="APPROVED_EXPLORATORY_P1"),
+            lambda p: p["recommendations"][1].update(feature_rule="Channel only"),
+            lambda p: p["recommendations"][2].update(numeric_rule="raw spending"),
+            lambda p: p["recommendations"][3].update(graph="use directed CSR"),
+            lambda p: p["recommendations"][4].update(proposed_work="20 fits"),
+            lambda p: p["recommendations"][5].update(
+                recommend="RECOMMEND_CONFIRMATORY_CI"),
+        ]
+        for mutate in changes:
+            item = json.loads(json.dumps(original))
+            mutate(item)
+            with self.assertRaises(gate.ScientificDecisionInvalid):
+                gate.review_scientific_resolution(item, self.draft, self.packet)
+
     def test_digest_deterministic_and_no_backend_imports(self):
         a = copy.deepcopy(self.packet)
         b = dict(reversed(list(a.items())))
