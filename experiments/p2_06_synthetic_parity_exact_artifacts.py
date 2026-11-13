@@ -24,6 +24,8 @@ from experiments.p2_01_native_build_identity import git_blob_sha
 ROOT = Path(__file__).resolve().parents[1]
 P1_SHA = "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166"
 P2_01C_HEAD = "fa71adb7c4defa54de9d233de4b0bc84544d1c24"
+# The archived Actions build checked out the synthetic PR merge commit, not head.
+P2_01C_CI_MERGE_COMMIT = "24990f1e48c12cf2afd1d18bbf42f3de6cd1944c"
 TEST_BLOBS = {
     "test_live_numpy_milestones.py": "2dd7b87e54ee5acd458cf56b20adf4516c4a8e60",
     "test_live_numba_milestones.py": "ef56733245bdc7226edd6c3567de27343cdd3734",
@@ -96,8 +98,8 @@ def validate_prior_archive(seal_dir):
     require(archive.get("status") ==
             "CANDIDATE_PY312_PACKAGE_PINS_AND_EXACT_NATIVE_BYTES_CAPTURED_NO_FITS",
             "Not the accepted native-byte archive status")
-    require(archive.get("git_checkout_commit") == P2_01C_HEAD,
-            "Artifact not built from the approved P2-01C final source head")
+    require(archive.get("git_checkout_commit") == P2_01C_CI_MERGE_COMMIT,
+            "Artifact not built from the P2-01C final-head CI merge commit")
     require(archive.get("P1_scientific_sha256") == P1_SHA ==
             smoke.get("P1_approved_scientific_sha256"),
             "Frozen scientific P1 SHA changed")
