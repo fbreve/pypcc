@@ -294,6 +294,9 @@ def validate_image_receipt(receipt, manifest, image_inspection):
             receipt.get("copied_python_runtime_tree_sha256")==
             manifest["copied_CP312_runtime_tree"]["sha256"] and
             receipt.get("python_version")=="3.12.16" and
+            receipt.get("frozen_Cython_import_helper_git_blob_sha1")==
+            {k:v["original_git_blob_SHA1"] for k,v in
+             manifest["exact_frozen_python_native_import_helpers"].items()} and
             receipt.get("number_of_loaded_mapped_native_files",0)>=5 and
             receipt.get("copied_separately_sealed_host_libffi_SHA256")==
             manifest["copied_host_native_runtime_libraries"]["libffi.so.8"]["sha256"] and
