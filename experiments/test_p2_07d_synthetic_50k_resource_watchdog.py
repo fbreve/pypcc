@@ -43,8 +43,7 @@ class Synthetic50kGuardTests(unittest.TestCase):
                 self.assertTrue(np.all(neighbors[0,:w]>=0))
                 self.assertTrue(np.all(neighbors[:, :10]>=0))
                 self.assertTrue(np.all(
-                    neighbors[np.arange(n)[:,None],
-                              np.arange(w)[None,:] >= counts[:,None]] == -1))
+                    neighbors[np.arange(w)[None,:] >= counts[:,None]] == -1))
                 for row in range(n):
                     active=neighbors[row,:counts[row]]
                     self.assertEqual(len(set(active.tolist())),len(active))
