@@ -1,0 +1,81 @@
+{
+  "schema": "pypcc-P2-07C-candidate-operational-envelope/v1",
+  "status": "DRAFT_FOR_MAINTAINER_REVIEW_NOT_EXECUTION_APPROVAL",
+  "P1_scientific_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+  "evidence": {
+    "P2_07A_metadata_run_id": 43478839756,
+    "P2_07B_synthetic_run_id": 43483012485,
+    "P2_01F_new_native_run_id": 43488066633
+  },
+  "proposed_execution_host": {
+    "candidate_primary": "Linux CPython 3.12.16 using archived P2-01F candidate native build",
+    "candidate_crosscheck": "Windows CPython 3.12.10",
+    "physical_or_immutable_execution_host_selected": false,
+    "host_machine_config_sha256": null,
+    "compiler_SDK_system_byte_closure_complete": false
+  },
+  "fit_schedule": {
+    "datasets_uci_in_order": [
+      212,
+      850,
+      292
+    ],
+    "masks_per_dataset": 8,
+    "backends_in_order": [
+      "numpy_sequential",
+      "numba_sequential_nopython",
+      "cython_sequential_cached_or_legacy_as_defined_by_early_stop"
+    ],
+    "n_fits": 72,
+    "max_iter_per_fit": 50000,
+    "early_stop": false,
+    "milestones": [
+      0,
+      1,
+      10,
+      100,
+      1000,
+      5000,
+      25000,
+      50000
+    ],
+    "max_parallel_fits": 1,
+    "scientific_retries_allowed": 0,
+    "outcome_dependent_reordering": false
+  },
+  "candidate_guardrails": {
+    "min_host_installed_ram_bytes": 8589934592,
+    "max_one_fit_peak_process_resident_bytes": 2147483648,
+    "min_free_disk_before_start_bytes": 12884901888,
+    "max_one_fit_wall_seconds": 1800,
+    "max_one_fit_process_cpu_seconds": 3600,
+    "max_entire_study_wall_seconds": 172800,
+    "max_one_fit_snapshot_array_bytes": 67108864,
+    "max_one_fit_aggregate_json_bytes": 1048576,
+    "max_one_fit_text_log_bytes": 2097152,
+    "max_one_fit_scratch_bytes": 1073741824,
+    "max_all_72_fits_persisted_evidence_bytes": 1073741824
+  },
+  "export_and_failure_policy": {
+    "original_feature_rows_or_original_labels_in_public_CI": false,
+    "graph_neighbor_arrays_or_mask_indices_in_public_CI": false,
+    "per_node_checkpoint_vectors_exported": false,
+    "per_fit_aggregate_transition_counts_and_tie_counts_only": true,
+    "aggregate_original_unlabeled_denominator_and_postfit_accuracy_allowed": true,
+    "baseline_recorded_before_observed_backend_interpretation": true,
+    "entire_72_fit_summary_requires_all_72_completed": true,
+    "failures_append_only_with_original_case_id": true,
+    "failed_fit_may_be_silently_replaced": false,
+    "early_stop_or_adaptive_retry_allowed": false,
+    "complete_per_backend_RNG_state_verification_required": true
+  },
+  "candidate_budget_not_measured_upper_bound": true,
+  "approved_execution_host_and_resource_limits": false,
+  "P2_07_full_resources_gate_pass": false,
+  "P2_01_final_execution_toolchain_lock_pass": false,
+  "P2_08_technical_manifest_sha256": null,
+  "P2_execution_preflight_sha256": null,
+  "P2_execution_authorized": false,
+  "real_PCC_fits_authorized": 0,
+  "real_PCC_fits_executed": 0
+}
