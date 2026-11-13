@@ -30,8 +30,8 @@ class CandidateSealTests(unittest.TestCase):
             path.write_bytes(b"original")
             desc = {"binary_filename": path.name, "bytes": len(b"original"),
                     "sha256": hashlib.sha256(b"original").hexdigest()}
-            self.assertEqual(
-                seal.verify_native_file(path, desc, suffix=".cp312-test.so"), path)
+            checked = seal.verify_native_file(path, desc, suffix=".cp312-test.so")
+            self.assertEqual(seal.sha256(checked), desc["sha256"])
             path.write_bytes(b"tampered")
             with self.assertRaises(seal.SealBlocked):
                 seal.verify_native_file(path, desc, suffix=".cp312-test.so")
