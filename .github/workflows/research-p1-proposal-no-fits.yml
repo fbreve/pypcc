@@ -11,6 +11,10 @@ on:
       - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.md'
       - 'docs/current_p1_frozen_scientific_protocol_2026-11-12.json'
       - 'docs/current_p1_scientific_sha_manifest_2026-11-12.json'
+      - 'docs/current_p2_preflight_plan_2026-11-12.json'
+      - 'docs/current_p2_preflight_plan_2026-11-12.md'
+      - 'experiments/review_p2_preflight_plan.py'
+      - 'experiments/test_review_p2_preflight_plan.py'
       - 'docs/current_p1_scientific_freeze_approved_2026-11-12.md'
       - 'experiments/validate_p1_frozen_science.py'
       - 'experiments/test_validate_p1_frozen_science.py'
@@ -53,10 +57,12 @@ jobs:
         run: python -m experiments.review_p1_scientific_decisions --out p1-science-decision-review.json
       - name: Verify approved exploratory P1 science SHA without real input or model fit
         run: python -m experiments.validate_p1_frozen_science --out p1-approved-science-no-fit.json
+      - name: Verify P2 technical preflight plan remains no-fit and unauthorized
+        run: python -m experiments.review_p2_preflight_plan --out p2-unapproved-plan-review.json
       - name: Validate seven additional bounded historical PCC sources (no data/models)
         run: python -m experiments.review_p1_additional_public_papers --out p1-additional-paper-evidence.json
       - name: Verify reject-approval and reject-scientific-drift tests
-        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference experiments.test_review_p1_additional_public_papers experiments.test_validate_p1_frozen_science -v
+        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference experiments.test_review_p1_additional_public_papers experiments.test_validate_p1_frozen_science experiments.test_review_p2_preflight_plan -v
       - name: Assert report cannot authorize science or execution
         shell: bash
         run: |
@@ -73,6 +79,10 @@ jobs:
         shell: bash
         run: |
           python -c "import json; a=json.load(open('p1-approved-science-no-fit.json')); assert a['science_status']=='FROZEN_S1_S6_EXPLORATORY_ONLY'; assert a['selected_source_uci_ids_as_research_protocol']==[212,850,292]; assert a['trial_count_IF_future_P2_approved']==72; assert not a['P2_execution_authorized']; assert a['P2_execution_preflight_sha256'] is None; assert a['PCC_fits_executed']==0; assert a['datasets_or_real_labels_processed']==0; assert a['scientific_P1_SHA_manifest_matches_exact_approved_digest']; assert a['scientific_protocol_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'"
+      - name: Ensure P2 planning does not claim an executable preflight SHA
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('p2-unapproved-plan-review.json')); assert p['P2_plan_integrity']=='PASS_PLANNING_ONLY'; assert p['P1_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'; assert p['planned_gates']==8 and p['gates_executed']==0; assert not p['P2_execution_authorized']; assert p['real_PCC_fits_executed']==0; assert p['P2_preflight_sha256'] is None"
       - name: Upload explicitly unapproved P1 review
         uses: actions/upload-artifact@v4
         with:
@@ -82,4 +92,5 @@ jobs:
             p1-science-decision-review.json
             p1-additional-paper-evidence.json
             p1-approved-science-no-fit.json
+            p2-unapproved-plan-review.json
           if-no-files-found: error
