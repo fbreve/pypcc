@@ -369,7 +369,7 @@ def audit():
             p1["graph"]["graph_directed"] is False and
             p1["graph"]["prohibit_CSR_propagation_replacement"] is True and
             p1["fit"]["label_mask_replicates_per_dataset"] == N_REPLICATES and
-            p1["rng_and_masks"]["originally_labeled_per_class"] == N_PER_CLASS if False else True,
+            p1["fit"]["originally_labeled_per_class"] == N_PER_CLASS,
             "Frozen scientific graph or mask recipe changed")
     require(p1["rng_and_masks"]["mask_seed_recipe"] ==
             "np.random.Generator(np.random.PCG64(np.random.SeedSequence([20261112,registry_index,replicate_index])))" and
