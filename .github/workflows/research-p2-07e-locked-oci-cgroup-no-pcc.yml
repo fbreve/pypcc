@@ -1,0 +1,97 @@
+name: Research P2-07E exact archived OCI cgroup-v2 kill and scratch quota tests — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07e_cgroup_probe_no_pcc.py'
+      - 'experiments/p2_07e_locked_oci_cgroup_resource_supervisor.py'
+      - 'experiments/test_p2_07e_locked_oci_cgroup_resource_supervisor.py'
+      - 'docs/current_p2_07e_exact_OCI_cgroup_resource_supervisor_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07e-locked-oci-cgroup-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-lock-and-forged-GO-tests:
+    name: Six stdlib-only protocol/adversarial source tests (${{ matrix.os }}, Py3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify five fixed no-PCC cgroup probes, Docker isolation flags, original SHA and false-P2-GO invariants
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07e_locked_oci_cgroup_resource_supervisor -v
+
+  enforce-linux-cgroup-v2-on-original-OCI:
+    name: Five ACTUAL hard-OS and sampled watchdog synthetic tests on exact archived OCI image
+    needs: original-lock-and-forged-GO-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Demand actual Linux cgroup-v2 Docker engine, no Docker pull/build/push
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07e_locked_oci_cgroup_resource_supervisor as s
+          assert s.PROBE.is_file()
+          assert s.IMAGE_ID=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          print("PASS: engine cgroup v2 and exact immutable preexisting OCI byte gate required")
+          PY
+      - name: Download ONLY exact extended-retention P2-01J source archive (expires 2027-02-11), never rebuild
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07e-original-locked-image
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Import verified Docker save tar ONLY, run five stand-alone cgroup-v2 subprocess probes with real OS kills
+        shell: bash
+        run: |
+          python -m experiments.p2_07e_locked_oci_cgroup_resource_supervisor \
+            --existing-oci-artifact p2-07e-original-locked-image \
+            --ledger p2-07e-append-only-synthetic-no-PCC-attempt-ledger.jsonl \
+            --output p2-07e-locked-OCI-cgroup-OS-kills-and-resource-caps.json
+      - name: Independent source-free output gate — no real resource upper bound or permission
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from experiments import p2_07e_locked_oci_cgroup_resource_supervisor as s
+          data=json.load(open("p2-07e-locked-OCI-cgroup-OS-kills-and-resource-caps.json"))
+          assert s.validate_report(data)
+          assert [x["case"] for x in data["cgroup_synthetic_tests"]]==list(s.MODES)
+          assert data["append_only_ledger_line_count"]==10
+          assert data["cgroup_synthetic_tests"][3]["kernel_reported_OOMKilled"]
+          assert data["cgroup_synthetic_tests"][4]["exit_code"]==42
+          assert not data["P2_07_full_resources_gate_pass"] and not data["P2_execution_authorized"]
+          assert data["P2_execution_preflight_sha256"] is None
+          assert data["actual_PCC_kernel_fits_executed"]==data["real_PCC_fits_executed"]==0
+          print("PASS: hard cgroup OOM + tmpfs and sampled wall/CPU kills proven on exact original OCI, NO real PCC GO")
+          PY
+      - name: Preserve only source-free result counts, limits and synthetic attempt ledger even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07e-existing-OCI-five-cgroup-resource-probes-NO-PCC
+          path: |
+            p2-07e-append-only-synthetic-no-PCC-attempt-ledger.jsonl
+            p2-07e-locked-OCI-cgroup-OS-kills-and-resource-caps.json
+          retention-days: 30
+          if-no-files-found: warn
