@@ -1,0 +1,118 @@
+name: Research P2-07J observed synthetic H supervisor to P1 72-ID study STOP — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc.py'
+      - 'experiments/test_p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc.py'
+      - 'docs/current_p2_07j_synthetic_supervisor_studywide_stop_bridge_review_2026-11-14.md'
+      - '.github/workflows/research-p2-07j-synthetic-supervisor-to-study-stop-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  bridge-stdlib-adversarial:
+    name: P2-07J original 72-ID source-only bridge contract (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Run 13 fail-closed no-Docker no-PCC bridge adversarial tests
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc -v
+
+  actual-artificial-tree-bridge:
+    name: Five LIVE exact-OCI H process trees feed I study-wide STOP (not scientific execution)
+    runs-on: ubuntu-latest
+    needs: bridge-stdlib-adversarial
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Require exact Linux cgroup v2 environment, fixed source-free plan and OCI identity
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc as j
+          from experiments import p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc as h
+          assert len(j.PLAN) == 7
+          assert sum(mode is not None for _,_,mode in j.PLAN) == 5
+          assert h.FIXTURE.is_file()
+          assert h.IMAGE_ID == "sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          print("PASS: fixed five artificial trees, exact old OCI, zero P1 PCC launches")
+          PY
+      - name: Reuse only original existing exact archived OCI bytes; no rebuild/pull/second image
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07j-original-exact-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reuse exact original H six-resource/three-process source-free receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07h-exact-OCI-integrated-six-three-process-resource-tests-NO-PCC
+          path: p2-07j-prior-H-source-free-report
+          run-id: 43547341278
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run live H resource/descendant supervisor at original I administrative stop positions
+        shell: bash
+        run: |
+          python -m experiments.p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc \
+            --existing-oci-artifact p2-07j-original-exact-OCI \
+            --original-p2-07h-source-free-report p2-07j-prior-H-source-free-report/p2-07h-six-integrated-resource-cgroup-descendant-checks.json \
+            --evidence-dir p2-07j-five-live-artificial-H-tree-journals \
+            --audit-jsonl p2-07j-seven-72-original-ID-administrative-STOP-scenarios.jsonl \
+            --output p2-07j-no-PCC-supervisor-to-whole-study-stop.json
+      - name: Independently verify whole 504-row STOP audit and all five original H cleanup journals
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          from experiments import p2_07j_synthetic_supervisor_studywide_stop_bridge_no_pcc as j
+          p=Path('p2-07j-no-PCC-supervisor-to-whole-study-stop.json')
+          out=json.loads(p.read_text(encoding='utf-8'))
+          assert j.validate_report(out)
+          assert j.verify_disk_artifacts(
+              Path('p2-07j-five-live-artificial-H-tree-journals'),
+              Path('p2-07j-seven-72-original-ID-administrative-STOP-scenarios.jsonl'),
+              out)
+          assert out['actual_synthetic_supervised_three_process_trees']==5
+          assert out['studywide_administrative_case_rows']==504
+          assert out['real_PCC_fits_executed']==0
+          assert out['P2_execution_preflight_sha256'] is None
+          assert out['P2_execution_authorized'] is False
+          assert p.stat().st_size<400000
+          print('PASS: five LIVE three-process synthetic H trees bound to I policy, plus two injected prelaunch faults')
+          print('original-72case-STOP-audit-SHA256='+out['studywide_administrative_journal_SHA256'])
+          print('live-bridge-report-canonical-SHA256='+hashlib.sha256(j.i.canonical(out)).hexdigest())
+          PY
+      - name: Preserve bounded source-free evidence including failure traces but NO OCI duplicate or UCI data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07j-five-live-H-supervisor-to-study-stop-NO-PCC
+          path: |
+            p2-07j-five-live-artificial-H-tree-journals/*.jsonl
+            p2-07j-seven-72-original-ID-administrative-STOP-scenarios.jsonl
+            p2-07j-no-PCC-supervisor-to-whole-study-stop.json
+          retention-days: 30
+          if-no-files-found: warn
