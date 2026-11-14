@@ -29,7 +29,22 @@ The kernel's memory/swap/tmpfs/pid quotas are hard bounds, but **CPU quota is an
 
 The integrated host supervisor appends only **five bounded, JSON-lines and SHA-chained, `fsync`ed events per scenario**, totaling 30 for success: `STARTED`, `TREE_AND_HARD_CAPS_VERIFIED`, `RELEASED_SYNTHETIC_BARRIER`, `TERMINATION_DECISION_RECORDED`, `ALL_PIDS_AND_CONTAINER_GONE`. On any error it adds `FAIL_CLOSED`, invokes Docker cleanup unconditionally and fails the CI **without retrying that case or executing the next one**. Logs contain only artificial modes, quotas, counters, exit statuses and SHA digests. This hash chain detects accidental alteration, not an adversary capable of rewriting it and recomputing hashes.
 
-Nine adversarial source-only tests run on **Linux and Windows** (false P2 authorization, missing OOM/ENOSPC, wrong cgroup quotas, surviving child/grandchild, malformed SHA journals and forbidden worker identities). The **actual** OS/process-tree integrated tests run **only on Linux cgroup v2**; Windows source-only checks **do not prove** Windows Job Object process termination or resource quotas. The original production regression is independent and must complete before the scientific tooling is described as CI-green.
+Eleven adversarial source-only tests run on **Linux and Windows** (false P2 authorization, missing OOM/ENOSPC, wrong cgroup quotas, surviving child/grandchild, malformed SHA journals and forbidden worker identities). The **actual** OS/process-tree integrated tests run **only on Linux cgroup v2**; Windows source-only checks **do not prove** Windows Job Object process termination or resource quotas. The original production regression is independent and must complete before the scientific tooling is described as CI-green.
+
+## Actual integrated CI evidence
+
+Successful [technical workflow #43547115492](https://github.com/fbreve/pypcc/actions/runs/43547115492) completed **3/3 PASS**: **11/11 source-only adversarial tests per OS** on Linux and Windows, plus all six **actual** Linux original-OCI synthetic tree/quota modes, checked by a separate independent report-and-journal gate. The previous two failing attempts were deliberately fail-closed and left failure-only artifact evidence; the fixes addressed (1) cgroup counter command syntax and (2) container exit versus concurrent `docker exec` races, including the case where the Linux kernel OOM kills the container and Docker returns empty stderr. A counter failure is accepted **only when a new exact-container Docker inspection finds it stopped**; an unexpected live-container failure still blocks.
+
+| Mode | Actual source-free termination reason | Root exit | Three host PID/starttime identities gone |
+| --- | --- | ---: | :---: |
+| `normal` | Explicit clean three-worker completion | 0 | PASS |
+| `wall` | Sampled host wall watchdog | 137 | PASS |
+| `cpu` | Sampled host cgroup CPU usage ≥0.75 CPU-s | 137 | PASS |
+| `memory` | Genuine kernel cgroup OOM while grandchild allocates | 137 | PASS |
+| `scratch` | Genuine tmpfs `ENOSPC` from grandchild | 137 | PASS |
+| `crash` | Synthetic root stops with code 23 | 23 | PASS |
+
+One original source-free archive uploaded, **not a duplicate Docker image**: artifact **`14094069243`**, enclosing GitHub ZIP digest `81b1ac17d9798bf45fa708a86760e05318f7bd63ce9e705764a94d9844a29e40`, expires **2026-12-14T02:35:56Z**. The 30-event append-only journal's final SHA256 is **`02a1788eea786cf041c21bc593bc10697539e652685cd174e9d3f4c354fb54d7`**. The source-free report records all **18 original host identities disappeared**, the **real kernel OOM flag**, the **real tmpfs ENOSPC flag**, and **zero PCC fits**. Last sampled CPU `0.779799 CPU-s` in the CPU-threshold mode is measured cgroup usage **including the Docker monitoring subprocess overhead**; it must not be compared to scientific worker CPU usage or treated as a real-fit bound. The last memory-peak sample before kernel OOM is **not** the actual allocation peak; the kernel OOM event is the authoritative failure proof.
 
 ## Explicit remaining blockers
 
