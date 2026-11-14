@@ -16,8 +16,11 @@ $ErrorActionPreference = 'Stop'
 $sha = "008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
 $imageId = "sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
 $filename = "p2-01h-exact-runtime-image.tar.gz"
-$run = 43516085668
-$name = "p2-01h-transportable-OCI-image-and-safe-provenance"
+# Prefer the independently rehashed 90-day copy, not the 30-day source.
+# Exact new artifact 14087551705 expires 2027-02-11T23:59:18Z.
+$run = 43531054368
+$name = "p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt"
+$sourceArtifactId = 14087551705
 
 if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
     throw "Destination directory must ALREADY exist. Explicitly choose a local/NAS backup directory: $Destination"
@@ -78,6 +81,8 @@ $record = [ordered]@{
     source_repo = 'fbreve/pypcc'
     source_run_id = $run
     source_artifact_name = $name
+    source_artifact_id = $sourceArtifactId
+    source_artifact_expiry_utc = '2027-02-11T23:59:18Z'
     exact_source_image_filename = $filename
     exact_sha256 = $sha
     original_image_config_id = $imageId
