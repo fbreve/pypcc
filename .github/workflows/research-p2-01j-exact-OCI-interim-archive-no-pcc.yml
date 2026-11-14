@@ -1,0 +1,167 @@
+name: Research P2-01J exact OCI archive intermediate retention and local backup option (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01j_verified_interim_oci_archive.py'
+      - 'experiments/test_p2_01j_verified_interim_oci_archive.py'
+      - 'scripts/p2_01j_archive_original_image_locally.ps1'
+      - 'docs/current_p2_01j_original_image_storage_and_retention_2026-11-13.md'
+      - '.github/workflows/research-p2-01j-exact-OCI-interim-archive-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-archive-policy-tests:
+    name: Source-only archived image identity and retention policy tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run six forged-approval/digest/archive-budget stdlib tests, NO UCI data or PCC
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01j_verified_interim_oci_archive -v
+
+  verify-and-rearchive-exact-original-once:
+    if: github.event_name == 'workflow_dispatch'
+    name: Re-archive ONLY byte-matched existing OCI image at repo-permitted retention, no rebuild
+    runs-on: ubuntu-latest
+    needs: source-only-archive-policy-tests
+    timeout-minutes: 25
+    outputs:
+      archive_artifact_id: ${{ steps.copy.outputs.artifact-id }}
+      allowed_days: ${{ steps.repo_policy.outputs.days }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Try to read repo retention setting; on API 403 request 90d explicitly WITHOUT claiming approval
+        id: repo_policy
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api /repos/fbreve/pypcc/actions/permissions/artifact-and-log-retention \
+              > p2-01j-repository-current-artifact-policy.json 2> p2-01j-policy-probe-error.txt; then
+            python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from experiments import p2_01j_verified_interim_oci_archive as a
+          d=json.load(open("p2-01j-repository-current-artifact-policy.json"))
+          obj=a.retention_policy(d["days"],d["maximum_allowed_days"])
+          print("days="+str(obj["requested_new_artifact_retention_days"]))
+          print("configured_days="+str(obj["repo_configured_retention_days"]))
+          print("maximum_days="+str(obj["repo_maximum_allowed_days"]))
+          PY
+          else
+            echo "WARNING: GITHUB_TOKEN cannot read repository retention policy; 90 days is a REQUEST, not a verified setting."
+            echo 'days=90' >> "$GITHUB_OUTPUT"
+            echo 'configured_days=unknown' >> "$GITHUB_OUTPUT"
+            echo 'maximum_days=90' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download exact original source P2-01H complete OCI binary, never rebuild or pull a base tag
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-transportable-OCI-image-and-safe-provenance
+          path: p2-01j-original-validated-OCI-archive
+          run-id: 43516085668
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download original independently verified second-host binary import receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01h-separate-host-reloaded-container-import-only-receipt
+          path: p2-01j-original-P2-01H-second-host-proof
+          run-id: 43516085668
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify whole existing 290MB tar SHA, exact image config ID, original lock SHA and prior two host receipts, ZERO PCC
+        shell: bash
+        run: |
+          EXTRA=()
+          if [ "${{ steps.repo_policy.outputs.configured_days }}" != "unknown" ]; then
+            EXTRA+=(--repo-retention-days "${{ steps.repo_policy.outputs.configured_days }}")
+          fi
+          python -m experiments.p2_01j_verified_interim_oci_archive \
+            --source-artifact-dir p2-01j-original-validated-OCI-archive \
+            --prior-replay-dir p2-01j-original-P2-01H-second-host-proof \
+            "${EXTRA[@]}" \
+            --repo-max-days ${{ steps.repo_policy.outputs.maximum_days }} \
+            --output p2-01j-original-OCI-temporary-archive-receipt.json
+      - name: Upload ONE verified identical original archive, temporary and within repo policy (no external registry)
+        uses: actions/upload-artifact@v4
+        id: copy
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: |
+            p2-01j-original-validated-OCI-archive/p2-01h-exact-runtime-image.tar.gz
+            p2-01j-original-OCI-temporary-archive-receipt.json
+          retention-days: ${{ steps.repo_policy.outputs.days }}
+          compression-level: 0
+          if-no-files-found: error
+      - name: Verify GitHub-accepted artifact ID and actual expiry after tentative retention request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_ID: ${{ steps.copy.outputs.artifact-id }}
+        run: |
+          gh api "/repos/fbreve/pypcc/actions/artifacts/$NEW_ID" > p2-01j-new-actions-artifact-metadata.json
+          python - <<'PY'
+          import json,os
+          info=json.load(open("p2-01j-new-actions-artifact-metadata.json"))
+          assert info["id"]==int(os.environ["NEW_ID"])
+          assert info["expired"] is False
+          assert info["name"]=="p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt"
+          print("Uploaded ONLY existing OCI archive to temporary Actions storage")
+          print("new_artifact_id:",info["id"],"expires_at:",info["expires_at"],
+                "size:",info["size_in_bytes"])
+          PY
+
+  independently-verify-newly-stored-archive:
+    if: github.event_name == 'workflow_dispatch'
+    name: Independently download newly stored exact OCI archive and hash it again (NO PCC)
+    runs-on: ubuntu-latest
+    needs: verify-and-rearchive-exact-original-once
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download newly uploaded Actions archive ONLY from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-01j-temporary-archive-independent-retrieval
+      - name: Verify same original SHA, correct package/OCI identity and no-P2 GO on ANOTHER runner
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_01j_verified_interim_oci_archive as j
+          root=Path("p2-01j-temporary-archive-independent-retrieval")
+          reports=list(root.rglob("p2-01j-original-OCI-temporary-archive-receipt.json"))
+          images=list(root.rglob("p2-01h-exact-runtime-image.tar.gz"))
+          assert len(reports)==len(images)==1, (len(reports),len(images))
+          obj=json.loads(reports[0].read_text(encoding="utf-8"))
+          assert j.validate_receipt(obj)
+          assert j.original.sha_file(images[0])==j.EXPECTED_ORIGINAL_TAR_SHA
+          assert images[0].stat().st_size==obj["preserved_docker_save_gzip_bytes"]
+          assert obj["repo_artifact_retention_policy"]["requested_new_artifact_retention_days"]>=1
+          assert obj["new_GitHub_artifact_is_durable_forever"] is False
+          assert obj["P2_execution_preflight_sha256"] is None
+          assert not obj["P2_execution_authorized"] and obj["real_PCC_fits_executed"]==0
+          print("PASS: identical 291MB OCI SHA survives newly uploaded Actions artifact; temporary storage only")
+          PY
