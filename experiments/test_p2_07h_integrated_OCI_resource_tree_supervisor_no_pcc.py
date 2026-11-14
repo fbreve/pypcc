@@ -129,10 +129,18 @@ class UnifiedSourceOnlyContract(unittest.TestCase):
             with patch.object(h,"proc_state",return_value={"Running":True}):
                 with self.assertRaises(h.UnifiedBlocked):
                     h.cgroup_counters("abc")
+        empty_after_kernel_oom=SimpleNamespace(returncode=1,stdout="",
+                                               stderr="")
+        with patch.object(h.g,"call",return_value=empty_after_kernel_oom):
+            with patch.object(h,"proc_state",return_value={"Running":False}):
+                self.assertIsNone(h.cgroup_counters("abc"))
+            with patch.object(h,"proc_state",return_value={"Running":True}):
+                with self.assertRaises(h.UnifiedBlocked):
+                    h.cgroup_counters("abc")
         broken=SimpleNamespace(returncode=1,stdout="",
                                stderr="SyntaxError: invalid cgroup probe")
         with patch.object(h.g,"call",return_value=broken):
-            with patch.object(h,"proc_state",return_value={"Running":False}):
+            with patch.object(h,"proc_state",return_value={"Running":True}):
                 with self.assertRaises(h.UnifiedBlocked):
                     h.cgroup_counters("abc")
 
