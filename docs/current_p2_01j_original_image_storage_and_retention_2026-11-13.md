@@ -20,6 +20,12 @@ Only after re-verifying the **exact whole OCI tar.gz SHA**, correct originally a
 
 This workflow performs **no release creation, GitHub Package/Container Registry push, private storage upload, repo settings change, Docker build/pull, UCI download, graph/mask generation, synthetic fit or real PCC fit**.
 
+## Confirmed temporary retention and bounded storage behavior
+
+The original repo-setting endpoint remained unauthorized for `GITHUB_TOKEN` (HTTP 403), but the GitHub Actions upload accepted the proposed **90-day retention** and its actual artifact metadata confirms expiry. Successful P2-01J [run #43531054368](https://github.com/fbreve/pypcc/actions/runs/43531054368) completed **4/4 PASS**: six fail-closed tests each on Linux and Windows, the original byte-content/receipt audit, one Actions upload, and independent new-artifact download+SHA verification. Newly verified artifact **14087551705**, ZIP digest `aa19e9e5183da1d71ed1c4ac9221c12fd3b23e87f7abaaa6545cd8f9dd5271cb`, expires **2027-02-11T23:59:18Z**. The original underlying `docker save` gzip SHA remains **`008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8`**; the GitHub artifact ZIP digest is a different enclosing archive, NOT a changed OCI payload.
+
+One earlier successful rearchive CI run #43531028233 also created the same ~291 MB payload as artifact **14087641451**, expiring **2027-02-11T23:59:04Z**. Multiple copies can consume extra billable Actions storage. **Consequently, the large download/upload/second-host jobs are now restricted to explicit `workflow_dispatch` only**, while ordinary PR changes run only the small source-only contract tests; do not create repeated ~291MB copies inadvertently. Both prior copies remain governed by their GitHub expiry, not immutable permanent storage. This branch does not delete either copy without an explicit decision.
+
 ## Part B: durable copy only at a user-selected local or NAS location
 
 The optional PowerShell script `scripts/p2_01j_archive_original_image_locally.ps1` is **not run by CI** and will not choose a destination on the user's behalf. It requires an **existing, explicitly passed destination directory** and an authenticated GitHub CLI (`gh`). It downloads artifact 14081565237 using its exact workflow run/name, validates the SHA256 of the actual image archive before and after copying, refuses to overwrite an existing different image, and writes a small JSON receipt beside the archive.
