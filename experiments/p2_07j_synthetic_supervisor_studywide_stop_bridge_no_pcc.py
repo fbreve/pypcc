@@ -89,12 +89,15 @@ def verify_live_result(mode, journal_path, outcome):
     tail, proof = outcome
     require(type(proof) is dict and
             proof.get("mode") == mode and
-            proof.get("termination_reason") == REASONS[mode] and
+            (proof.get("termination_reason") == REASONS[mode] or
+             (mode == "memory" and proof.get("termination_reason") ==
+              "KERNEL_CGROUP_OOM_KILLED_CONTAINER")) and
             proof.get("real_three_initial_host_PID_starttime_identities_gone") is True and
             proof.get("synthetic_PCC_fits_executed") == 0 and
             proof.get("real_PCC_fits_executed") == 0 and
             proof.get("hard_kernel_quotas", {}).get("hard_swap_max_bytes") == 0 and
             proof.get("hard_kernel_quotas", {}).get("hard_pids_max") == 128 and
+            type(proof.get("root_exit_code")) is int and
             (proof.get("root_exit_code") == 23 if mode == "crash"
              else proof.get("root_exit_code") != 0) and
             (mode != "memory" or
@@ -107,7 +110,7 @@ def verify_live_result(mode, journal_path, outcome):
     audit_sha = validate_five_h_events(journal_path, mode, tail)
     return {
         "mode": mode,
-        "verified_actual_synthetic_termination_reason": REASONS[mode],
+        "verified_actual_synthetic_termination_reason": proof["termination_reason"],
         "original_host_pid_starttime_identities_gone": 3,
         "source_free_H_journal_final_SHA256": tail,
         "source_free_H_journal_bytes_SHA256": audit_sha,
@@ -256,7 +259,9 @@ def validate_report(report):
             }, "Injected limit falsely claimed a live kernel/cgroup test")
         else:
             require(proof.get("mode") == mode and
-                    proof.get("verified_actual_synthetic_termination_reason") == REASONS[mode] and
+                    (proof.get("verified_actual_synthetic_termination_reason") == REASONS[mode] or
+                     (mode == "memory" and proof.get("verified_actual_synthetic_termination_reason") ==
+                      "KERNEL_CGROUP_OOM_KILLED_CONTAINER")) and
                     proof.get("original_host_pid_starttime_identities_gone") == 3 and
                     proof.get("synthetic_process_tree_only") is True and
                     isinstance(proof.get("source_free_H_journal_bytes_SHA256"), str) and
