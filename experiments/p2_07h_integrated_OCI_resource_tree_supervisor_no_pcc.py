@@ -118,11 +118,16 @@ def cgroup_counters(cid):
           "'memory_swap_max':(c/'memory.swap.max').read_text().strip(),"
           "'pids_max':(c/'pids.max').read_text().strip(),"
           "'cpu_max':(c/'cpu.max').read_text().strip(),"
-          "'scratch_available_bytes':s.f_bavail*s.f_frsize}),sort_keys=True))"
+          "'scratch_available_bytes':s.f_bavail*s.f_frsize},sort_keys=True))"
     )
     p=g.call(["docker","exec","--user","65534:65534",cid,g.PYTHON,
               "-c",script],timeout=9,success=False)
     if p.returncode!=0:
+        # Preserve source-free bounded diagnostics. During a REAL container
+        # exit the host loop can still inspect Docker State.OOMKilled, but
+        # before the release barrier a failed counter read must fail loudly.
+        if p.stderr.strip():
+            raise UnifiedBlocked("Cgroup-v2 probe failed: "+p.stderr.strip()[-500:])
         return None  # kernel can have stopped the entire cgroup
     try:
         out=json.loads(p.stdout)
