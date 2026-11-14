@@ -1,0 +1,112 @@
+name: Research P2-07G exact OCI 3-process cgroup descendant termination, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07g_synthetic_descendant_tree_no_pcc.py'
+      - 'experiments/p2_07g_original_OCI_descendant_cgroup_supervisor.py'
+      - 'experiments/test_p2_07g_original_OCI_descendant_cgroup_supervisor.py'
+      - 'docs/current_p2_07g_OCI_child_grandchild_termination_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07g-oci-descendant-cleanup-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  adversarial-source-only-tree-and-journal:
+    name: Nine source-only PID/cgroup, lost descendant and false GO tests (${{ matrix.os }}, Python 3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test only 4 fixed process-tree modes with original image/native source and no real data access
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07g_original_OCI_descendant_cgroup_supervisor -v
+
+  actual-linux-contained-descendant-cleanup:
+    name: Four actual 3-process trees with host PID/starttime disappearance after cgroup kill/stop/crash
+    needs: adversarial-source-only-tree-and-journal
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Require real Linux Docker cgroup v2 and immutable original source-only fixture
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07g_original_OCI_descendant_cgroup_supervisor as g
+          assert g.FIXTURE.is_file()
+          assert g.IMAGE_ID=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          assert len(g.MODES)==4
+          print("PASS: original OCI and fixed no-PCC process tree enforced")
+          PY
+      - name: Download EXACT 90-day already preserved P2-01J original OCI image bytes (no rebuild/pull)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07g-existing-original-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download only P2-07F Linux original 72-case metadata-only administrative report
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07f-original-72case-no-fit-administrative-review-ubuntu-latest-py312
+          path: p2-07g-original-no-fit-administrative-P1
+          run-id: 43538845862
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Actually observe three process host identities in one cgroup for each fixed artificial mode, enforce complete kill/exit and 20-row journal
+        shell: bash
+        run: |
+          python -m experiments.p2_07g_original_OCI_descendant_cgroup_supervisor \
+            --original-oci-artifact p2-07g-existing-original-OCI \
+            --original-admin-report p2-07g-original-no-fit-administrative-P1/p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json \
+            --journal p2-07g-append-only-20-events-all-NOT-RUN.jsonl \
+            --output p2-07g-exact-OCI-four-three-process-trees-cleanup-proof.json
+      - name: Independently reject original PID survivors, false scientific fits, unbounded output or damaged journal
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07g_original_OCI_descendant_cgroup_supervisor as g
+          report_file=Path("p2-07g-exact-OCI-four-three-process-trees-cleanup-proof.json")
+          report=json.loads(report_file.read_text(encoding="utf-8"))
+          assert g.validate_result(report)
+          j=g.validate_journal("p2-07g-append-only-20-events-all-NOT-RUN.jsonl",completed=True)
+          assert report["journal_records"]==j["count"]==20
+          assert report["journal_tail_sha256"]==j["tail_sha256"]
+          assert all(c["all_original_host_PID_starttime_identities_gone"]
+                     for c in report["cases"])
+          assert sum(c["original_processes_observed"] for c in report["cases"])==12
+          assert report["P2_execution_preflight_sha256"] is None
+          assert not report["P2_execution_authorized"]
+          assert report["synthetic_PCC_fits"]==report["real_PCC_fits_executed"]==0
+          assert report_file.stat().st_size<100*1024
+          print("PASS: 12 real host PID/starttime identities gone across 4 source-free cases; no original 72 scientific fits")
+          PY
+      - name: Preserve ONLY source-free failure/cleanup journal and digest-validated report (even when a probe failed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07g-original-OCI-four-cgroup-descendant-cleanups-NO-PCC
+          path: |
+            p2-07g-append-only-20-events-all-NOT-RUN.jsonl
+            p2-07g-exact-OCI-four-three-process-trees-cleanup-proof.json
+          retention-days: 30
+          if-no-files-found: warn
