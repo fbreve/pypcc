@@ -157,7 +157,7 @@ class P207IStudyWideStopSafety(unittest.TestCase):
             self.assertEqual(i.verify_audit_journal(path,self.report),
                              self.report["source_free_audit_JSONL_SHA256"])
             self.assertLess(path.stat().st_size,1024**2)
-            with self.assertRaises(FileExistsError):
+            with self.assertRaises(i.StudyStopBlocked):
                 i.append_audit_journal(path,self.report)
             content=path.read_bytes()
             path.write_bytes(content.replace(b"ADMIN_FAKE_STOP_NO_FIT",
