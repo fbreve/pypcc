@@ -107,6 +107,16 @@ class UnifiedSourceOnlyContract(unittest.TestCase):
         with self.assertRaises(h.UnifiedBlocked):
             h.docker_args("normal","pypcc-p207h-normal-nonhex")
 
+    def test_cgroup_counter_probe_is_valid_python_before_any_docker_exec(self):
+        source=h.cgroup_probe_source()
+        compile(source,"<P2-07H-cgroup-v2-metadata-probe>","exec")
+        self.assertIn("memory.events",source)
+        self.assertIn("cpu.stat",source)
+        self.assertIn("memory.swap.max",source)
+        self.assertIn("sort_keys=True",source)
+        self.assertNotIn("PCC",source)
+        self.assertNotIn("UCI",source)
+
     def test_actual_cgroup_resource_limits_reject_fake_memory_swap_cpu(self):
         expected={
             "cpu_usage_usec":123456,"oom_kill":0,
