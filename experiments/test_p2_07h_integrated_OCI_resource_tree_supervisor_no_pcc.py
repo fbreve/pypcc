@@ -3,6 +3,8 @@ import copy
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from experiments import p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc as h
 
 def example_report():
@@ -116,6 +118,23 @@ class UnifiedSourceOnlyContract(unittest.TestCase):
         self.assertIn("sort_keys=True",source)
         self.assertNotIn("PCC",source)
         self.assertNotIn("UCI",source)
+
+    def test_crashed_root_docker_exec_race_is_not_misclassified_as_success(self):
+        stopped=SimpleNamespace(
+            returncode=1,stdout="",
+            stderr="Error response from daemon: container abc is not running")
+        with patch.object(h.g,"call",return_value=stopped):
+            with patch.object(h,"proc_state",return_value={"Running":False}):
+                self.assertIsNone(h.cgroup_counters("abc"))
+            with patch.object(h,"proc_state",return_value={"Running":True}):
+                with self.assertRaises(h.UnifiedBlocked):
+                    h.cgroup_counters("abc")
+        broken=SimpleNamespace(returncode=1,stdout="",
+                               stderr="SyntaxError: invalid cgroup probe")
+        with patch.object(h.g,"call",return_value=broken):
+            with patch.object(h,"proc_state",return_value={"Running":False}):
+                with self.assertRaises(h.UnifiedBlocked):
+                    h.cgroup_counters("abc")
 
     def test_actual_cgroup_resource_limits_reject_fake_memory_swap_cpu(self):
         expected={
