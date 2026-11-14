@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   adversarial-stdlib-source-only:
-    name: Nine isolated source-only cap/journal/no-GO tests (${{ matrix.os }} Python3.12)
+    name: Eleven isolated source-only cap/journal/no-GO tests (${{ matrix.os }} Python3.12)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 12
     strategy:
