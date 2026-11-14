@@ -133,11 +133,17 @@ def cgroup_counters(cid):
         # then validates the expected root exit code (23). Any other error
         # remains a hard failure, including malformed cgroup probes.
         stderr=p.stderr.strip()
-        if "is not running" in stderr.lower():
-            latest=proc_state(cid)
-            if latest.get("Running") is False:
-                return None
-        raise UnifiedBlocked("Cgroup-v2 probe failed: "+stderr[-500:])
+        latest=proc_state(cid)
+        # Linux kernel OOM may kill PID1 in the time between the two
+        # Docker calls. The runtime can then return *empty* stderr, not
+        # necessarily the usual "is not running" string. Only a second
+        # trusted Docker inspection of THIS cid showing Running=False
+        # makes counters temporarily unavailable; one() must separately
+        # prove a legitimate mode-specific terminal reason and exit code.
+        if latest.get("Running") is False:
+            return None
+        raise UnifiedBlocked("Cgroup-v2 probe failed while still running: "+
+                             stderr[-500:])
     try:
         out=json.loads(p.stdout)
     except (json.JSONDecodeError,ValueError) as exc:
