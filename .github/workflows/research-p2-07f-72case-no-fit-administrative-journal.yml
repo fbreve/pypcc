@@ -1,0 +1,115 @@
+name: Research P2-07F 72-case original-order fail-closed administration only — ZERO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07f_sealed_72case_no_fit_administrative_dryrun.py'
+      - 'experiments/test_p2_07f_sealed_72case_no_fit_administrative_dryrun.py'
+      - 'docs/current_p2_07f_72case_failclosed_admin_dryrun_2026-11-13.md'
+      - '.github/workflows/research-p2-07f-72case-no-fit-administrative-journal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-real-original-metadata-only:
+    name: Original P1 72 IDs and three administrative failure positions (${{ matrix.os }}, Py3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run eight source-only adversarial tests with no PCC import, UCI download, Docker or actual fit
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07f_sealed_72case_no_fit_administrative_dryrun -v
+      - name: Retrieve ONLY previous P2-07E source-free cgroup limit and kill report, not whole OCI or real data
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07e-existing-OCI-five-cgroup-resource-probes-NO-PCC
+          path: p2-07f-previous-no-PCC-OS-proof
+          run-id: 43532796956
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify true original 5/5 kernel limits and produce four 72-case NO-FIT administrative journals
+        shell: bash
+        run: |
+          python -m experiments.p2_07f_sealed_72case_no_fit_administrative_dryrun \
+            --previous-cgroup-receipt p2-07f-previous-no-PCC-OS-proof/p2-07e-locked-OCI-cgroup-OS-kills-and-resource-caps.json \
+            --output p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json
+      - name: Deny any completed scientific fit and recompute digest from original 72 IDs and 3 fake aborts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          from experiments import p2_07f_sealed_72case_no_fit_administrative_dryrun as d
+          path=Path('p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          assert d.validate_report(data)
+          assert len(data['case_inventory'])==72
+          assert len(data['nominal_admin_case_ID_check_journal'])==72
+          assert [x['fake_failure_at_zero_based_case_index']
+                  for x in data['three_forced_administrative_failure_scenarios']]==[0,35,71]
+          assert data['real_PCC_fits_executed']==data['particle_propagations_executed']==0
+          assert data['P2_execution_preflight_sha256'] is None
+          assert not data['P2_execution_authorized']
+          assert path.stat().st_size < 1024*1024
+          print('P2_07F_admin_only_report_sha256='+d.sha(data))
+          print('PASS: 72 original IDs, 3 injected no-retry administrative aborts, all fit states NOT_RUN')
+          PY
+      - name: Preserve only tiny source-free safe original-ID and fake-failure journals
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07f-original-72case-no-fit-administrative-review-${{ matrix.os }}-py312
+          path: p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json
+          retention-days: 30
+          if-no-files-found: error
+
+  independent-two-os-administrative-report-concordance:
+    name: Original-P1 case IDs, three injected failure journal SHA and false-GO exact cross-OS concordance
+    needs: validate-real-original-metadata-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-07f-original-72case-no-fit-administrative-review-ubuntu-latest-py312
+          path: p2-07f-independently-compare/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-07f-original-72case-no-fit-administrative-review-windows-latest-py312
+          path: p2-07f-independently-compare/windows
+      - name: Require byte-canonical independent Linux/Windows 72-case journal equivalence and all-NO-FIT scope
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07f_sealed_72case_no_fit_administrative_dryrun as d
+          base=Path('p2-07f-independently-compare')
+          f='p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json'
+          linux=json.loads((base/'linux'/f).read_text(encoding='utf-8'))
+          windows=json.loads((base/'windows'/f).read_text(encoding='utf-8'))
+          assert d.validate_report(linux)
+          assert d.validate_report(windows)
+          assert d.sha(linux)==d.sha(windows)
+          assert linux==windows
+          assert linux['P2_execution_preflight_sha256'] is None
+          assert not linux['P2_execution_authorized']
+          assert linux['administrative_synthetic_drill_case_count']==288
+          assert linux['real_PCC_fits_executed']==0
+          print('PASS: identical 72-case source-free journals across Linux/Windows; report SHA256:',d.sha(linux))
+          PY
