@@ -28,7 +28,7 @@ One earlier successful rearchive CI run #43531028233 also created the same ~291 
 
 ## Part B: durable copy only at a user-selected local or NAS location
 
-The optional PowerShell script `scripts/p2_01j_archive_original_image_locally.ps1` is **not run by CI** and will not choose a destination on the user's behalf. It requires an **existing, explicitly passed destination directory** and an authenticated GitHub CLI (`gh`). It downloads artifact 14081565237 using its exact workflow run/name, validates the SHA256 of the actual image archive before and after copying, refuses to overwrite an existing different image, and writes a small JSON receipt beside the archive.
+The optional PowerShell script `scripts/p2_01j_archive_original_image_locally.ps1` is **not run by CI** and will not choose a destination on the user's behalf. It requires an **existing, explicitly passed destination directory** and an authenticated GitHub CLI (`gh`). It downloads the **extended-retention artifact 14087551705** (successful workflow #43531054368, expires **2027-02-11T23:59:18Z**) using its exact workflow run/name, validates the SHA256 of the **unchanged original OCI archive payload** before and after copying, refuses to overwrite an existing different image, and writes a small JSON receipt beside the archive.
 
 Example for a Windows PC with an existing local backup directory:
 
