@@ -1,0 +1,119 @@
+name: Research P2-07H integrated exact-OCI three-process resource supervisor — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07h_unified_synthetic_three_process_fixture_no_pcc.py'
+      - 'experiments/p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc.py'
+      - 'experiments/test_p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc.py'
+      - 'docs/current_p2_07h_integrated_tree_resource_supervisor_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07h-integrated-OCI-resource-tree-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  adversarial-stdlib-source-only:
+    name: Eleven isolated source-only cap/journal/no-GO tests (${{ matrix.os }} Python3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: No PCC data/models/Docker, six strict modes and false authorization checks
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc -v
+
+  actual-six-source-free-integrated-cgroup-three-process-tests:
+    name: Six original-OCI three-process integrated OS quotas and host watchdog/cleanup tests
+    runs-on: ubuntu-latest
+    needs: adversarial-stdlib-source-only
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Demand Linux cgroup-v2 and exact non-scientific original OCI identity
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc as h
+          assert h.FIXTURE.is_file()
+          assert len(h.MODES)==6
+          assert h.IMAGE_ID=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          print("PASS: exact preexisting OCI/cgroup-v2 with no PCC synthetic fixture")
+          PY
+      - name: Download only already-exported exact retained OCI archive (do NOT rebuild/pull/write a second OCI)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07h-original-byte-locked-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ONLY P2-07F no-fit original 72-case administrative report
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07f-original-72case-no-fit-administrative-review-ubuntu-latest-py312
+          path: p2-07h-prior-admin-no-fit-report
+          run-id: 43538845862
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ONLY P2-07G successful 4-mode descendant cleanup source-free receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07g-original-OCI-four-cgroup-descendant-cleanups-NO-PCC
+          path: p2-07h-prior-descendant-no-fit-report
+          run-id: 43540323728
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run six exact-OCI synthetic 3-process integrated resource watchdog tests with PID/starttime cleanup
+        shell: bash
+        run: |
+          python -m experiments.p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc \
+            --existing-oci-artifact p2-07h-original-byte-locked-OCI \
+            --old-72case-report p2-07h-prior-admin-no-fit-report/p2-07f-original-P1-72cases-all-NOT-RUN-admission-ledgers.json \
+            --old-tree-report p2-07h-prior-descendant-no-fit-report/p2-07g-exact-OCI-four-three-process-trees-cleanup-proof.json \
+            --journal p2-07h-six-integrated-append-only-no-PCC-events.jsonl \
+            --output p2-07h-six-integrated-resource-cgroup-descendant-checks.json
+      - name: Independently enforce six-case journal, exact source/archive hash and still-not-authorized P2
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          from experiments import p2_07h_integrated_OCI_resource_tree_supervisor_no_pcc as h
+          report=Path("p2-07h-six-integrated-resource-cgroup-descendant-checks.json")
+          obj=json.loads(report.read_text(encoding="utf-8"))
+          assert h.validate_report(obj)
+          j=h.validate_journal("p2-07h-six-integrated-append-only-no-PCC-events.jsonl",complete=True)
+          assert obj["journal_records"]==j["records"]==30
+          assert obj["journal_final_sha256"]==j["tail_sha256"]
+          assert obj["bounded_original_PID_identities_confirmed_gone"]==18
+          assert not obj["P2_execution_authorized"]
+          assert obj["P2_execution_preflight_sha256"] is None
+          assert obj["real_PCC_fits_executed"]==obj["synthetic_PCC_fits_executed"]==0
+          assert report.stat().st_size<100000
+          print("PASS: all 6 integrated cases, 18 original host PID identities cleaned, P2 still blocked")
+          PY
+      - name: Preserve only bounded synthetic evidence, even on a failed case (no full OCI duplicate)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07h-exact-OCI-integrated-six-three-process-resource-tests-NO-PCC
+          path: |
+            p2-07h-six-integrated-append-only-no-PCC-events.jsonl
+            p2-07h-six-integrated-resource-cgroup-descendant-checks.json
+          retention-days: 30
+          if-no-files-found: warn
