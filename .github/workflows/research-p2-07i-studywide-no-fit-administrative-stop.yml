@@ -1,0 +1,125 @@
+name: Research P2-07I fail-closed full P1 72case study administrative stop policy — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07i_studywide_failclosed_72case_no_fit.py'
+      - 'experiments/test_p2_07i_studywide_failclosed_72case_no_fit.py'
+      - 'docs/current_p2_07i_72case_studywide_failure_stop_review_2026-11-13.md'
+      - '.github/workflows/research-p2-07i-studywide-no-fit-administrative-stop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-only-full-72case-original-P1:
+    name: Ten adversarial no-fit 72-case fail-closed administrative audits (${{ matrix.os }}, Py3.12)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run 10 adversarial original-72-ID, 7-stop-class, 3-position false-GO tests (stdlib only)
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07i_studywide_failclosed_72case_no_fit -v
+      - name: Download ONLY original successful P2-07H source-free six-mode cgroup/child cleanup report
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07h-exact-OCI-integrated-six-three-process-resource-tests-NO-PCC
+          path: p2-07i-previous-original-no-fit-OS-report
+          run-id: 43547341278
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify pinned original six-mode report SHA then run 22 metadata-only administrative case-ID campaigns
+        shell: bash
+        run: |
+          python -m experiments.p2_07i_studywide_failclosed_72case_no_fit \
+            --original-p2-07h-source-free-report p2-07i-previous-original-no-fit-OS-report/p2-07h-six-integrated-resource-cgroup-descendant-checks.json \
+            --source-free-audit-jsonl p2-07i-22-failclosed-administrative-attempts-original-P1-72cases.jsonl \
+            --output p2-07i-source-free-studywide-stop-policy-72-original-IDs.json
+      - name: Independent local original 72-case log/review-only validation, no real scientific status
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          from experiments import p2_07i_studywide_failclosed_72case_no_fit as p
+          result=Path('p2-07i-source-free-studywide-stop-policy-72-original-IDs.json')
+          audit=Path('p2-07i-22-failclosed-administrative-attempts-original-P1-72cases.jsonl')
+          obj=json.loads(result.read_text(encoding='utf-8'))
+          assert p.validate_report(obj)
+          assert p.verify_audit_journal(audit,obj)==obj['source_free_audit_JSONL_SHA256']
+          assert obj['metadata_only_campaign_count']==22
+          assert obj['metadata_only_case_record_count']==1584
+          assert obj['original_72_case_states']=='ALL_NOT_RUN_NO_APPROVAL'
+          assert obj['P2_execution_preflight_sha256'] is None
+          assert obj['P2_execution_authorized'] is False
+          assert obj['real_PCC_fits_executed']==obj['synthetic_PCC_propagations_executed']==0
+          assert audit.stat().st_size<1024*1024
+          assert result.stat().st_size<3*1024*1024
+          print('PASS: 22 original 72-case source-only campaigns, 21 fake abort positions, NO FIT')
+          print('original_P2_07I_report_canonical_SHA256='+p.digest(obj))
+          print('source_free_append_only_JSONL_SHA256='+obj['source_free_audit_JSONL_SHA256'])
+          PY
+      - name: Preserve only bounded original case IDs and administrative STOP events, no OCI binary or UCI data
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07i-original-P1-72case-administrative-stop-review-${{ matrix.os }}-py312
+          path: |
+            p2-07i-22-failclosed-administrative-attempts-original-P1-72cases.jsonl
+            p2-07i-source-free-studywide-stop-policy-72-original-IDs.json
+          retention-days: 30
+          if-no-files-found: error
+
+  independently-match-whole-administrative-simulations:
+    name: SHA-256 cross-OS report and 1584-case chained audit concordance, P2 still NO-GO
+    runs-on: ubuntu-latest
+    needs: inspect-only-full-72case-original-P1
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-07i-original-P1-72case-administrative-stop-review-ubuntu-latest-py312
+          path: compare-original-P1-administrative-only/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-07i-original-P1-72case-administrative-stop-review-windows-latest-py312
+          path: compare-original-P1-administrative-only/windows
+      - name: Require byte-identical Linux/Windows original case-ID STOP reports/journals, no scientific fit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          from experiments import p2_07i_studywide_failclosed_72case_no_fit as p
+          root=Path('compare-original-P1-administrative-only')
+          rf='p2-07i-source-free-studywide-stop-policy-72-original-IDs.json'
+          jf='p2-07i-22-failclosed-administrative-attempts-original-P1-72cases.jsonl'
+          linux=json.loads((root/'linux'/rf).read_text(encoding='utf-8'))
+          windows=json.loads((root/'windows'/rf).read_text(encoding='utf-8'))
+          assert p.validate_report(linux) and p.validate_report(windows)
+          assert p.digest(linux)==p.digest(windows)
+          assert linux==windows
+          for osname in ('linux','windows'):
+              assert p.verify_audit_journal(root/osname/jf,linux)==linux['source_free_audit_JSONL_SHA256']
+          assert (root/'linux'/jf).read_bytes()==(root/'windows'/jf).read_bytes()
+          assert linux['P2_execution_preflight_sha256'] is None
+          assert linux['P2_execution_authorized'] is False
+          assert linux['real_PCC_fits_executed']==0
+          print('PASS: Linux and Windows exact 72-ID metadata-only 22-campaign report/journal equivalence')
+          print('original_P2_07I_report_SHA256='+p.digest(linux))
+          print('no_fit_attempt_journal_SHA256='+linux['source_free_audit_JSONL_SHA256'])
+          PY
