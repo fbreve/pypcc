@@ -218,6 +218,28 @@ def validate_campaign(cases,obj):
     return prev
 
 
+def pinned_h_proof():
+    return {
+        "original_source_run_id":H_RUN_ID,
+        "original_source_artifact_id":H_ARTIFACT_ID,
+        "verified_exact_P2_07H_report_SHA256":H_REPORT_SHA,
+        "verified_original_P2_07H_30record_journal_tail":H_JOURNAL_TAIL,
+        "original_18_synthetic_host_pid_starttime_identities_gone":True,
+        "source_free_evidence_cannot_authorize_PCC":True,
+    }
+
+
+def canonical_audit_bytes(campaigns):
+    content=b"".join(
+        canonical(row)+b"\n"
+        for campaign_report in campaigns
+        for row in campaign_report["administrative_records"]
+    )
+    require(len(content)<MAX_AUDIT_BYTES,
+            "Total 22 source-free administrative ledgers exceed 1MiB")
+    return content
+
+
 def build_report():
     cases,budget=original_inputs()
     # This report contains administrative case IDs ONLY. The old H report is
@@ -233,6 +255,10 @@ def build_report():
         "original_P2_07H_source_free_report_canonical_SHA256":H_REPORT_SHA,
         "original_P2_07H_source_run_id":H_RUN_ID,
         "original_P2_07H_source_artifact_id":H_ARTIFACT_ID,
+        "original_P2_07H_verified_source_free_proof":pinned_h_proof(),
+        "source_free_audit_JSONL_SHA256":
+            hashlib.sha256(canonical_audit_bytes(campaigns)).hexdigest(),
+        "source_free_audit_JSONL_rows":TOTAL_CAMPAIGNS*TOTAL_CASES,
         "original_72_original_case_id_inventory":cases,
         "unapproved_candidate_study_wide_budget_arithmetic":budget,
         "administrative_campaigns":campaigns,
@@ -271,7 +297,8 @@ def validate_report(obj):
             obj.get("exact_locked_OCI_config_id")==OCI_CONFIG_ID and
             obj.get("original_P2_07H_source_free_report_canonical_SHA256")==H_REPORT_SHA and
             obj.get("original_P2_07H_source_run_id")==H_RUN_ID and
-            obj.get("original_P2_07H_source_artifact_id")==H_ARTIFACT_ID,
+            obj.get("original_P2_07H_source_artifact_id")==H_ARTIFACT_ID and
+            obj.get("original_P2_07H_verified_source_free_proof")==pinned_h_proof(),
             "P1/P2-07C/P2-07H frozen provenance drift")
     cases,budget=original_inputs()
     require(obj.get("original_72_original_case_id_inventory")==cases and
@@ -287,6 +314,10 @@ def validate_report(obj):
         require(c.get("scenario")==expected["scenario"],
                 "Outcome-dependent reordering or replaced fake study failure")
         validate_campaign(cases,c)
+    require(obj.get("source_free_audit_JSONL_SHA256")==
+            hashlib.sha256(canonical_audit_bytes(campaigns)).hexdigest() and
+            obj.get("source_free_audit_JSONL_rows")==TOTAL_CAMPAIGNS*TOTAL_CASES,
+            "Missing or altered exact complete source-free on-disk evidence digest")
     for key,expected in (
         ("metadata_only_campaign_count",TOTAL_CAMPAIGNS),
         ("metadata_only_case_record_count",TOTAL_CAMPAIGNS*TOTAL_CASES),
@@ -355,11 +386,13 @@ def main():
     receipt=json.loads(args.original_p2_07h_source_free_report.read_text(encoding="utf-8"))
     proof=verify_old_h_receipt(receipt)
     report=build_report()
-    report["original_P2_07H_verified_source_free_proof"]=proof
+    require(proof==report["original_P2_07H_verified_source_free_proof"],
+            "Exact archive input does not match frozen original H evidence fields")
     count=append_audit_journal(args.source_free_audit_jsonl,report)
     audit_sha=verify_audit_journal(args.source_free_audit_jsonl,report)
-    report["source_free_audit_JSONL_SHA256"]=audit_sha
-    report["source_free_audit_JSONL_rows"]=count
+    require(audit_sha==report["source_free_audit_JSONL_SHA256"] and
+            count==report["source_free_audit_JSONL_rows"],
+            "Persisted source-free full study journal failed precise integrity proof")
     validate_report(report)
     args.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n",encoding="utf-8")
     print(json.dumps({
