@@ -102,8 +102,8 @@ def await_tree_ready(cid,mode):
         time.sleep(0.08)
     raise UnifiedBlocked("Three-process ready barrier was not observed")
 
-def cgroup_counters(cid):
-    script=(
+def cgroup_probe_source():
+    return (
         "import json,os;"
         "from pathlib import Path;"
         "c=Path('/sys/fs/cgroup');"
@@ -120,6 +120,9 @@ def cgroup_counters(cid):
           "'cpu_max':(c/'cpu.max').read_text().strip(),"
           "'scratch_available_bytes':s.f_bavail*s.f_frsize},sort_keys=True))"
     )
+
+def cgroup_counters(cid):
+    script=cgroup_probe_source()
     p=g.call(["docker","exec","--user","65534:65534",cid,g.PYTHON,
               "-c",script],timeout=9,success=False)
     if p.returncode!=0:
