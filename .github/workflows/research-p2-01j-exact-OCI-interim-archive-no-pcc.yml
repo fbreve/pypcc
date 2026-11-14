@@ -34,6 +34,7 @@ jobs:
           python -m unittest experiments.test_p2_01j_verified_interim_oci_archive -v
 
   verify-and-rearchive-exact-original-once:
+    if: github.event_name == 'workflow_dispatch'
     name: Re-archive ONLY byte-matched existing OCI image at repo-permitted retention, no rebuild
     runs-on: ubuntu-latest
     needs: source-only-archive-policy-tests
@@ -128,6 +129,7 @@ jobs:
           PY
 
   independently-verify-newly-stored-archive:
+    if: github.event_name == 'workflow_dispatch'
     name: Independently download newly stored exact OCI archive and hash it again (NO PCC)
     runs-on: ubuntu-latest
     needs: verify-and-rearchive-exact-original-once
