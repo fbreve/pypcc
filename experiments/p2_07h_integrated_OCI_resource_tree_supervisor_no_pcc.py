@@ -126,12 +126,18 @@ def cgroup_counters(cid):
     p=g.call(["docker","exec","--user","65534:65534",cid,g.PYTHON,
               "-c",script],timeout=9,success=False)
     if p.returncode!=0:
-        # Preserve source-free bounded diagnostics. During a REAL container
-        # exit the host loop can still inspect Docker State.OOMKilled, but
-        # before the release barrier a failed counter read must fail loudly.
-        if p.stderr.strip():
-            raise UnifiedBlocked("Cgroup-v2 probe failed: "+p.stderr.strip()[-500:])
-        return None  # kernel can have stopped the entire cgroup
+        # A short-lived synthetic PID1 crash can race docker exec after
+        # host inspection said Running=True. Accept ONLY Docker's exact
+        # "container ... is not running" response AND a new direct Docker
+        # inspect proving the SAME container is now stopped. The caller
+        # then validates the expected root exit code (23). Any other error
+        # remains a hard failure, including malformed cgroup probes.
+        stderr=p.stderr.strip()
+        if "is not running" in stderr.lower():
+            latest=proc_state(cid)
+            if latest.get("Running") is False:
+                return None
+        raise UnifiedBlocked("Cgroup-v2 probe failed: "+stderr[-500:])
     try:
         out=json.loads(p.stdout)
     except (json.JSONDecodeError,ValueError) as exc:
