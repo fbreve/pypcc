@@ -1,0 +1,88 @@
+name: Research P2-07K source-free original J and candidate host/resource decision — NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07k_original_resource_host_admission_no_fit.py'
+      - 'experiments/test_p2_07k_original_resource_host_admission_no_fit.py'
+      - 'docs/current_p2_07k_resource_host_and_p2_08_blocker_review_2026-11-14.md'
+      - '.github/workflows/research-p2-07k-resource-host-gates-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-adversarial:
+    name: Twelve original host/resource false-GO tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Verify source-only candidate original 72 IDs/limits and reject forged final P2 GO
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07k_original_resource_host_admission_no_fit -v
+
+  sealed-resource-review-with-original-J-artifact:
+    name: Verify original J report, 504-ID audit, five H journals and six final blockers
+    runs-on: ubuntu-latest
+    needs: source-only-adversarial
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download ONLY small original P2-07J successful synthetic-source-only evidence (no OCI/real data)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07j-five-live-H-supervisor-to-study-stop-NO-PCC
+          path: p2-07k-original-verified-J-evidence
+          run-id: 43550965075
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate original five complete H journal chains and draft original P1 resource caps before any review report
+        shell: bash
+        run: |
+          python -m experiments.p2_07k_original_resource_host_admission_no_fit \
+            --original-p2-07j-report p2-07k-original-verified-J-evidence/p2-07j-no-PCC-supervisor-to-whole-study-stop.json \
+            --original-p2-07j-audit-jsonl p2-07k-original-verified-J-evidence/p2-07j-seven-72-original-ID-administrative-STOP-scenarios.jsonl \
+            --original-p2-07j-H-journals p2-07k-original-verified-J-evidence/p2-07j-five-live-artificial-H-tree-journals \
+            --output p2-07k-original-evidence-resource-host-blockers-NO-GO.json
+      - name: Independent exact original policy/report/approval denial check
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          from experiments import p2_07k_original_resource_host_admission_no_fit as k
+          p=Path("p2-07k-original-evidence-resource-host-blockers-NO-GO.json")
+          obj=json.loads(p.read_text(encoding="utf-8"))
+          assert k.validate_report(obj)
+          assert obj["missing_execution_requirements_count"]==6
+          assert obj["verified_actual_source_free_synthetic_supervised_trees"]==5
+          assert len(obj["original_P1_scientific_case_IDs"])==72
+          assert obj["real_PCC_fits_executed"]==0
+          assert obj["P2_execution_authorized"] is False
+          assert obj["P2_execution_preflight_sha256"] is None
+          assert p.stat().st_size<200000
+          print("PASS: original J 5 live synthetic trees + 504 administrative IDs admitted ONLY as NO-GO provenance")
+          print("source_free_P2_07K_review_SHA256_NOT_EXECUTION_SHA="+k.digest(obj))
+          PY
+      - name: Retain only small source-free blocked-decision matrix, not full OCI or UCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07k-original-source-free-host-resource-blocker-review-NO-GO
+          path: p2-07k-original-evidence-resource-host-blockers-NO-GO.json
+          retention-days: 30
+          if-no-files-found: error
