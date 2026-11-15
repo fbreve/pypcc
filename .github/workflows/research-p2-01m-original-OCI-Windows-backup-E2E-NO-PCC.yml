@@ -1,0 +1,132 @@
+name: Research P2-01M genuine original OCI PowerShell backup E2E on Windows ephemeral only, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/p2_01m_validate_original_OCI_windows_backup_ephemeral.ps1'
+      - 'docs/current_p2_01m_original_OCI_Windows_backup_real_e2e_2026-11-15.md'
+      - '.github/workflows/research-p2-01m-original-OCI-Windows-backup-E2E-NO-PCC.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-image-windows-backup-e2e-ephemeral:
+    name: Real original OCI P2-01J gh download/copy/sha/receipt/tamper on Windows; ephemeral only
+    runs-on: windows-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm original artifact metadata and GH_TOKEN without exposing credentials
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $IsWindows) { throw 'Original end-to-end backup requires actual Windows' }
+          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw 'GitHub CLI unavailable' }
+          $doc = gh api repos/fbreve/pypcc/actions/artifacts/14087551705 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $doc.expired -ne $false -or
+              $doc.id -ne 14087551705 -or
+              $doc.name -cne 'p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt') {
+            throw 'Original 90-day byte-verified OCI source artifact is unavailable or different'
+          }
+          Write-Output "Original archived OCI source artifact present; no new copy uploaded"
+      - name: Exercise actual source-preserved Windows PowerShell script against ORIGINAL 291MB binary
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $result = @(& ./scripts/p2_01m_validate_original_OCI_windows_backup_ephemeral.ps1 -TemporaryRoot $env:RUNNER_TEMP)
+          if ($result.Count -ne 1) {
+            throw 'Real original backup E2E must output exactly one source-free summary JSON'
+          }
+          $r = $result[0] | ConvertFrom-Json
+          if ($r.real_Windows_download_and_copy_verified -ne $true -or
+              $r.actual_durable_local_or_NAS_user_backup_verified -ne $false -or
+              $r.P2_execution_authorized -ne $false -or
+              $r.real_PCC_fits_executed -ne 0) {
+            throw 'Original Windows backup result false GO or wrong artifact identity'
+          }
+          $output = Join-Path $env:RUNNER_TEMP 'p2-01m-original-Windows-backup-E2E-sourcefree-NO-PCC.json'
+          $result[0] | Set-Content -LiteralPath $output -Encoding utf8 -NoNewline
+          if ((Get-Item -LiteralPath $output).Length -ge 2500) {
+            throw 'Backup receipt accidentally contains infrastructure detail'
+          }
+          Write-Output 'PASS: original Windows PowerShell downloaded exact OCI, copied, verified SHA/receipt/idempotence/tamper, deleted ephemeral copy'
+      - name: Upload ONLY source-free tiny E2E result, NEVER the original 291MB OCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01m-original-windows-OCI-backup-E2E-SAFE-RECEIPT-NO-PCC
+          path: ${{ runner.temp }}/p2-01m-original-Windows-backup-E2E-sourcefree-NO-PCC.json
+          retention-days: 7
+          if-no-files-found: error
+
+  independent-e2e-receipt-verification:
+    name: Independent Ubuntu review of original Windows backup E2E source-free identity and P2 STOP
+    runs-on: ubuntu-latest
+    needs: original-image-windows-backup-e2e-ephemeral
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p2-01m-original-windows-OCI-backup-E2E-SAFE-RECEIPT-NO-PCC
+          path: p2-01m-sourcefree
+      - name: Validate Windows source-free result independently, no Docker, OCI or PCC
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, hashlib
+          p=Path("p2-01m-sourcefree/p2-01m-original-Windows-backup-E2E-sourcefree-NO-PCC.json")
+          assert p.is_file() and 0<p.stat().st_size<2500
+          r=json.loads(p.read_text(encoding="utf-8-sig"))
+          assert set(r)=={
+              "schema","status","original_image_sha256","original_image_config_id",
+              "original_source_actions_run_id","original_source_actions_artifact_id",
+              "original_archive_bytes","real_Windows_download_and_copy_verified",
+              "idempotent_rebackup_and_verify_only_pass",
+              "wrong_content_rejected_without_overwrite",
+              "missing_directory_rejected_without_creation",
+              "archive_released_or_uploaded_to_long_term_storage",
+              "actual_durable_local_or_NAS_user_backup_verified",
+              "physical_execution_host_selected",
+              "P2_01_final_execution_toolchain_lock_pass",
+              "P2_07_full_resources_gate_pass","P2_execution_preflight_sha256",
+              "P2_execution_authorized","real_PCC_fits_executed",
+          }, "Unapproved source fields or infrastructure paths disclosed"
+          assert r["schema"]=="pypcc-P2-01M-original-Windows-OCI-backup-end-to-end-NO-PCC/v1"
+          assert r["status"]=="EXACT_ORIGINAL_OCI_WINDOWS_BACKUP_COPIED_AND_VERIFIED_EPHEMERAL_ONLY"
+          assert r["original_image_sha256"]=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          assert r["original_image_config_id"]=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          assert r["original_source_actions_run_id"]==43531054368
+          assert r["original_source_actions_artifact_id"]==14087551705
+          assert type(r["original_archive_bytes"]) is int and 200*1024**2<r["original_archive_bytes"]<2*1024**3
+          for key in (
+              "real_Windows_download_and_copy_verified",
+              "idempotent_rebackup_and_verify_only_pass",
+              "wrong_content_rejected_without_overwrite",
+              "missing_directory_rejected_without_creation",
+          ):
+              assert r[key] is True, key
+          for key in (
+              "archive_released_or_uploaded_to_long_term_storage",
+              "actual_durable_local_or_NAS_user_backup_verified",
+              "physical_execution_host_selected",
+              "P2_01_final_execution_toolchain_lock_pass",
+              "P2_07_full_resources_gate_pass",
+              "P2_execution_authorized",
+          ):
+              assert r[key] is False, key
+          assert r["P2_execution_preflight_sha256"] is None
+          assert r["real_PCC_fits_executed"]==0
+          canonical=json.dumps(r,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode("ascii")
+          print("PASS: actual ORIGINAL Windows PowerShell archival E2E, independently reviewed in Linux")
+          print("original_image_payload_bytes="+str(r["original_archive_bytes"]))
+          print("source_free_technical_receipt_sha256_NOT_EXECUTION="+hashlib.sha256(canonical).hexdigest())
+          print("NO permanent backup, no selected host, no scientific PCC execution")
+          PY
