@@ -1,0 +1,102 @@
+name: Research P2-07P original exact OCI real native kernels on 900n FAKE kNN 50k, ZERO UCI
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07p_exact_oci_synthetic_fullfit_resource_probe.py'
+      - 'experiments/test_p2_07p_exact_oci_synthetic_fullfit_resource_probe.py'
+      - 'docs/current_p2_07p_original_OCI_full_synthetic_50k_resource_results_2026-11-15.md'
+      - '.github/workflows/research-p2-07p-exact-OCI-3native-50k-FAKE-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  strict-no-UCI-source-only-adversarial:
+    name: 11 immutable fake-graph, no-real-PCC and resource guards (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10','3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Test no-UCI, immutable original P1 SHA and source-only synthetic resource envelope
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07p_exact_oci_synthetic_fullfit_resource_probe -v
+
+  exact-original-OCI-50k-three-native-artificial-only:
+    name: Original exact OCI three synthetic 900n build_graph + 50000-iteration fits, cap 2GiB, ZERO real fits
+    runs-on: ubuntu-latest
+    needs: strict-no-UCI-source-only-adversarial
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Confirm original production source immutable, P1 prohibited, cgroup v2 real
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07p_exact_oci_synthetic_fullfit_resource_probe as p
+          assert p.original_P1_locked_NO_GO()
+          assert p.ITERATIONS==50000 and p.FAKE_SEED==71
+          assert p.IMAGE_SHA=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          print("PASS original source byte lock; only FAKE 900x7 dataset authorized by this job")
+          PY
+      - name: Retrieve ONLY exact historical already existing archived 291MB OCI (no rebuild)
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07p-exact-existing-original-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run original production NumPy Numba Cython once each for 50000 on SAME synthetic 900n kNN graph in isolated OCI
+        shell: bash
+        run: |
+          python -m experiments.p2_07p_exact_oci_synthetic_fullfit_resource_probe \
+            --original-OCI-archive p2-07p-exact-existing-original-OCI \
+            --output p2-07p-EXACT-OCI-3-native-fullfit-50k-SYNTHETIC-ONLY.json
+      - name: Independent original scientific NO-GO and resource receipt review
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07p_exact_oci_synthetic_fullfit_resource_probe as p
+          filename=Path("p2-07p-EXACT-OCI-3-native-fullfit-50k-SYNTHETIC-ONLY.json")
+          obj=json.loads(filename.read_text(encoding="utf-8"))
+          assert p.validate_report(obj)
+          assert filename.stat().st_size<12000
+          rows=obj["original_900n_synthetic_fullfits_three_backend_rows"]
+          assert [x["backend"] for x in rows]==["numpy","numba","cython"]
+          assert sum(x["synthetic_50k_full_fits_completed"] for x in rows)==3
+          assert all(x["real_UCI_PCC_fits_completed"]==0 for x in rows)
+          assert all(x["original_checkpoint_observer_invocations"]==0 for x in rows)
+          assert obj["P2_07_full_resources_gate_pass"] is False
+          assert obj["P2_execution_preflight_sha256"] is None
+          assert obj["P2_execution_authorized"] is False
+          assert obj["real_PCC_fits_executed"]==0
+          print("PASS original 3 native full synthetic 50k fits, actual full graph building and fresh OCI resource metrics")
+          for x in rows:
+              print(f"ARTIFICIAL_ONLY backend={x['backend']} graph={x['synthetic_graph_shape']} fit_wall_s={x['fit_wall_seconds']} fit_cpu_s={x['fit_cpu_seconds']} process_peak_RSS_bytes={x['process_peak_rss_bytes']} cgroup_peak_bytes={x['cgroup_v2_peak_bytes']} tmpfs_payload_bytes={x['tmpfs_file_payload_bytes_end']}")
+          print("review_only_SHA256_NOT_P2_execution="+p.digest(obj))
+          PY
+      - name: Archive only tiny quantitative synthetic resource report, NEVER original OCI/UCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07p-original-exact-OCI-3native-50k-SYNTHETIC-only-resource-evidence
+          path: p2-07p-EXACT-OCI-3-native-fullfit-50k-SYNTHETIC-ONLY.json
+          retention-days: 30
+          if-no-files-found: error
