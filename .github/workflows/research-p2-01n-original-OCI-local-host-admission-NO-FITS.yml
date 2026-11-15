@@ -1,0 +1,108 @@
+name: Research P2-01N user-local Docker host/OCI preflight, original 72 native imports, ZERO PCC fits
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01n_candidate_host_readiness_no_fit.py'
+      - 'experiments/test_p2_01n_candidate_host_readiness_no_fit.py'
+      - 'docs/current_p2_01n_candidate_physical_host_local_preflight_NO_FIT_2026-11-15.md'
+      - '.github/workflows/research-p2-01n-original-OCI-local-host-admission-NO-FITS.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-local-host-adversarial:
+    name: 15 local Docker physical/VM capacity and scientific NO-GO adversarial tests (${{ matrix.os }} Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Pure stdlib original P1 backend/OCI local-host admission checks, no Docker runs
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01n_candidate_host_readiness_no_fit -v
+
+  original-existing-OCI-real-host-preflight-import-only:
+    name: Ephemeral Linux Docker host protocol proof against ORIGINAL exact OCI, only 72 function RESOLUTIONS
+    runs-on: ubuntu-latest
+    needs: source-only-local-host-adversarial
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Original science/system preflight and existing cgroup v2
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_01n_candidate_host_readiness_no_fit as h
+          assert h.m.verify_source_blobs()
+          assert h.guard.source_bytes_locked()
+          assert h.NO_GO["P2_execution_authorized"] is False
+          assert h.IMAGE_SHA=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          print("PASS: frozen original source; only real host capacity / import-only mode")
+          PY
+      - name: Retrieve ONLY pre-existing original hashed 291MB OCI artifact, not rebuild/pull
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-01n-existing-original-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load original OCI locally to ephemeral Docker, exact archived bytes verified
+        shell: bash
+        run: |
+          python - <<'PY'
+          from experiments import p2_07e_locked_oci_cgroup_resource_supervisor as s
+          from pathlib import Path
+          a=s.verify_original_image(Path("p2-01n-existing-original-OCI").resolve())
+          assert a["loaded_exact_original_image_ID"]=="sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          print("PASS: original historical OCI exact bytes LOADED only in ephemeral host")
+          PY
+      - name: Use SAME owner-facing local host admission entrypoint, no PCC or real UCI
+        shell: bash
+        run: |
+          original="$(find p2-01n-existing-original-OCI -type f -name 'p2-01h-exact-runtime-image.tar.gz' -print -quit)"
+          test -n "$original"
+          python -m experiments.p2_01n_candidate_host_readiness_no_fit \
+            --archive "$original" \
+            --work-dir "${{ runner.temp }}" \
+            --output "${{ runner.temp }}/p2-01n-local-host-importonly-NO-FIT.json"
+      - name: Independently review only local ephemeral source-free capacity receipt and scientific STOP
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from experiments import p2_01n_candidate_host_readiness_no_fit as h
+          path=Path(os.environ["RUNNER_TEMP"])/"p2-01n-local-host-importonly-NO-FIT.json"
+          assert path.is_file() and 0<path.stat().st_size<5000
+          data=json.loads(path.read_text(encoding="ascii"))
+          assert h.validate_report(data)
+          assert data["observed_local_host"]["host_physical_RAM_bytes"]>=8*1024**3
+          assert data["observed_local_host"]["engine_VM_total_memory_bytes"]>=8*1024**3
+          assert data["observed_local_host"]["work_directory_free_disk_bytes_at_check"]>=12*1024**3
+          assert data["exact_original_OCI_import_only_worker"]["resolved_exact_original_P1_case_identifiers"]==72
+          assert data["source_compiler_SDK_OS_build_closure_proven"] is False
+          assert data["a_suitable_host_has_not_been_selected_or_approved"] is True
+          assert data["P2_execution_preflight_sha256"] is None
+          assert data["P2_execution_authorized"] is False
+          assert data["real_PCC_fits_executed"]==0
+          print("PASS: genuine existing OCI host capability + 72 exact production backend RESOLUTIONS, zero propagations")
+          print("review_only_sha256_NOT_P2_08="+h.digest(data))
+          print("These are ephemeral CI runner capacities, NOT user's actual approved execution host")
+          PY
