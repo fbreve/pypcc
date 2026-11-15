@@ -8,7 +8,7 @@ O P2-01K comprovou que `impl="cython"` no `pcc.py` original pode retornar **Numb
 
 O novo módulo `experiments/p2_01l_frozen_72case_backend_guard_no_fit.py` disponibiliza `assert_case_backend_exact(protocol, uci_id, replicate, backend)` como **pré-requisito reutilizável** para um futuro executor científico. Antes de qualquer ajuste, ele:
 
-1. Confere se o caso pertence exatamente à lista congelada das 72 posições originais (3 fontes × 8 máscaras × 3 backends), com 50.000 iterações propostas, `early_stop=False` e sem reordenação; recusa aliases como `auto`.
+1. Confere primeiro o **SHA-256 canônico integral do documento P1** — qualquer mudança de fonte, procedência ou análise, mesmo sem afetar o backend, é recusada — e se o caso pertence exatamente à lista congelada das 72 posições originais (3 fontes × 8 máscaras × 3 backends), com 50.000 iterações propostas, `early_stop=False` e sem reordenação; recusa aliases como `auto`.
 2. Reconfere os Git blobs dos fontes originais `pcc.py`, `pcc_numpy.py`, `pcc_numba.py`, `pcc_graph.py` e os caminhos físicos dos módulos importados.
 3. Instancia apenas um `ParticleCompetitionAndCooperation(impl=...,n_jobs=1,update_mode="sequential")` ainda **sem grafo e sem partículas**; chama apenas `_get_backend_fn()` para selecionar o ponteiro de função, sem invocá-lo.
 4. Exige **identidade de objeto** com a função original exata de NumPy, Numba ou Cython. No Cython, recusa `_HAS_CYTHON=False`, mesmo que haja fallback Numba; valida arquivo nativo original e seu SHA256 binário `cec70629e10b1f6e9f53274d571a52ad2177d31b89d2c189840f3abda2944a8a` e o módulo original do observador Cython `1ea9f1c151df795071b3fe449df2a3e35ab72bb79156b073df9f8297c66d899f`.
