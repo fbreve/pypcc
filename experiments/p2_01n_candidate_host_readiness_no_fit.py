@@ -116,6 +116,10 @@ def run_cmd(arguments,*,timeout=35):
                             result.stderr)
             if match is not None:
                 label+="__"+match.group(1)
+            safe_stage=re.findall(r"P201N_SAFE_STAGE\|([A-Z0-9_]{1,80})",
+                                  result.stderr)
+            if safe_stage:
+                label+="__STAGE_"+safe_stage[-1]
         raise HostBlocked(label)
     require(len(result.stdout.encode())<=20000 and
             len(result.stderr.encode())<=20000,
@@ -189,9 +193,13 @@ def worker():
             os.environ.get("PYTHONPATH")==guard.k.CORRECT_PATH and
             os.environ.get("P201N_IMPORT_ONLY")=="1",
             "ONLY_EXACT_IMMUTABLE_OCI_IMPORT_ONLY_WORKER")
+    # Explicit stable stage markers help diagnose errors without printing
+    # Python traceback, source lines, local usernames or mount paths.
+    print("P201N_SAFE_STAGE|BEFORE_ORIGINAL_72_IMPORTS",file=sys.stderr,flush=True)
     # Executes real original production backend RESOLUTION, not propagation.
     evidence=guard.worker("corrected_72_case")
     guard.validate_worker(evidence,"corrected_72_case")
+    print("P201N_SAFE_STAGE|AFTER_ORIGINAL_72_IMPORTS",file=sys.stderr,flush=True)
     root=Path("/sys/fs/cgroup")
     memory=(root/"memory.max").read_text(encoding="ascii").strip()
     swap=(root/"memory.swap.max").read_text(encoding="ascii").strip()
@@ -205,6 +213,7 @@ def worker():
     require(0<free<=TMPFS and
             not Path("/tmp/p207r-release-fake-only").exists(),
             "EXPECTED_NO_FIT_TMPFS_OR_RELEASE_BARRIER_MISSING")
+    print("P201N_SAFE_STAGE|AFTER_CGROUP_QUOTAS",file=sys.stderr,flush=True)
     return {
         "schema":WORKER_SCHEMA,
         "original_frozen_P1_SHA256":P1_SHA,
