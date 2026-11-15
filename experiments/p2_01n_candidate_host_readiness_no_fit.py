@@ -112,7 +112,7 @@ def run_cmd(arguments,*,timeout=35):
         code=result.returncode
         label=f"LOCAL_DOCKER_{step.upper()}_EXIT_{code}"
         if step=="run":
-            match=re.search(r"P201N_FAIL_CLOSED\|([A-Z0-9_]{1,100})",
+            match=re.search(r"P201N_FAIL_CLOSED\|([A-Za-z0-9_]{1,100})",
                             result.stderr)
             if match is not None:
                 label+="__"+match.group(1)
