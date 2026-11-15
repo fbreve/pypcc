@@ -1,0 +1,112 @@
+name: Research P2-07Q exact OCI ORIGINAL native 8 checkpoint observers on FAKE 50k, no UCI
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07q_exact_oci_synthetic_live_observer_50k.py'
+      - 'experiments/test_p2_07q_exact_oci_synthetic_live_observer_50k.py'
+      - 'experiments/live_numpy_milestones.py'
+      - 'experiments/live_numba_milestones.py'
+      - 'experiments/live_cython_milestones.py'
+      - 'experiments/bench_live_numpy_fullfit.py'
+      - 'experiments/bench_live_numba_fullfit.py'
+      - 'docs/current_p2_07q_exact_OCI_original_observers_50k_FAKE_2026-11-15.md'
+      - '.github/workflows/research-p2-07q-exact-OCI-8-observers-50k-FAKE-no-UCI.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-observer-blob-source-no-go:
+    name: 12 adversarial historical observer/source-byte and scientific NO-GO tests (${{ matrix.os }} Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Assert exact 5 historical observer/RNG helper Git blobs; no native PCC called
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07q_exact_oci_synthetic_live_observer_50k -v
+
+  original-exact-OCI-8-milestone-paired-50k-FAKE:
+    name: Six 50k synthetic fits on EXACT OCI, 3 native baseline/8-observer parity, real cgroup resource receipts
+    needs: original-observer-blob-source-no-go
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Original P1 production, historical observer source blobs and Linux cgroup v2
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07q_exact_oci_synthetic_live_observer_50k as q
+          assert q.source_locked()
+          assert q.MILESTONES==(0,1,10,100,1000,5000,25000,50000)
+          assert q.OCI_SHA=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          print("Original historical 5 observer RNG/source files and P1 immutable; all current jobs fake-only")
+          PY
+      - name: Fetch ONLY EXISTING original byte-verified exact OCI binary, no Docker build or push
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07q-existing-exact-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Original 3 backend normal-vs-8-observer 50k synthetic full fits, 2 GiB cap, no UCI
+        shell: bash
+        run: |
+          python -m experiments.p2_07q_exact_oci_synthetic_live_observer_50k \
+            --existing-original-OCI p2-07q-existing-exact-OCI \
+            --output p2-07q-exact-OCI-three-native-8milestone-50k-FAKE-only.json
+      - name: Verify paired exact final mutable state, prediction/RNG parity, eight milestones, aggregate CPU/RSS
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07q_exact_oci_synthetic_live_observer_50k as q
+          file=Path("p2-07q-exact-OCI-three-native-8milestone-50k-FAKE-only.json")
+          assert file.is_file() and file.stat().st_size<13000
+          r=json.loads(file.read_text(encoding="utf-8"))
+          assert q.validate_report(r)
+          rows=r["original_three_native_backend_50k_synthetic_parity_and_resource"]
+          assert [x["backend"] for x in rows]==["numpy","numba","cython"]
+          assert sum(x["actual_synthetic_fits_completed"] for x in rows)==6
+          assert sum(x["real_original_P1_fits_completed"] for x in rows)==0
+          assert all(x["same_backend_full_mutable_state_parity_verified"]
+                     and x["same_backend_prediction_parity_verified"] for x in rows)
+          assert all(x["original_native_fullfit_and_historical_observer"][1]["milestones"]==list(q.MILESTONES)
+                     for x in rows)
+          assert r["P2_01_final_execution_toolchain_lock_pass"] is False
+          assert r["P2_07_full_resources_gate_pass"] is False
+          assert r["P2_execution_preflight_sha256"] is None
+          assert r["P2_execution_authorized"] is False
+          assert r["real_PCC_fits_executed"]==0
+          for x in rows:
+              orig,obs=x["original_native_fullfit_and_historical_observer"]
+              print(f"FAKE_50K_AND_8OBS backend={x['backend']} baseline_cpu_s={orig['fit_cpu_seconds']} observed_cpu_s={obs['fit_cpu_seconds']} observed_snapshot_bytes={obs['snapshot_array_bytes']} process_peak_RSS_bytes={x['synthetic_pair_process_peak_RSS_bytes']} cgroup_peak_bytes={x['synthetic_pair_cgroup_v2_peak_bytes']} tmpfs_payload_bytes={x['synthetic_pair_tmpfs_file_payload_bytes']}")
+          print("PASS: original exact OCI 3x2 50k FAKE complete fits, 8 live intermediate checkpoints, exact final state/prediction and available RNG parity")
+          print("review_only_digest_SHA256_NOT_EXECUTION="+q.digest(r))
+          PY
+      - name: Retain only small artificial aggregate resource/parity receipt, no source, UCI, snapshots or OCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07q-original-exact-OCI-6fake-50k-8milestone-resource-parity-NO-UCI
+          path: p2-07q-exact-OCI-three-native-8milestone-50k-FAKE-only.json
+          retention-days: 30
+          if-no-files-found: error
