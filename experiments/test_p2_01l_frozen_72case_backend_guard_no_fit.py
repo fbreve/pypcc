@@ -71,6 +71,9 @@ class P201LBackendGuardTests(unittest.TestCase):
             lambda p: p["fit"].update(early_stop=True),
             lambda p: p["fit"].update(total_proposed_fits=71),
             lambda p: p["fit"].update(backend_order=list(reversed(c.BACKENDS))),
+            # Even unrelated original P1 science/data provenance may not drift
+            # while keeping case IDs and backend slots looking identical.
+            lambda p: p["selected_datasets"][0].update(source_name="FORGED"),
         ):
             p=original_72_P1()
             mutation(p)
