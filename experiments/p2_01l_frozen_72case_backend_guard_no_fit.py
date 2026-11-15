@@ -155,8 +155,13 @@ def container_args(mode,name):
     require(mode in ("baseline_must_reject","corrected_72_case") and
             re.fullmatch(r"pypcc-p201l-[0-9a-f]{12}",name) is not None,
             "Only original OCI import-only guard audit modes permitted")
+    # Reuse the previously validated P2-01K confinement policy verbatim.
+    # P2-01K enforces its own container-name prefix; replace only that
+    # validated --name token after constructing the same Docker policy.
+    k_name=name.replace("p201l","p201k",1)
     cmd=k.docker_args(
-        k.MODES[0] if mode=="baseline_must_reject" else k.MODES[1],name)
+        k.MODES[0] if mode=="baseline_must_reject" else k.MODES[1],k_name)
+    cmd[cmd.index("--name")+1]=name
     index=cmd.index("experiments.p2_01k_original_OCI_backend_resolution_import_only")
     cmd[index]="experiments.p2_01l_frozen_72case_backend_guard_no_fit"
     cmd[-2:]=["--worker-mode",mode]
