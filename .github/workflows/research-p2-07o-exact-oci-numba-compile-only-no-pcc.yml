@@ -1,0 +1,100 @@
+name: Research P2-07O original Numba JIT compile-only inside existing exact OCI, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07o_original_exact_oci_numba_jit_compile_only.py'
+      - 'experiments/test_p2_07o_original_exact_oci_numba_jit_compile_only.py'
+      - 'docs/current_p2_07o_exact_OCI_numba_JIT_compilation_only_2026-11-14.md'
+      - '.github/workflows/research-p2-07o-exact-oci-numba-compile-only-no-pcc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  no-kernel-source-only-checks:
+    name: Eleven no-fit Numba original signature adversarial tests (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Check source-only frozen signature, exact blob, no propagation and hard NO-GO
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07o_original_exact_oci_numba_jit_compile_only -v
+
+  compile-original-numba-signature-in-exact-oci:
+    name: EXACT archived original OCI, type-only Numba JIT compile, no calls/graphs/PCC
+    needs: no-kernel-source-only-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Check Docker cgroup-v2 host and immutable original production file blobs
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07o_original_exact_oci_numba_jit_compile_only as o
+          assert o.m.verify_source_blobs()
+          assert o.IMAGE_SHA == "008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          assert len(o.TYPE_SPEC)==27
+          print("PASS: original production Numba source byte SHA and 27 original argument dtypes, zero PCC")
+          PY
+      - name: Download ONLY already archived original exact OCI bytes; no rebuild or registry pull
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07o-original-byte-locked-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Numba compile only under exact OCI and cgroup, no UCI/graphs/masks/fits
+        shell: bash
+        run: |
+          python -m experiments.p2_07o_original_exact_oci_numba_jit_compile_only \
+            --exact-original-OCI p2-07o-original-byte-locked-OCI \
+            --output p2-07o-original-OCI-numba-nopython-JIT-COMPILE-ONLY-NO-PCC.json
+      - name: Independent check of compile-only result and still blocked P2-08 gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          from experiments import p2_07o_original_exact_oci_numba_jit_compile_only as o
+          p=Path("p2-07o-original-OCI-numba-nopython-JIT-COMPILE-ONLY-NO-PCC.json")
+          d=json.loads(p.read_text(encoding="utf-8"))
+          assert o.validate_report(d)
+          w=d["original_OCI_Numba_compile_only_measurement"]
+          assert w["original_propagation_JIT_compiled_nopython_dispatcher_signatures"]==1
+          assert w["Numba_dispatchers_invoked_for_propagation_or_RNG"]==0
+          assert d["full_50k_original_PCC_fit_CPU_wall_RSS_disk_resource_bound_proven"] is False
+          assert d["P2_01_final_execution_toolchain_lock_pass"] is False
+          assert d["P2_07_full_resources_gate_pass"] is False
+          assert d["P2_execution_preflight_sha256"] is None
+          assert d["P2_execution_authorized"] is False
+          assert d["real_PCC_fits_executed"]==0
+          assert p.stat().st_size<10000
+          print("PASS: original Numba original source signature compiled ONLY; exact old OCI, no kernel calls")
+          print("source_free_P2_07O_review_sha256_NOT_EXECUTION="+o.digest(d))
+          PY
+      - name: Retain only tiny source-safe JIT CPU/RSS/native-DSO aggregate (not original OCI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07o-exact-original-OCI-numba-compile-only-no-PCC
+          path: p2-07o-original-OCI-numba-nopython-JIT-COMPILE-ONLY-NO-PCC.json
+          retention-days: 30
+          if-no-files-found: error
