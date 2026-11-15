@@ -1,0 +1,98 @@
+name: Research P2-07L original real-graph preparation RSS/CPU without PCC fits
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07l_original_graph_preparation_resource_no_fit.py'
+      - 'experiments/test_p2_07l_original_graph_preparation_resource_no_fit.py'
+      - 'docs/current_p2_07l_real_graph_preparation_resources_2026-11-14.md'
+      - '.github/workflows/research-p2-07l-real-graph-preparation-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-only-adversarial:
+    name: Twelve original-graph no-fit false-GO tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Assert no fit, no masks, exact graph hash and blocked final resource admission
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07l_original_graph_preparation_resource_no_fit -v
+
+  real-original-three-graph-preparation:
+    name: REAL original source graph-only peak RSS/CPU (Linux candidate, ZERO PCC)
+    runs-on: ubuntu-latest
+    needs: source-only-adversarial
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch immutable P1 parser and original graph source objects
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12 \
+            refs/heads/research/current-p1-offline-fixture-and-matlab-audit-2026-11-12
+      - name: Install frozen P2 candidate parsing, graph and numeric wheels (NO PCC propagation)
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt "openpyxl==3.1.5"
+          python -m pip check
+      - name: Restore only original frozen parser source, never change P1 science
+        shell: bash
+        run: |
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_offline_candidate_integrity.py > experiments/p1_offline_candidate_integrity.py
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_alternative_domain_source_quality.py > experiments/p1_alternative_domain_source_quality.py
+      - name: Measure three isolated ORIGINAL UCI source graph-only builds; strictly NO model fit/mask/seed
+        shell: bash
+        run: |
+          python -m experiments.p2_07l_original_graph_preparation_resource_no_fit \
+            --output p2-07l-original-real-graph-only-peak-memory-and-CPU-NO-PCC.json
+      - name: Independent resource result validation; only graph-preparation metrics, full-fit feasibility remains blocked
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07l_original_graph_preparation_resource_no_fit as l
+          path=Path("p2-07l-original-real-graph-only-peak-memory-and-CPU-NO-PCC.json")
+          data=json.loads(path.read_text(encoding="utf-8"))
+          assert l.validate_report(data)
+          assert data["isolated_approved_original_graph_preparations"]==3
+          assert data["real_PCC_fits_executed"]==0
+          assert data["original_72_scientific_PCC_fit_count"]==0
+          assert data["actual_original_full_50k_PCC_fit_resource_upper_bound_proven"] is False
+          assert data["P2_07_full_resources_gate_pass"] is False
+          assert data["P2_execution_preflight_sha256"] is None
+          assert data["P2_execution_authorized"] is False
+          assert path.stat().st_size<20000
+          print("PASS: three exact original real graph hashes; isolated resource measurements only; ZERO PCC")
+          print("original_real_graph_preparation_only_report_canonical_SHA256="+l.digest(data))
+          PY
+      - name: Preserve ONLY source identifier, original graph hashes and aggregate RSS/CPU measures
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07l-real-original-graph-prep-RSS-CPU-NO-PCC
+          path: p2-07l-original-real-graph-only-peak-memory-and-CPU-NO-PCC.json
+          retention-days: 30
+          if-no-files-found: error
