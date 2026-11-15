@@ -75,6 +75,25 @@ jobs:
         run: |
           git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_offline_candidate_integrity.py > experiments/p1_offline_candidate_integrity.py
           git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_alternative_domain_source_quality.py > experiments/p1_alternative_domain_source_quality.py
+      - name: Early exact source transformed-Z checksum before OCI download (no graph or PCC)
+        shell: bash
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          NUMEXPR_NUM_THREADS: '1'
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
+          with tempfile.TemporaryDirectory(prefix="p207m-source-precheck-") as td:
+              p=Path(td)
+              for ds in m.IDS:
+                  receipt=m.prepare_input(ds,p)
+                  assert receipt["X_transformed_exact_SHA256"]==m.X_HASHES[ds]
+          print("PASS: all 3 original source/transformed X SHA before any OCI download; no graph, masks or fits")
+          PY
       - name: Download ONLY already-archived exact OCI bytes, without build/pull or rearchive
         uses: actions/download-artifact@v4
         with:
