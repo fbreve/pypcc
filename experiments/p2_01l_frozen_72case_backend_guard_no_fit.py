@@ -56,6 +56,7 @@ def sha(obj):
 def case_lookup(protocol,uci_id,replicate,backend):
     """Validate an exact frozen case ID, WITHOUT touching the model or RNG."""
     require(type(protocol) is dict and
+            c.sha256(c.canonical(protocol))==P1_SHA and
             protocol.get("schema")=="pypcc-P1-scientific-protocol-frozen/v1" and
             protocol.get("status")=="SCIENTIFICALLY_APPROVED_EXPLORATORY_P1_ONLY" and
             protocol.get("approvals_and_execution",{}).get("P2_execution_approved") is False,
