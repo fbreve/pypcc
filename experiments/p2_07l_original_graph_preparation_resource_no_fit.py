@@ -187,6 +187,9 @@ def run_child(uci_id, *, runner=subprocess.run):
             line for line in result.stderr.splitlines()
             if line.startswith("P207L_CHILD_FAILURE|") and len(line) < 250
         ]
+        if diagnostic:
+            # The child message is already sanitized (no exception text/data).
+            print(diagnostic[-1],file=sys.stderr)
         raise PrepBlocked("Original graph-only subprocess failed: " +
                           (diagnostic[-1] if diagnostic else "NO_SAFE_DIAGNOSTIC"))
     require(len(result.stdout.encode("utf-8"))<MAX_CAPTURE_BYTES and
