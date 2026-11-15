@@ -180,10 +180,18 @@ def run_child(uci_id, *, runner=subprocess.run):
              "--child","--uci-id",str(uci_id)]
     result=runner(command,capture_output=True,text=True,timeout=CHILD_TIMEOUT_SECONDS,
                   env=env,check=False)
-    require(result.returncode==0 and
-            len(result.stdout.encode("utf-8"))<MAX_CAPTURE_BYTES and
+    if result.returncode != 0:
+        # The child suppresses raw exception messages and dataset values.
+        # Only an exception class, source filename, function and line are safe.
+        diagnostic = [
+            line for line in result.stderr.splitlines()
+            if line.startswith("P207L_CHILD_FAILURE|") and len(line) < 250
+        ]
+        raise PrepBlocked("Original graph-only subprocess failed: " +
+                          (diagnostic[-1] if diagnostic else "NO_SAFE_DIAGNOSTIC"))
+    require(len(result.stdout.encode("utf-8"))<MAX_CAPTURE_BYTES and
             len(result.stderr.encode("utf-8"))<MAX_CAPTURE_BYTES,
-            "Original isolated graph process failed or emitted unbounded logs")
+            "Original graph-only subprocess emitted unbounded logs")
     try:
         row=json.loads(result.stdout)
     except (ValueError,TypeError) as exc:
@@ -295,4 +303,17 @@ def main():
     },sort_keys=True))
 
 if __name__=="__main__":
-    main()
+    try:
+        main()
+    except BaseException as exc:
+        # No error string or traceback is printed: either might contain
+        # original source-record values. CI gets only sanitized location.
+        import traceback
+        frames=traceback.extract_tb(exc.__traceback__)
+        frame=frames[-1] if frames else None
+        filename=Path(frame.filename).name if frame else "unknown"
+        function=frame.name if frame else "unknown"
+        lineno=frame.lineno if frame else 0
+        print("P207L_CHILD_FAILURE|"+type(exc).__name__+"|"+
+              filename+"|"+function+"|"+str(lineno),file=sys.stderr)
+        raise SystemExit(1)
