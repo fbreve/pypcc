@@ -1,0 +1,100 @@
+name: Research P2-01L fail-closed exact backend guard for 72 original cases, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01l_frozen_72case_backend_guard_no_fit.py'
+      - 'experiments/test_p2_01l_frozen_72case_backend_guard_no_fit.py'
+      - 'docs/current_p2_01l_frozen_72case_failclosed_backend_guard_2026-11-15.md'
+      - '.github/workflows/research-p2-01l-original-72-backend-guard-NO-FIT.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-original-72-identity-tests:
+    name: 11 source-only 72-case/backend identity guards (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10','3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Assert frozen P1 72-case order, exact backend identity and hard P2 NO-GO
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01l_frozen_72case_backend_guard_no_fit -v
+
+  exact-existing-OCI-72-backend-preflight-no-fit:
+    name: Original exact OCI rejects Cython fallback, resolves all 72 P1 IDs, no fits
+    runs-on: ubuntu-latest
+    needs: source-only-original-72-identity-tests
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Verify unmodified original source SHA and runner cgroup v2
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_01l_frozen_72case_backend_guard_no_fit as g
+          assert g.source_bytes_locked()
+          assert g.IMAGE_SHA=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          print("PASS: original P1 and production source hard locked, zero PCC")
+          PY
+      - name: Download ONLY already archived original immutable OCI
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-01l-original-locked-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Two isolated original OCI entrypoint guards — baseline MUST reject; corrected 72 MUST match
+        shell: bash
+        run: |
+          python -m experiments.p2_01l_frozen_72case_backend_guard_no_fit \
+            --original-OCI-archive p2-01l-original-locked-OCI \
+            --output p2-01l-frozen-72case-strict-backend-entrypoints-NO-FITS.json
+      - name: Independent source-free original 72-case and no-execution approval review
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_01l_frozen_72case_backend_guard_no_fit as g
+          p=Path("p2-01l-frozen-72case-strict-backend-entrypoints-NO-FITS.json")
+          r=json.loads(p.read_text(encoding="utf-8"))
+          assert g.validate_report(r)
+          a,b=r["original_OCI_import_only_backend_guard_evidence"]
+          assert a["blocked_by"]=="BACKEND_IDENTITY_MISMATCH_OR_SILENT_FALLBACK"
+          assert b["cases_frozen"]==72
+          assert b["backend_cases"]=={name:24 for name in g.c.BACKENDS}
+          assert b["PCC_fits_executed"]==0
+          assert r["P2_01_final_execution_toolchain_lock_pass"] is False
+          assert r["P2_07_full_resources_gate_pass"] is False
+          assert r["P2_execution_preflight_sha256"] is None
+          assert r["P2_execution_authorized"] is False
+          assert r["real_PCC_fits_executed"]==0
+          assert p.stat().st_size<9000
+          print("PASS: original 72 cases strict entrypoint identities; fallback fatal; zero PCC")
+          print("review_only_P2_01L_SHA256_NOT_EXECUTION="+g.sha(r))
+          PY
+      - name: Retain ONLY tiny original 72-case import/guard ledger, not original OCI or UCI inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01l-original-72-P1-backend-identity-guard-NO-FITS
+          path: p2-01l-frozen-72case-strict-backend-entrypoints-NO-FITS.json
+          retention-days: 30
+          if-no-files-found: error
