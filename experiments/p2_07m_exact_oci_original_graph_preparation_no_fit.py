@@ -461,7 +461,7 @@ def verify_staged_inputs(folder):
         source=folder/("Z-%d.npy"%uci)
         require(sha_file(source)==doc.get("npy_file_sha256"),
                 "Preverified temporary original matrix SHA drift")
-        Z=np.load(source,allow_pickle=False,mmap_mode="r")
+        Z=np.load(source,allow_pickle=False)
         require(Z.shape==DIMENSIONS[uci][:2] and
                 Z.dtype==np.dtype("float64") and
                 np.isfinite(Z).all() and
