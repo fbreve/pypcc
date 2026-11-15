@@ -1,0 +1,110 @@
+name: Research P2-07R active OCI CPU wall supervisor of 6 FAKE 50k native checkpoint fits, NO real P1
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07r_supervise_original_oci_fake_checkpoint_fits.py'
+      - 'experiments/test_p2_07r_supervise_original_oci_fake_checkpoint_fits.py'
+      - 'docs/current_p2_07r_active_OCI_supervisor_synthetic_observers_2026-11-15.md'
+      - '.github/workflows/research-p2-07r-active-OCI-checkpoint-50k-FAKE-supervisor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  stdlib-source-only-failclosed:
+    name: 12 adversarial original OCI active CPU/wall no-real-P1 gates (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10','3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Exact P1/observer SHA and CPU/wall adversarial full stop tests, no kernels
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07r_supervise_original_oci_fake_checkpoint_fits -v
+
+  exact-OCI-supervised-original-checkpoint-fake-50k:
+    name: Real cgroup CPU/wall watches 3x original 50k FAKE paired observers plus 2 forced CPU/wall stops
+    needs: stdlib-source-only-failclosed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Original production and historical source hashes, Linux cgroup v2 and preflight GO false
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07r_supervise_original_oci_fake_checkpoint_fits as s
+          assert s.source_locked()
+          assert s.MODES==("numpy","numba","cython","cpu_fault","wall_fault")
+          assert s.NO_GO["P2_execution_authorized"] is False
+          assert s.OCI_SHA=="008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8"
+          print("PASS: original OCI SHA, P1 source/observers byte locked; no P1 fit allowed")
+          PY
+      - name: Download ONLY original historic byte-verified OCI, no pull/build/registry
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07r-existing-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run five separate active cgroup supervised original OCI FAKE-only cases, check real CPU/wall STOP
+        shell: bash
+        run: |
+          python -m experiments.p2_07r_supervise_original_oci_fake_checkpoint_fits \
+            --existing-exact-original-OCI p2-07r-existing-OCI \
+            --output p2-07r-original-OCI-real-cgroup-3fake-observers-2stops-NO-UCI.json
+      - name: Independently verify exact five-case original OCI live monitor report and original science NO-GO
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07r_supervise_original_oci_fake_checkpoint_fits as s
+          path=Path("p2-07r-original-OCI-real-cgroup-3fake-observers-2stops-NO-UCI.json")
+          assert path.is_file() and path.stat().st_size<10000
+          r=json.loads(path.read_text(encoding="utf-8"))
+          assert s.validate_report(r)
+          rows=r["source_free_actual_five_case_supervisor_results"]
+          assert [x["case"] for x in rows]==list(s.MODES)
+          assert sum(x["synthetic_full_50k_fits_executed"] for x in rows)==6
+          assert all(x["real_original_P1_fits_executed"]==0 for x in rows)
+          assert all(x["original_docker_cgroup_OS_limits_verified_before_release"]
+                     and x["original_root_PID_starttime_identity_gone"] for x in rows)
+          assert rows[3]["termination_reason"]=="SAMPLED_CGROUP_CPU_BUDGET_KILL"
+          assert rows[4]["termination_reason"]=="SAMPLED_WALL_BUDGET_KILL"
+          assert r["P2_01_final_execution_toolchain_lock_pass"] is False
+          assert r["P2_07_full_resources_gate_pass"] is False
+          assert r["P2_execution_preflight_sha256"] is None
+          assert r["P2_execution_authorized"] is False
+          assert r["real_PCC_fits_executed"]==0
+          for x in rows:
+              if x["case"] in s.q.BACKENDS:
+                  print(f"FAKE_supervised_native backend={x['case']} normal_fit_cpu={x['normal_fit_cpu_seconds']} observed_8checkpoint_fit_cpu={x['observed_fit_cpu_seconds']} process_RSS_peak={x['process_peak_RSS_bytes']} cgroup_mem_peak={x['cgroup_memory_peak_bytes']} host_sampled_CPU={x['cgroup_CPU_seconds_at_last_host_sample_includes_exec_overhead']}")
+              else:
+                  print(f"NO_FIT_forced_stop mode={x['case']} observed_reason={x['termination_reason']} old_root_PID_gone={x['original_root_PID_starttime_identity_gone']}")
+          print("PASS: real host CPU/wall sampled enforcement INTEGRATED with actual 3 backend fake full checkpoints, 2 real no-fit forced stops, all exact original containers deleted")
+          print("source_free_review_SHA256_NOT_P2_execution="+s.digest(r))
+          PY
+      - name: Archive ONLY tiny source-free technical receipt, no original OCI or UCI/graphs/snapshot state
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07r-original-OCI-active-CPU-wall-6fake50k-observer-two-STOPs-NO-UCI
+          path: p2-07r-original-OCI-real-cgroup-3fake-observers-2stops-NO-UCI.json
+          retention-days: 30
+          if-no-files-found: error
