@@ -120,6 +120,7 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
             "--memory","2g","--memory-swap","--pids-limit","128",
             "P201N_IMPORT_ONLY=1",
             "PYTHONPATH="+s.guard.k.CORRECT_PATH,
+            "NUMBA_CACHE_DIR=/tmp/numba-cache",
             "experiments.p2_01n_candidate_host_readiness_no_fit",
         ):
             self.assertIn(field,cmd)
