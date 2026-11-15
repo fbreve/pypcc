@@ -1,0 +1,159 @@
+name: Research P2-07M original real graphs inside exact existing OCI, graph-only NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07m_exact_oci_original_graph_preparation_no_fit.py'
+      - 'experiments/test_p2_07m_exact_oci_original_graph_preparation_no_fit.py'
+      - 'docs/current_p2_07m_original_graphs_inside_exact_OCI_2026-11-14.md'
+      - '.github/workflows/research-p2-07m-original-graphs-inside-exact-oci-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-oci-graph-no-fit-adversarial:
+    name: Fourteen original graph-only false-GO contracts (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10','3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Reject false P2 GO, changed original source/graph hash, unsafe Docker arguments and data export
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07m_exact_oci_original_graph_preparation_no_fit -v
+
+  verify-original-exact-oci-three-real-graphs:
+    name: Original 3 UCI graph-only within byte-locked OCI, no network/masks/PCC
+    needs: original-oci-graph-no-fit-adversarial
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Require original Linux cgroup-v2 Docker substrate and original repo artifacts
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
+          assert m.verify_source_blobs()
+          assert m.IMAGE_SHA == '008b189f5326036aa6de95cb189dd2de3984cd0d93641c8a91ec30e6414097c8'
+          assert len(m.IDS)==3
+          print("PASS: original source Git blobs, exact OCI identity, 0 PCC fits")
+          PY
+      - name: Fetch frozen P1 parser and original source Git history
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            refs/heads/research/current-numpy-live-milestones-2026-11-11 \
+            refs/heads/research/current-numba-live-milestones-2026-11-12 \
+            refs/heads/research/current-cython-live-milestones-2026-11-12 \
+            refs/heads/research/current-three-backend-source-preflight-2026-11-12 \
+            refs/heads/research/current-p1-offline-fixture-and-matlab-audit-2026-11-12
+      - name: Install only original frozen host P1 source parsing and graph dependencies
+        shell: bash
+        run: |
+          python -m pip install -r experiments/p2_01c_candidate_py312_requirements.txt "openpyxl==3.1.5"
+          python -m pip check
+      - name: Restore original frozen parser code in ephemeral CI checkout only
+        shell: bash
+        run: |
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_offline_candidate_integrity.py > experiments/p1_offline_candidate_integrity.py
+          git show 096a6c127eeeaa6b37171c99824a7a80a040aa72:experiments/p1_alternative_domain_source_quality.py > experiments/p1_alternative_domain_source_quality.py
+      - name: Early exact source transformed-Z checksum before OCI download (no graph or PCC)
+        shell: bash
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          NUMEXPR_NUM_THREADS: '1'
+        run: |
+          python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
+          p=Path("p2-07m-transient-original-Z-no-artifact").resolve()
+          assert not p.exists()
+          p.mkdir(mode=0o755)
+          try:
+              for ds in m.IDS:
+                  receipt=m.prepare_input(ds,p)
+                  assert receipt["X_transformed_exact_SHA256"]==m.X_HASHES[ds]
+              assert m.verify_staged_inputs(p)
+          except BaseException:
+              shutil.rmtree(p)
+              raise
+          print("PASS: 3 original source/transformed X SHA; source arrays staged ephemerally for read-only OCI, no re-downloads")
+          PY
+      - name: Download ONLY already-archived exact OCI bytes, without build/pull or rearchive
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-07m-original-byte-locked-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Original three UCI graph-only inside EXACT OCI, source matrices deleted before report upload
+        shell: bash
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          NUMEXPR_NUM_THREADS: '1'
+        run: |
+          python -m experiments.p2_07m_exact_oci_original_graph_preparation_no_fit \
+            --existing-original-oci p2-07m-original-byte-locked-OCI \
+            --preverified-ephemeral-inputs p2-07m-transient-original-Z-no-artifact \
+            --output p2-07m-existing-OCI-original-graph-preparation-no-fits.json
+      - name: Destroy transient real-source matrices after success or any failure (never artifacts)
+        if: always()
+        shell: bash
+        run: |
+          if test -d p2-07m-transient-original-Z-no-artifact; then
+            rm -rf p2-07m-transient-original-Z-no-artifact
+          fi
+          test ! -e p2-07m-transient-original-Z-no-artifact
+      - name: Independently revalidate all three original graph hashes, resource observations and scientific STOP
+        shell: bash
+        run: |
+          python - <<'PY'
+          from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
+          from pathlib import Path
+          import json
+          path=Path('p2-07m-existing-OCI-original-graph-preparation-no-fits.json')
+          report=json.loads(path.read_text(encoding='utf-8'))
+          assert m.validate_report(report)
+          assert report['graph_only_all_original_hashes_match'] is True
+          assert len(report['exact_OCI_three_original_graph_only_resources'])==3
+          assert report['actual_full_original_50k_fit_CPU_wall_RSS_disk_ceiling_proven'] is False
+          assert report['P2_execution_preflight_sha256'] is None
+          assert report['P2_execution_authorized'] is False
+          assert report['real_PCC_fits_executed']==0
+          assert path.stat().st_size<18000
+          assert list(Path('.').glob('p207m-original-Z-*'))==[]
+          print('PASS: 3 frozen original dense graphs inside existing immutable-byte OCI, ZERO PCC fits')
+          print('source-free-original-OCI-graph-prep-review-sha256-NOT-P2-SHA='+m.sha_bytes(m.canonical(report)))
+          PY
+      - name: Preserve only safe original graph SHA and RSS/CPU aggregates, never OCI or matrices
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07m-original-real-graphs-exact-existing-OCI-NO-PCC
+          path: p2-07m-existing-OCI-original-graph-preparation-no-fits.json
+          retention-days: 30
+          if-no-files-found: error
