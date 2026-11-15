@@ -302,6 +302,9 @@ def validated_docker_command(uci_id, name, inputs):
         "--tmpfs","/tmp:rw,nosuid,nodev,noexec,size=32m",
         "--env","PYTHONDONTWRITEBYTECODE=1","--env","PYTHONNOUSERSITE=1",
         "--env","PYTHONPATH=/workspace",
+        # Numba's import-time cache locator must not write in /workspace,
+        # which is intentionally mounted read-only. No PCC JIT is run.
+        "--env","NUMBA_CACHE_DIR=/tmp/numba-cache",
         "--entrypoint",PYTHON_IN_OCI,
         "--mount",f"type=bind,src={ROOT.resolve()},dst=/workspace,readonly",
         "--mount",f"type=bind,src={inputs},dst=/inputs,readonly",
