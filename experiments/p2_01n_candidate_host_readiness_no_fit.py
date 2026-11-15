@@ -104,9 +104,22 @@ def run_cmd(arguments,*,timeout=35):
                               timeout=timeout,check=False)
     except (OSError,subprocess.TimeoutExpired) as exc:
         raise HostBlocked("LOCAL_DOCKER_COMMAND_UNAVAILABLE_OR_TIMED_OUT") from exc
-    require(result.returncode==0 and len(result.stdout.encode())<=20000 and
+    step=arguments[1] if len(arguments)>1 and
+        arguments[1] in ("info","context","image","run") else "unexpected"
+    if result.returncode!=0:
+        # Safe step name and return code only. For our own fully controlled
+        # worker, extract ONLY its explicitly bounded failure sentinel.
+        code=result.returncode
+        label=f"LOCAL_DOCKER_{step.upper()}_EXIT_{code}"
+        if step=="run":
+            match=re.search(r"P201N_FAIL_CLOSED\\|([A-Z0-9_]{1,100})",
+                            result.stderr)
+            if match is not None:
+                label+="__"+match.group(1)
+        raise HostBlocked(label)
+    require(len(result.stdout.encode())<=20000 and
             len(result.stderr.encode())<=20000,
-            "LOCAL_DOCKER_COMMAND_FAILED_OR_UNEXPECTED_OUTPUT")
+            "LOCAL_DOCKER_"+step.upper()+"_UNEXPECTED_OUTPUT_SIZE")
     return result.stdout.strip()
 
 def local_docker_endpoint(endpoint,override=None):
