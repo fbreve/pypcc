@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -431,24 +432,69 @@ def assemble(rows):
     return report
 
 
-def host_main(oci_artifact, output):
+def verify_staged_inputs(folder):
+    """No network: check three exact pre-verified temporary .npy/JSON pairs."""
+    require(folder == (ROOT/"p2-07m-transient-original-Z-no-artifact").resolve()
+            and folder.is_dir() and not folder.is_symlink(),
+            "Only the one pre-verified ephemeral source directory is allowed")
+    expected={("Z-%d.%s"%(uci,ext)) for uci in IDS
+              for ext in ("npy","json")}
+    require({x.name for x in folder.iterdir()}==expected and
+            all(x.is_file() and not x.is_symlink() for x in folder.iterdir()),
+            "Original temporary input files missing or unexpected")
+    import numpy as np
+    from experiments import p2_02b_03_ordered_features_no_fit as prepared
+    from experiments import p2_07c_consolidated_execution_envelope_no_fit as c
+    p1=c.read_approved_P1()
+    for uci in IDS:
+        doc=json.loads((folder/("Z-%d.json"%uci)).read_text(encoding="ascii"))
+        src=next(x for x in p1["selected_datasets"] if x["uci_id"]==uci)
+        require(doc.get("schema")=="pypcc-P2-07M-transient-original-Z-only/v1" and
+                doc.get("uci_id")==uci and
+                doc.get("P1_scientific_sha256")==P1_SHA and
+                doc.get("source_zip_sha256")==src["zip_sha256"] and
+                doc.get("X_transformed_exact_SHA256")==X_HASHES[uci] and
+                doc.get("shape")==list(DIMENSIONS[uci][:2]) and
+                doc.get("P2_execution_authorized") is False and
+                doc.get("no_masks_seeds_or_PCC_fits") is True,
+                "Original temporary Z/P1 metadata differs")
+        source=folder/("Z-%d.npy"%uci)
+        require(sha_file(source)==doc.get("npy_file_sha256"),
+                "Preverified temporary original matrix SHA drift")
+        Z=np.load(source,allow_pickle=False,mmap_mode="r")
+        require(Z.shape==DIMENSIONS[uci][:2] and
+                Z.dtype==np.dtype("float64") and
+                np.isfinite(Z).all() and
+                prepared.array_fingerprint(
+                    Z,doc["ordered_predictor_names"])[
+                    "shape_dtype_feature_order_and_numeric_bytes_sha256"]==
+                    X_HASHES[uci],
+                "One of three preverified transformed matrices changed")
+    return True
+
+
+def host_main(oci_artifact, output, inputs):
     require(platform.system()=="Linux" and
             platform.machine().lower() in ("x86_64","amd64") and
             sys.version_info[:2]==(3,12) and
             not output.exists(),
             "Only distinct Linux Py3.12 original OCI review without overwrite")
     verify_source_blobs()
-    from experiments import p2_07e_locked_oci_cgroup_resource_supervisor as previous
-    host=previous.verify_original_image(oci_artifact)
-    require(host["loaded_exact_original_image_ID"]==IMAGE_ID,
-            "Wrong previous exact OCI binary loaded")
-    with tempfile.TemporaryDirectory(prefix="p207m-original-Z-",dir=str(ROOT)) as td:
-        folder=Path(td)
-        os.chmod(folder,0o755) # nobody container can read it; no writes
-        rows=[]
+    # Reuse precisely the three matrices verified once in the earlier CI
+    # step; do not repeat official HTTPS requests, which can fail/rate-limit.
+    verify_staged_inputs(inputs)
+    rows=[]
+    try:
+        from experiments import p2_07e_locked_oci_cgroup_resource_supervisor as previous
+        host=previous.verify_original_image(oci_artifact)
+        require(host["loaded_exact_original_image_ID"]==IMAGE_ID,
+                "Wrong previous exact OCI binary loaded")
         for original_id in IDS:
-            prepare_input(original_id,folder)
-            rows.append(run_original_graph(original_id,folder))
+            rows.append(run_original_graph(original_id,inputs))
+    finally:
+        # Always delete the ephemeral real source arrays even if OCI fails.
+        shutil.rmtree(inputs)
+    require(not inputs.exists(),"Original transformed source arrays were not destroyed")
     report=assemble(rows)
     with output.open("xb") as f:
         f.write(json.dumps(report,indent=2,sort_keys=True).encode("utf-8")+b"\n")
@@ -475,18 +521,23 @@ def main():
     parser.add_argument("--uci-id",type=int)
     parser.add_argument("--inputs",type=Path)
     parser.add_argument("--existing-original-oci",type=Path)
+    parser.add_argument("--preverified-ephemeral-inputs",type=Path)
     parser.add_argument("--output",type=Path)
     args=parser.parse_args()
     if args.worker:
         require(args.inputs is not None and
-                args.existing_original_oci is None and args.output is None,
+                args.existing_original_oci is None and
+                args.preverified_ephemeral_inputs is None and args.output is None,
                 "Worker must be isolated graph-only with preverified temporary X")
         worker(args.uci_id,args.inputs)
     else:
         require(args.uci_id is None and args.inputs is None and
-                args.existing_original_oci is not None and args.output is not None,
-                "Host must specify original OCI artifact and new review receipt only")
-        host_main(args.existing_original_oci.resolve(),args.output.resolve())
+                args.existing_original_oci is not None and
+                args.preverified_ephemeral_inputs is not None and
+                args.output is not None,
+                "Host requires exact original OCI, already verified ephemeral inputs and review receipt")
+        host_main(args.existing_original_oci.resolve(),args.output.resolve(),
+                  args.preverified_ephemeral_inputs.resolve())
 
 
 if __name__=="__main__":
