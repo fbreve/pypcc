@@ -282,6 +282,8 @@ def docker_args(name):
         "--env","OMP_NUM_THREADS=1",
         "--env","MKL_NUM_THREADS=1",
         "--env","NUMEXPR_NUM_THREADS=1",
+        # Preserve ORIGINAL P2-01K/L read-only-container Numba cache locator.
+        "--env","NUMBA_CACHE_DIR=/tmp/numba-cache",
         "--entrypoint",m.PYTHON_IN_OCI,
         "--mount",f"type=bind,src={ROOT.resolve()},dst=/workspace,readonly",
         IMAGE_TAG,"-m",
