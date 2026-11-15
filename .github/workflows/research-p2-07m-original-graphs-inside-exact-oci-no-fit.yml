@@ -84,15 +84,21 @@ jobs:
           NUMEXPR_NUM_THREADS: '1'
         run: |
           python - <<'PY'
-          import tempfile
+          import shutil
           from pathlib import Path
           from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
-          with tempfile.TemporaryDirectory(prefix="p207m-source-precheck-") as td:
-              p=Path(td)
+          p=Path("p2-07m-transient-original-Z-no-artifact").resolve()
+          assert not p.exists()
+          p.mkdir(mode=0o755)
+          try:
               for ds in m.IDS:
                   receipt=m.prepare_input(ds,p)
                   assert receipt["X_transformed_exact_SHA256"]==m.X_HASHES[ds]
-          print("PASS: all 3 original source/transformed X SHA before any OCI download; no graph, masks or fits")
+              assert m.verify_staged_inputs(p)
+          except BaseException:
+              shutil.rmtree(p)
+              raise
+          print("PASS: 3 original source/transformed X SHA; source arrays staged ephemerally for read-only OCI, no re-downloads")
           PY
       - name: Download ONLY already-archived exact OCI bytes, without build/pull or rearchive
         uses: actions/download-artifact@v4
@@ -112,7 +118,16 @@ jobs:
         run: |
           python -m experiments.p2_07m_exact_oci_original_graph_preparation_no_fit \
             --existing-original-oci p2-07m-original-byte-locked-OCI \
+            --preverified-ephemeral-inputs p2-07m-transient-original-Z-no-artifact \
             --output p2-07m-existing-OCI-original-graph-preparation-no-fits.json
+      - name: Destroy transient real-source matrices after success or any failure (never artifacts)
+        if: always()
+        shell: bash
+        run: |
+          if test -d p2-07m-transient-original-Z-no-artifact; then
+            rm -rf p2-07m-transient-original-Z-no-artifact
+          fi
+          test ! -e p2-07m-transient-original-Z-no-artifact
       - name: Independently revalidate all three original graph hashes, resource observations and scientific STOP
         shell: bash
         run: |
