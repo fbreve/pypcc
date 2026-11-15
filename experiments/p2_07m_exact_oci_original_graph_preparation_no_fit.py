@@ -81,7 +81,12 @@ def sha_file(path):
 
 def git_blob(path):
     raw=Path(path).read_bytes()
-    return hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\0"+raw).hexdigest()
+    # GitHub Windows checkout may expand canonical LF blobs to CRLF.
+    # Normalize only that well-defined text checkout conversion, not
+    # source tokens/whitespace or the expected immutable Git object hash.
+    normalized=raw.replace(b"\r\n",b"\n")
+    return hashlib.sha1(b"blob "+str(len(normalized)).encode("ascii")+
+                        b"\0"+normalized).hexdigest()
 
 
 def verify_source_blobs():
