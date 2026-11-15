@@ -135,7 +135,8 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
 
     def test_good_import_only_exact_72_case_worker_receipt(self):
         self.assertTrue(s.validate_worker(worker()))
-        self.assertIs(s.validate_report(report()),report())
+        receipt=report()
+        self.assertIs(s.validate_report(receipt),receipt)
 
     def test_original_Cython_fallback_and_wrong_native_SHA_rejected(self):
         for field,value in (
@@ -159,7 +160,7 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
             ("real_OCI_worker_swap_limit_bytes",42),
             ("real_OCI_worker_pids_limit",0),
             ("real_OCI_worker_cgroup_cpu_quota_numerator",200000),
-            ("real_OCI_worker_cgroup_cpu_quota_denominator",100000),
+            ("real_OCI_worker_cgroup_cpu_quota_denominator",99999),
             ("real_OCI_worker_tmpfs_free_bytes",0),
             ("real_OCI_worker_tmpfs_free_bytes",s.TMPFS+1),
         ):
