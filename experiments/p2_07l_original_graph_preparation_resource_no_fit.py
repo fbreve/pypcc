@@ -185,11 +185,14 @@ def run_child(uci_id, *, runner=subprocess.run):
         # Only an exception class, source filename, function and line are safe.
         diagnostic = [
             line for line in result.stderr.splitlines()
-            if line.startswith("P207L_CHILD_FAILURE|") and len(line) < 250
+            if line.startswith(("P207L_CHILD_FAILURE|",
+                                "P207L_CHILD_SAFE_REQUIRE|",
+                                "P207L_CHILD_CALLER|")) and len(line) < 250
         ]
         if diagnostic:
-            # The child message is already sanitized (no exception text/data).
-            print(diagnostic[-1],file=sys.stderr)
+            # All emitted fields are limited to controlled contract literals
+            # and source code line IDs, never dynamic source record content.
+            for line in diagnostic: print(line,file=sys.stderr)
         raise PrepBlocked("Original graph-only subprocess failed: " +
                           (diagnostic[-1] if diagnostic else "NO_SAFE_DIAGNOSTIC"))
     require(len(result.stdout.encode("utf-8"))<MAX_CAPTURE_BYTES and
@@ -319,4 +322,12 @@ if __name__=="__main__":
         lineno=frame.lineno if frame else 0
         print("P207L_CHILD_FAILURE|"+type(exc).__name__+"|"+
               filename+"|"+function+"|"+str(lineno),file=sys.stderr)
+        if isinstance(exc,PrepBlocked):
+            # PrepBlocked messages are authored constants, not source values.
+            safe_message=str(exc).replace("\\n"," ")[:190]
+            print("P207L_CHILD_SAFE_REQUIRE|"+safe_message,file=sys.stderr)
+        if len(frames)>1:
+            parent=frames[-2]
+            print("P207L_CHILD_CALLER|"+Path(parent.filename).name+"|"+
+                  parent.name+"|"+str(parent.lineno),file=sys.stderr)
         raise SystemExit(1)
