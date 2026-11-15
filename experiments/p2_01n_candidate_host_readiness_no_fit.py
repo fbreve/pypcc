@@ -132,7 +132,7 @@ def validate_docker_info(info,context,override=None):
     require(type(mem) is int and mem>=RAM_MIN,
             "DOCKER_ENGINE_VM_MEMORY_BELOW_8GIB")
     require(type(info.get("ServerVersion")) is str and
-            len(info["ServerVersion"])<64,
+            0<len(info["ServerVersion"])<64,
             "NO_VERIFIED_DOCKER_SERVER_VERSION")
     return {
         "engine_linux_amd64_cgroup_v2":True,
