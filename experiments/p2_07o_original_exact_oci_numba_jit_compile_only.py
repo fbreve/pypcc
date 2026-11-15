@@ -86,7 +86,7 @@ def kernel_import_and_compile_only():
             "Only original Linux 3.12.16 OCI runtime may compile")
     m.verify_source_blobs()
     import importlib.metadata
-    for package,version in (("numba","0.69.0"),):
+    for package,version in (("numba","0.68.1"),):
         # Need exact lock check; accepted only if matches recorded OCI
         require(importlib.metadata.version(package)==version,
                 "Unexpected candidate Numba version")
