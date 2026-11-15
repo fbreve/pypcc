@@ -132,9 +132,11 @@ def prepare_input(uci_id, folder):
     Z,meta=prepared.approved_transform(X,wholesale=(uci_id==292))
     fingerprint=prepared.array_fingerprint(Z,names)
     require(fingerprint["shape_dtype_feature_order_and_numeric_bytes_sha256"]==
-            X_HASHES[uci_id] and
-            meta["labels_used_to_select_or_scale_features"] is False and
-            Z.flags.c_contiguous, "P1 transformed matrix SHA/data order drift")
+            X_HASHES[uci_id], "P1 transformed matrix exact SHA drift on host")
+    require(meta["labels_used_to_select_or_scale_features"] is False,
+            "Original transformation must never consume labels")
+    require(Z.flags.c_contiguous,
+            "Original transformed float64 must remain C-contiguous")
 
     numpy_path=folder/("Z-%d.npy"%uci_id)
     metadata_path=folder/("Z-%d.json"%uci_id)
@@ -305,6 +307,8 @@ def validated_docker_command(uci_id, name, inputs):
         # Numba's import-time cache locator must not write in /workspace,
         # which is intentionally mounted read-only. No PCC JIT is run.
         "--env","NUMBA_CACHE_DIR=/tmp/numba-cache",
+        "--env","OPENBLAS_NUM_THREADS=1","--env","OMP_NUM_THREADS=1",
+        "--env","MKL_NUM_THREADS=1","--env","NUMEXPR_NUM_THREADS=1",
         "--entrypoint",PYTHON_IN_OCI,
         "--mount",f"type=bind,src={ROOT.resolve()},dst=/workspace,readonly",
         "--mount",f"type=bind,src={inputs},dst=/inputs,readonly",
