@@ -85,6 +85,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Original three UCI graph-only inside EXACT OCI, source matrices deleted before report upload
         shell: bash
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          NUMEXPR_NUM_THREADS: '1'
         run: |
           python -m experiments.p2_07m_exact_oci_original_graph_preparation_no_fit \
             --existing-original-oci p2-07m-original-byte-locked-OCI \
