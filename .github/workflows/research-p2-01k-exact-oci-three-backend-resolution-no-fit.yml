@@ -1,0 +1,99 @@
+name: Research P2-01K exact OCI production backend imports and Cython fallback, NO PCC
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_01k_original_OCI_backend_resolution_import_only.py'
+      - 'experiments/test_p2_01k_original_OCI_backend_resolution_import_only.py'
+      - 'docs/current_p2_01k_exact_OCI_production_backend_selection_2026-11-15.md'
+      - '.github/workflows/research-p2-01k-exact-oci-three-backend-resolution-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-adversarial:
+    name: 12 original Cython fallback/backend-selection hard gates (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10','3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Source-only false-GO/backend fallback path tests, no real PCC
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_01k_original_OCI_backend_resolution_import_only -v
+
+  exact-existing-oci-real-production-backends-import-only:
+    name: Two isolated containers prove Cython fallback and exact corrected NumPy/Numba/Cython imports
+    needs: source-only-adversarial
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.16'
+      - name: Exact original production source/no-fit contract
+        shell: bash
+        run: |
+          test "$(docker info --format '{{.CgroupVersion}}')" = "2"
+          python - <<'PY'
+          from experiments import p2_01k_original_OCI_backend_resolution_import_only as k
+          assert k.m.verify_source_blobs()
+          assert k.IMAGE_ID == "sha256:b97f87c6698a3404912807ae0b7d4659b86012eb95a2f26a67b25b4274e77e55"
+          assert k.CORRECT_PATH == "/workspace:/opt/p2-native:/opt/p2-source-helpers"
+          print("Original source locked; original three backend import path explicitly defined")
+          PY
+      - name: Download ONLY already archived original OCI image with unchanged bytes
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-01j-verified-EXACT-existing-OCI-binary-and-retention-receipt
+          path: p2-01k-exact-original-OCI
+          run-id: 43531054368
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify old OCI hash; import-only baseline/fix in two separate offline read-only processes
+        shell: bash
+        run: |
+          python -m experiments.p2_01k_original_OCI_backend_resolution_import_only \
+            --existing-archived-OCI p2-01k-exact-original-OCI \
+            --output p2-01k-exact-OCI-three-backends-import-only-NO-PCC.json
+      - name: Independent assertion of observed Cython fallback and corrected exact three backends
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_01k_original_OCI_backend_resolution_import_only as k
+          p=Path("p2-01k-exact-OCI-three-backends-import-only-NO-PCC.json")
+          r=json.loads(p.read_text(encoding="utf-8"))
+          assert k.validate_report(r)
+          before,after=r["source_free_baseline_AND_corrected_backend_resolution"]
+          assert before["explicit_cython_request_resolved_actual_backend"]=="numba"
+          assert after["explicit_cython_request_resolved_actual_backend"]=="cython"
+          assert after["Cython_live_observer_imported"] is True
+          assert r["P2_01_final_execution_toolchain_lock_pass"] is False
+          assert r["P2_execution_preflight_sha256"] is None
+          assert r["P2_execution_authorized"] is False
+          assert r["real_PCC_fits_executed"]==0
+          assert p.stat().st_size<9000
+          print("PASS: previously hidden Cython fallback shown; all 3 original backends now resolve EXACT natively; 0 PCC")
+          print("review_only_P2_01K_SHA256_NOT_EXECUTION="+k.digest(r))
+          PY
+      - name: Archive only tiny aggregate original backend availability receipt, no OCI/source matrices
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-01k-exact-original-OCI-three-backend-import-only-NO-PCC
+          path: p2-01k-exact-OCI-three-backends-import-only-NO-PCC.json
+          retention-days: 30
+          if-no-files-found: error
