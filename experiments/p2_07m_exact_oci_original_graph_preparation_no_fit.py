@@ -131,8 +131,10 @@ def prepare_input(uci_id, folder):
             graph.EXPECTED_RAW_SHA[uci_id], "Raw P1 feature matrix SHA drift")
     Z,meta=prepared.approved_transform(X,wholesale=(uci_id==292))
     fingerprint=prepared.array_fingerprint(Z,names)
-    require(fingerprint["shape_dtype_feature_order_and_numeric_bytes_sha256"]==
-            X_HASHES[uci_id], "P1 transformed matrix exact SHA drift on host")
+    observed_z_sha=fingerprint["shape_dtype_feature_order_and_numeric_bytes_sha256"]
+    require(observed_z_sha==X_HASHES[uci_id],
+            "P1 transformed matrix exact SHA drift on host uci="+str(uci_id)+
+            " observed_sha256="+observed_z_sha)
     require(meta["labels_used_to_select_or_scale_features"] is False,
             "Original transformation must never consume labels")
     require(Z.flags.c_contiguous,
