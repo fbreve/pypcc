@@ -144,6 +144,14 @@ def graph_only_child(uci_id):
             evidence["dense_unused_padding_all_minus_one"] and
             evidence["edges_without_reciprocals"]==0,
             "Original actual source graph/undirected dense padding differs")
+    # Read current RSS first. The later /proc VmHWM sample is compared
+    # conservatively to the already observed RSS so transient Python
+    # allocations between two /proc reads cannot make an earlier HWM
+    # smaller than a newer RSS reading.
+    rss_after_graph_bytes=_vm_kib("VmRSS")*1024
+    sampled_kernel_hwm_bytes=_vm_kib("VmHWM")*1024
+    conservative_observed_peak_bytes=max(
+        rss_after_graph_bytes,sampled_kernel_hwm_bytes)
     row={
         "schema":"pypcc-P2-07L-real-graph-prep-child/v1",
         "uci_id":uci_id,
@@ -156,8 +164,8 @@ def graph_only_child(uci_id):
         "graph_preparation_process_cpu_seconds":round(graph_cpu,6),
         "total_source_download_parse_transform_graph_wall_seconds":
             round(time.monotonic()-started,6),
-        "original_process_vm_hwm_bytes":_vm_kib("VmHWM")*1024,
-        "original_process_vm_rss_after_graph_bytes":_vm_kib("VmRSS")*1024,
+        "original_process_vm_hwm_bytes":conservative_observed_peak_bytes,
+        "original_process_vm_rss_after_graph_bytes":rss_after_graph_bytes,
         "model_graph_was_undirected":True,
         "model_padded_dense_minus_one":True,
         "peak_rss_is_NOT_a_full_50k_PCC_fit_bound":True,
