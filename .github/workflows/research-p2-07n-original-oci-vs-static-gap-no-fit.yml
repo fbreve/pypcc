@@ -1,0 +1,96 @@
+name: Research P2-07N reconcile archived OCI graph RSS vs original 72-fit array budget (NO PCC)
+
+on:
+  pull_request:
+    paths:
+      - 'experiments/p2_07n_original_oci_vs_static_resource_gap_no_fit.py'
+      - 'experiments/test_p2_07n_original_oci_vs_static_resource_gap_no_fit.py'
+      - 'docs/current_p2_07n_original_OCI_versus_static_array_resource_gate_2026-11-14.md'
+      - '.github/workflows/research-p2-07n-original-oci-vs-static-gap-no-fit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-only-adversarial:
+    name: Ten original static/OCI resource false-GO tests (${{ matrix.os }}, Py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: No data, Docker, PCC or fits; reject forged source, resource or authorization
+        shell: bash
+        run: |
+          python -m unittest experiments.test_p2_07n_original_oci_vs_static_resource_gap_no_fit -v
+
+  original-archived-resource-evidence-join-no-go:
+    name: Read original static resource and real OCI graph receipts; reject fit upper-bound claims
+    runs-on: ubuntu-latest
+    needs: source-only-adversarial
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download ONLY already approved original P2-07A static array and snapshot report
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07-metadata-only-snapshot-budget-ubuntu-latest-py312
+          path: p2-07n-original-static-evidence
+          run-id: 43478839756
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download ONLY already approved original P2-07M exact-OCI real graph resource receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: p2-07m-original-real-graphs-exact-existing-OCI-NO-PCC
+          path: p2-07n-original-exact-oci-graph-evidence
+          run-id: 43664754999
+          repository: fbreve/pypcc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Independently reconcile original archives, graph hashes, static arrays, measured RSS, unapproved 2GiB cap
+        shell: bash
+        run: |
+          python -m experiments.p2_07n_original_oci_vs_static_resource_gap_no_fit \
+            --original-static p2-07n-original-static-evidence/p2-07-static-snapshot-and-budget.json \
+            --original-OCI p2-07n-original-exact-oci-graph-evidence/p2-07m-existing-OCI-original-graph-preparation-no-fits.json \
+            --output p2-07n-original-OCI-graph-vs-static-model-NO-EXECUTION-GO.json
+      - name: Independent stop/no-go and source-free artifact limit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from experiments import p2_07n_original_oci_vs_static_resource_gap_no_fit as n
+          p=Path("p2-07n-original-OCI-graph-vs-static-model-NO-EXECUTION-GO.json")
+          data=json.loads(p.read_text(encoding="utf-8"))
+          assert n.validate(data)
+          assert len(data["original_graph_vs_static_array_crosschecks"])==3
+          assert len(data["uncleared_final_P2_resource_and_toolchain_requirements"])==6
+          assert data["actual_50k_complete_PCC_fit_resource_upper_bound_proven"] is False
+          assert data["P2_07_full_resources_gate_pass"] is False
+          assert data["P2_execution_preflight_sha256"] is None
+          assert data["P2_execution_authorized"] is False
+          assert data["real_PCC_fits_executed"]==0
+          assert p.stat().st_size<18000
+          print("PASS: original P2-07A static + real original P2-07M OCI resource gap; NO 50k fit upper-bound claim")
+          print("review_only_P2_07N_SHA256_NOT_EXECUTION_SHA="+n.digest(data))
+          PY
+      - name: Retain one small aggregate-only NO-GO report, no original graphs or full OCI
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-07n-original-static-plus-exact-OCI-full-fit-resource-gap-NO-GO
+          path: p2-07n-original-OCI-graph-vs-static-model-NO-EXECUTION-GO.json
+          retention-days: 30
+          if-no-files-found: error
