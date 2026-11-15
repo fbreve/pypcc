@@ -110,7 +110,8 @@ class OriginalGraphExactExistingOCIGate(unittest.TestCase):
             cmd=m.validated_docker_command(212,"pypcc-p207m-123456abcdef",Path(td))
         for value in ("none","--read-only","65534:65534",
                       "--cap-drop","no-new-privileges","128","2g","1",
-                      "PYTHONPATH=/workspace"):
+                      "PYTHONPATH=/workspace",
+                      "NUMBA_CACHE_DIR=/tmp/numba-cache"):
             self.assertTrue(any(value in item for item in cmd),value)
         self.assertIn("pypcc-p2-01h-candidate:immutable",cmd)
         self.assertIn("--worker",cmd)
