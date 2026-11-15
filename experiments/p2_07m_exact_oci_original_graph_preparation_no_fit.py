@@ -317,10 +317,26 @@ def run_original_graph(uci_id, inputs, *, run=subprocess.run):
     try:
         result=run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                    text=True,timeout=120,check=False)
-        require(result.returncode==0 and
-                len(result.stdout.encode("utf-8"))<8192 and
+        if result.returncode != 0:
+            # Worker emits an authored source-safe P207M failure marker.
+            # Never echo arbitrary raw stderr (it might contain source data).
+            safe=[line[:220] for line in result.stderr.splitlines()
+                  if line.startswith("P207M_FAILED_SOURCE_SAFE|") and
+                  len(line)<240]
+            if safe:
+                print(safe[-1],file=sys.stderr)
+            # Limited fixed categories identify Docker/Python loader failures
+            # that occur before the worker's own error handler is installed.
+            classes=("OCI runtime exec failed","Error while finding module specification",
+                     "No module named","permission denied","Permission denied",
+                     "Unable to find image","exec format error")
+            safe_class=next((label for label in classes
+                             if label in result.stderr), "NO_SAFE_WORKER_DIAGNOSTIC")
+            raise RuntimeGraphBlocked(
+                "Original OCI source-free worker exit nonzero; category="+safe_class)
+        require(len(result.stdout.encode("utf-8"))<8192 and
                 len(result.stderr.encode("utf-8"))<8192,
-                "Actual original OCI graph-only worker failed or emitted unbounded output")
+                "Original OCI graph-only worker emitted unbounded output")
         try:
             row=json.loads(result.stdout)
         except ValueError as exc:
