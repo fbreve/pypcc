@@ -204,6 +204,9 @@ def validate(report):
             report.get("old_original_P2_07A_static_artifact")==STATIC_ARTIFACT_ID and
             report.get("old_original_P2_07M_exact_OCI_run")==OCI_RUN_ID and
             report.get("old_original_P2_07M_exact_OCI_artifact")==OCI_ARTIFACT_ID and
+            type(report.get("original_static_source_only_evidence_canonical_SHA256")) is str and
+            len(report["original_static_source_only_evidence_canonical_SHA256"])==64 and
+            set(report["original_static_source_only_evidence_canonical_SHA256"]) <= set("0123456789abcdef") and
             report.get("original_P2_07M_canonical_SHA256")==OCI_EVIDENCE_SHA and
             report.get("original_OCI_archive_SHA256")==m.IMAGE_SHA and
             report.get("original_OCI_config_id")==m.IMAGE_ID and
