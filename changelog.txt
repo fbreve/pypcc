@@ -5,6 +5,29 @@ Created on Wed Oct  7 14:41:55 2020
 @author: fbrev
 """
 
+
+15/11/2026 (v1.4.0):
+- Added optional 'seed' to fit_predict for reproducible runs within each
+  NumPy, Numba and Cython backend; results are not guaranteed identical
+  between backends.
+- Added experimental, explicit NumPy synchronous update mode; sequential
+  propagation remains the default.
+- Hardened graph preparation, graph/label/kernel input validation, numerical
+  edge handling and failure-state preservation. A failed fit does not restore
+  an RNG state that was consumed.
+- Optimized graph construction and validation (ordered CSR neighbor conversion,
+  reduced transient allocations, conditional diagonal cleanup), label mapping,
+  Cython stopping-cache initialization and Numba execution/JIT caching.
+- Expanded deterministic tests, backend invariants, installation and
+  distribution checks, and CI coverage on Windows/Linux with Python 3.10/3.12.
+- Introduced reproducible version metadata in VERSION, PEP 517 build metadata,
+  portable compiler flags, source/wheel packaging checks and MIT licensing.
+- Python >=3.10 and NumPy 2.x are now package requirements; SciPy and
+  scikit-learn are runtime dependencies, while Numba is optional.
+- Reworked README, contributor guidance and reproducible research documentation.
+- Experimental research-only pull requests and the pending 72-fit scientific
+  campaign are not part of this release.
+
 19/01/2026:
 - Implemented 'impl=auto' to auto select the faster implementation available.
   In order: cython -> numba -> numpy
