@@ -22,6 +22,11 @@ def worker():
         "real_OCI_worker_cgroup_cpu_quota_numerator":100000,
         "real_OCI_worker_cgroup_cpu_quota_denominator":100000,
         "real_OCI_worker_tmpfs_free_bytes":s.TMPFS,
+        "OCI_root_overlay_free_disk_bytes_at_check":24*1024**3,
+        "Docker_local_anonymous_volume_free_disk_bytes_at_check":21*1024**3,
+        "Docker_temporary_tmpfs_free_bytes_at_check":s.TMPFS,
+        "local_anonymous_Docker_volume_mount_verified_non_tmpfs":True,
+        "volume_is_temporary_auto_removed_by_docker_run_rm":True,
         "real_OCI_worker_native_PCC_propagations_executed":0,
         "real_original_P1_fits_executed":0,
         "P2_execution_authorized":False,
@@ -59,6 +64,7 @@ def report():
         "source_compiler_SDK_OS_build_closure_proven":False,
         "real_original_50k_checkpoint_resource_bounds_proven":False,
         "Docker_engine_root_volume_free_disk_proven":False,
+        "Docker_local_volume_and_OCI_root_disk_capacity_observed":True,
         "host_identity_paths_serials_tokens_exported":False,
         **s.NO_GO,
     }
@@ -121,6 +127,7 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
             "P201N_IMPORT_ONLY=1",
             "PYTHONPATH="+s.guard.k.CORRECT_PATH,
             "NUMBA_CACHE_DIR=/tmp/numba-cache",
+            f"type=volume,destination={s.DOCKER_VOLUME_MOUNT},volume-nocopy",
             "experiments.p2_01n_candidate_host_readiness_no_fit",
         ):
             self.assertIn(field,cmd)
@@ -164,6 +171,11 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
             ("real_OCI_worker_cgroup_cpu_quota_denominator",99999),
             ("real_OCI_worker_tmpfs_free_bytes",0),
             ("real_OCI_worker_tmpfs_free_bytes",s.TMPFS+1),
+            ("OCI_root_overlay_free_disk_bytes_at_check",s.DISK_MIN-1),
+            ("Docker_local_anonymous_volume_free_disk_bytes_at_check",s.DISK_MIN-1),
+            ("Docker_temporary_tmpfs_free_bytes_at_check",s.TMPFS-1),
+            ("local_anonymous_Docker_volume_mount_verified_non_tmpfs",False),
+            ("volume_is_temporary_auto_removed_by_docker_run_rm",False),
         ):
             obj=worker()
             obj[field]=value
@@ -178,6 +190,7 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
             ("source_compiler_SDK_OS_build_closure_proven",True),
             ("real_original_50k_checkpoint_resource_bounds_proven",True),
             ("Docker_engine_root_volume_free_disk_proven",True),
+            ("Docker_local_volume_and_OCI_root_disk_capacity_observed",False),
             ("host_identity_paths_serials_tokens_exported",True),
             ("P2_01_final_execution_toolchain_lock_pass",True),
             ("P2_07_full_resources_gate_pass",True),
@@ -232,6 +245,47 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
                       "100001 100000","-100 100000","abc foo"):
             with self.subTest(value=value),self.assertRaises(s.HostBlocked):
                 s.parse_cpu_quota(value)
+
+
+    def test_actual_docker_local_volume_mountinfo_and_original_overlay_disk(self):
+        mountpoint=s.DOCKER_VOLUME_MOUNT
+        sample=("51 42 0:50 / / rw,relatime - overlay overlay rw\\n"
+                f"52 51 8:1 /var/lib/docker/volumes/probe/_data {mountpoint} rw,relatime - ext4 /dev/vda1 rw\\n"
+                "53 51 0:51 / /tmp rw,nosuid,nodev - tmpfs tmpfs rw\\n")
+        observed=s.checked_docker_storage_space(
+            sample,19*1024**3,22*1024**3,s.TMPFS)
+        self.assertTrue(observed["local_anonymous_Docker_volume_mount_verified_non_tmpfs"])
+        self.assertEqual(observed["OCI_root_overlay_free_disk_bytes_at_check"],
+                         19*1024**3)
+        self.assertEqual(observed["Docker_local_anonymous_volume_free_disk_bytes_at_check"],
+                         22*1024**3)
+
+    def test_missing_fake_or_non_disk_volume_fails_closed(self):
+        mountpoint=s.DOCKER_VOLUME_MOUNT
+        invalid=(
+            "",
+            "51 42 0:50 / / rw - overlay overlay rw\\n",
+            f"52 51 0:51 / {mountpoint} rw - tmpfs tmpfs rw\\n",
+            f"52 51 0:51 / {mountpoint} rw - overlay overlay rw\\n",
+            (f"52 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\\n"
+             f"53 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\\n"),
+        )
+        for mountinfo in invalid:
+            with self.subTest(mount=mountinfo[:30]),self.assertRaises(s.HostBlocked):
+                s.checked_docker_storage_space(
+                    mountinfo,s.DISK_MIN,s.DISK_MIN,s.TMPFS)
+
+    def test_docker_storage_disk_min_is_distinct_from_local_host_workdir(self):
+        mountinfo=f"52 51 8:1 / {s.DOCKER_VOLUME_MOUNT} rw - ext4 /dev/vda1 rw"
+        for overlay,volume,tmp in (
+            (s.DISK_MIN-1,s.DISK_MIN,s.TMPFS),
+            (s.DISK_MIN,s.DISK_MIN-1,s.TMPFS),
+            (s.DISK_MIN,s.DISK_MIN,0),
+            (s.DISK_MIN,s.DISK_MIN,s.TMPFS+1),
+        ):
+            with self.subTest(overlay=overlay,volume=volume,tmp=tmp):
+                with self.assertRaises(s.HostBlocked):
+                    s.checked_docker_storage_space(mountinfo,overlay,volume,tmp)
 
     def test_receipt_canonical_sha_and_no_sensitive_device_fields(self):
         r=report()
