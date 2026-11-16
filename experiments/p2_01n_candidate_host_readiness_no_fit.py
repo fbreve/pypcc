@@ -28,9 +28,9 @@ from experiments import p2_07c_consolidated_execution_envelope_no_fit as c
 from experiments import p2_07m_exact_oci_original_graph_preparation_no_fit as m
 
 ROOT=m.ROOT
-SCHEMA="pypcc-P2-01N-user-selected-candidate-host-capacity-and-native-entrypoints-NO-FIT/v1"
+SCHEMA="pypcc-P2-01N-user-selected-candidate-host-capacity-and-native-entrypoints-NO-FIT/v2"
 STATUS="CANDIDATE_HOST_CPU_MEMORY_DISK_AND_IMPORT_ONLY_CHECKED_NOT_SELECTED"
-WORKER_SCHEMA="pypcc-P2-01N-exact-original-OCI-import-only-cgroup-CPU-RAM/v1"
+WORKER_SCHEMA="pypcc-P2-01N-exact-original-OCI-import-only-cgroup-CPU-RAM-disk/v2"
 IMAGE_SHA=guard.IMAGE_SHA
 IMAGE_ID=guard.IMAGE_ID
 IMAGE_BYTES=290796771
@@ -40,6 +40,7 @@ RAM_MIN=8*1024**3
 DISK_MIN=12*1024**3
 CGROUP_MEM=2*1024**3
 TMPFS=128*1024**2
+DOCKER_VOLUME_MOUNT="/opt/p201n-local-disk-probe"
 NO_GO=guard.NO_GO.copy()
 
 class HostBlocked(ValueError):
@@ -187,6 +188,40 @@ def parse_cpu_quota(cpu_max):
             "DOCKER_WORKER_CPU_QUOTA_NOT_ENFORCED")
     return int(parts[0]),int(parts[1])
 
+def checked_docker_storage_space(mountinfo, root_free, volume_free, tmp_free):
+    """Read-only size validation: OCI overlay and Docker local-volume backing.
+
+    This is a point-in-time *capacity observation*, not a guaranteed future
+    write allowance, approval of a production evidence export destination,
+    proof of host/WSL thin-provisioned physical disk, or OCI source closure.
+    """
+    require(type(mountinfo) is str and len(mountinfo)<1024**2 and
+            type(root_free) is int and type(volume_free) is int and
+            type(tmp_free) is int and
+            root_free>=DISK_MIN and volume_free>=DISK_MIN and
+            0<tmp_free<=TMPFS,
+            "DOCKER_OCI_ROOT_OR_LOCAL_VOLUME_FREE_DISK_BELOW_12GIB")
+    matches=[]
+    for line in mountinfo.splitlines():
+        parts=line.split(" - ",1)
+        if len(parts)!=2:
+            continue
+        left,right=parts
+        cols=left.split()
+        if len(cols)>4 and cols[4]==DOCKER_VOLUME_MOUNT:
+            fstype=right.split()[0] if right.split() else ""
+            matches.append(fstype)
+    require(len(matches)==1 and matches[0] not in
+            ("","tmpfs","ramfs","devtmpfs","proc","sysfs","overlay"),
+            "DOCKER_STORAGE_PROBE_NOT_AN_ACTUAL_DISK_BACKED_VOLUME_MOUNT")
+    return {
+        "OCI_root_overlay_free_disk_bytes_at_check":root_free,
+        "Docker_local_anonymous_volume_free_disk_bytes_at_check":volume_free,
+        "Docker_temporary_tmpfs_free_bytes_at_check":tmp_free,
+        "local_anonymous_Docker_volume_mount_verified_non_tmpfs":True,
+        "volume_is_temporary_auto_removed_by_docker_run_rm":True,
+    }
+
 def worker():
     require(platform.system()=="Linux" and
             platform.python_version()=="3.12.16" and
@@ -213,7 +248,22 @@ def worker():
     require(0<free<=TMPFS and
             not Path("/tmp/p207r-release-fake-only").exists(),
             "EXPECTED_NO_FIT_TMPFS_OR_RELEASE_BARRIER_MISSING")
-    print("P201N_SAFE_STAGE|AFTER_CGROUP_QUOTAS",file=sys.stderr,flush=True)
+    # The original immutable OCI root is read-only. A *separate anonymous*
+    # local Docker volume is mounted WITHOUT writes just to measure current
+    # backing filesystem availability on the actual Docker daemon / WSL2 VM.
+    # Docker run --rm removes this anonymous volume on exit. No named NAS,
+    # host bind, external source or persistent result file is mounted.
+    probe=Path(DOCKER_VOLUME_MOUNT)
+    require(probe.is_dir(), "DOCKER_ANONYMOUS_STORAGE_PROBE_NOT_MOUNTED")
+    def free_bytes(path):
+        stat=os.statvfs(path)
+        require(stat.f_frsize>0 and stat.f_bavail>=0,
+                "DOCKER_STORAGE_FREE_SPACE_STAT_INVALID")
+        return int(stat.f_bavail)*int(stat.f_frsize)
+    store=checked_docker_storage_space(
+        Path("/proc/self/mountinfo").read_text(encoding="utf-8"),
+        free_bytes("/"),free_bytes(probe),free_bytes("/tmp"))
+    print("P201N_SAFE_STAGE|AFTER_CGROUP_AND_DISK_CAPACITY",file=sys.stderr,flush=True)
     return {
         "schema":WORKER_SCHEMA,
         "original_frozen_P1_SHA256":P1_SHA,
@@ -231,6 +281,7 @@ def worker():
         "real_OCI_worker_cgroup_cpu_quota_numerator":numerator,
         "real_OCI_worker_cgroup_cpu_quota_denominator":denominator,
         "real_OCI_worker_tmpfs_free_bytes":int(free),
+        **store,
         "real_OCI_worker_native_PCC_propagations_executed":0,
         "real_original_P1_fits_executed":0,
         "P2_execution_authorized":False,
@@ -260,8 +311,16 @@ def validate_worker(data):
     require(type(n) is int and type(d) is int and
             n>0 and d>=n and
             type(data.get("real_OCI_worker_tmpfs_free_bytes")) is int and
-            0<data["real_OCI_worker_tmpfs_free_bytes"]<=TMPFS,
-            "ORIGINAL_OCI_CPU_OR_TMPFS_LIMIT_NOT_OBSERVED")
+            0<data["real_OCI_worker_tmpfs_free_bytes"]<=TMPFS and
+            type(data.get("OCI_root_overlay_free_disk_bytes_at_check")) is int and
+            data["OCI_root_overlay_free_disk_bytes_at_check"]>=DISK_MIN and
+            type(data.get("Docker_local_anonymous_volume_free_disk_bytes_at_check")) is int and
+            data["Docker_local_anonymous_volume_free_disk_bytes_at_check"]>=DISK_MIN and
+            data.get("Docker_temporary_tmpfs_free_bytes_at_check")==
+                data["real_OCI_worker_tmpfs_free_bytes"] and
+            data.get("local_anonymous_Docker_volume_mount_verified_non_tmpfs") is True and
+            data.get("volume_is_temporary_auto_removed_by_docker_run_rm") is True,
+            "ORIGINAL_OCI_CPU_TMPFS_OR_DOCKER_LOCAL_DISK_CAPACITY_MISSING")
     return True
 
 def docker_args(name):
@@ -274,6 +333,9 @@ def docker_args(name):
         "--security-opt","no-new-privileges","--pids-limit","128",
         "--memory","2g","--memory-swap","2g","--cpus","1",
         "--tmpfs","/tmp:rw,nosuid,nodev,noexec,mode=1777,size=128m",
+        # Creates one anonymous Docker-local volume for *read-only statvfs*
+        # inside the run; Docker --rm removes the anonymous volume.
+        "--mount",f"type=volume,destination={DOCKER_VOLUME_MOUNT},volume-nocopy",
         "--env","P201N_IMPORT_ONLY=1",
         "--env",f"PYTHONPATH={guard.k.CORRECT_PATH}",
         "--env","PYTHONDONTWRITEBYTECODE=1",
@@ -326,6 +388,7 @@ def validate_report(report):
             report.get("source_compiler_SDK_OS_build_closure_proven") is False and
             report.get("real_original_50k_checkpoint_resource_bounds_proven") is False and
             report.get("Docker_engine_root_volume_free_disk_proven") is False and
+            report.get("Docker_local_volume_and_OCI_root_disk_capacity_observed") is True and
             report.get("host_identity_paths_serials_tokens_exported") is False and
             all(report.get(key)==val for key,val in NO_GO.items()),
             "HOST_CAPACITY_RECEIPT_FALSE_FINAL_EXECUTION_GO")
@@ -393,7 +456,11 @@ def main():
         "a_suitable_host_has_not_been_selected_or_approved":True,
         "source_compiler_SDK_OS_build_closure_proven":False,
         "real_original_50k_checkpoint_resource_bounds_proven":False,
+        # Probe is point-in-time anonymous Docker-local volume plus OCI
+        # readonly root. Does NOT prove future image-store capacity or that
+        # physical WSL2 VHD/host evidence export volume is suitably provisioned.
         "Docker_engine_root_volume_free_disk_proven":False,
+        "Docker_local_volume_and_OCI_root_disk_capacity_observed":True,
         "host_identity_paths_serials_tokens_exported":False,
         **NO_GO,
     }
@@ -411,6 +478,8 @@ def main():
         "host_physical_RAM_GiB":round(physical/1024**3,2),
         "Docker_engine_VM_RAM_GiB":round(engine["engine_VM_total_memory_bytes"]/1024**3,2),
         "workdir_free_GiB":round(free/1024**3,2),
+        "Docker_local_volume_free_GiB":round(result["Docker_local_anonymous_volume_free_disk_bytes_at_check"]/1024**3,2),
+        "OCI_root_overlay_free_GiB":round(result["OCI_root_overlay_free_disk_bytes_at_check"]/1024**3,2),
         "local_review_receipt_SHA256_NOT_EXECUTION":digest(report),
         "P2_execution_preflight_sha256":None,
         "P2_execution_authorized":False,
