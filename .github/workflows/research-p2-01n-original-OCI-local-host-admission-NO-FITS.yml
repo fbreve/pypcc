@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   source-only-local-host-adversarial:
-    name: 15 local Docker physical/VM capacity and scientific NO-GO adversarial tests (${{ matrix.os }} Py${{ matrix.python }})
+    name: 18 local Docker physical/VM/disk capacity and scientific NO-GO adversarial tests (${{ matrix.os }} Py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 12
     strategy:
@@ -97,12 +97,19 @@ jobs:
           assert data["observed_local_host"]["engine_VM_total_memory_bytes"]>=8*1024**3
           assert data["observed_local_host"]["work_directory_free_disk_bytes_at_check"]>=12*1024**3
           assert data["exact_original_OCI_import_only_worker"]["resolved_exact_original_P1_case_identifiers"]==72
+          assert data["exact_original_OCI_import_only_worker"]["OCI_root_overlay_free_disk_bytes_at_check"]>=12*1024**3
+          assert data["exact_original_OCI_import_only_worker"]["Docker_local_anonymous_volume_free_disk_bytes_at_check"]>=12*1024**3
+          assert data["exact_original_OCI_import_only_worker"]["local_anonymous_Docker_volume_mount_verified_non_tmpfs"] is True
+          assert data["Docker_local_volume_and_OCI_root_disk_capacity_observed"] is True
+          assert data["Docker_engine_root_volume_free_disk_proven"] is False
           assert data["source_compiler_SDK_OS_build_closure_proven"] is False
           assert data["a_suitable_host_has_not_been_selected_or_approved"] is True
           assert data["P2_execution_preflight_sha256"] is None
           assert data["P2_execution_authorized"] is False
           assert data["real_PCC_fits_executed"]==0
-          print("PASS: genuine existing OCI host capability + 72 exact production backend RESOLUTIONS, zero propagations")
+          print("PASS: genuine existing OCI host physical RAM, Docker VM RAM, OCI overlay and local ephemeral Docker volume disk capacity + 72 exact production backend RESOLUTIONS, zero propagations")
+          print("docker_volume_free_GiB="+str(round(data["exact_original_OCI_import_only_worker"]["Docker_local_anonymous_volume_free_disk_bytes_at_check"]/1024**3,2)))
+          print("OCI_overlay_free_GiB="+str(round(data["exact_original_OCI_import_only_worker"]["OCI_root_overlay_free_disk_bytes_at_check"]/1024**3,2)))
           print("review_only_sha256_NOT_P2_08="+h.digest(data))
           print("These are ephemeral CI runner capacities, NOT user's actual approved execution host")
           PY
