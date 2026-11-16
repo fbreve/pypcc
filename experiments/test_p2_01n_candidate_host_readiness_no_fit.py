@@ -249,9 +249,9 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
 
     def test_actual_docker_local_volume_mountinfo_and_original_overlay_disk(self):
         mountpoint=s.DOCKER_VOLUME_MOUNT
-        sample=("51 42 0:50 / / rw,relatime - overlay overlay rw\\n"
-                f"52 51 8:1 /var/lib/docker/volumes/probe/_data {mountpoint} rw,relatime - ext4 /dev/vda1 rw\\n"
-                "53 51 0:51 / /tmp rw,nosuid,nodev - tmpfs tmpfs rw\\n")
+        sample=("51 42 0:50 / / rw,relatime - overlay overlay rw\n"
+                f"52 51 8:1 /var/lib/docker/volumes/probe/_data {mountpoint} rw,relatime - ext4 /dev/vda1 rw\n"
+                "53 51 0:51 / /tmp rw,nosuid,nodev - tmpfs tmpfs rw\n")
         observed=s.checked_docker_storage_space(
             sample,19*1024**3,22*1024**3,s.TMPFS)
         self.assertTrue(observed["local_anonymous_Docker_volume_mount_verified_non_tmpfs"])
@@ -264,11 +264,11 @@ class OriginalActualHostNoFitContract(unittest.TestCase):
         mountpoint=s.DOCKER_VOLUME_MOUNT
         invalid=(
             "",
-            "51 42 0:50 / / rw - overlay overlay rw\\n",
-            f"52 51 0:51 / {mountpoint} rw - tmpfs tmpfs rw\\n",
-            f"52 51 0:51 / {mountpoint} rw - overlay overlay rw\\n",
-            (f"52 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\\n"
-             f"53 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\\n"),
+            "51 42 0:50 / / rw - overlay overlay rw\n",
+            f"52 51 0:51 / {mountpoint} rw - tmpfs tmpfs rw\n",
+            f"52 51 0:51 / {mountpoint} rw - overlay overlay rw\n",
+            (f"52 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\n"
+             f"53 51 8:1 / {mountpoint} rw - ext4 /dev/vda1 rw\n"),
         )
         for mountinfo in invalid:
             with self.subTest(mount=mountinfo[:30]),self.assertRaises(s.HostBlocked):
