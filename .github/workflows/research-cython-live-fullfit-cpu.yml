@@ -1,0 +1,44 @@
+name: Research Cython live whole-fit CPU (synthetic)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/build_live_cython.py'
+      - 'experiments/live_cython_milestones.py'
+      - 'experiments/bench_live_cython_fullfit.py'
+      - '.github/workflows/research-cython-live-fullfit-cpu.yml'
+jobs:
+  paired-cpu:
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production and isolated Cython toolchain
+        run: |
+          python -m pip install -e ".[numba]"
+          python -m pip install "setuptools>=70" "Cython>=3,<4"
+      - name: Compile native research clone from pinned production source
+        run: python -m experiments.build_live_cython
+      - name: Exact cached and legacy synthetic parity gates
+        run: python -m unittest discover -s tests -p test_live_cython_milestones.py -v
+      - name: No-stop legacy whole-fit paired CPU
+        run: python -m experiments.bench_live_cython_fullfit --mode no-stop --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 400 --output cython-no-stop-${{ runner.os }}.json
+      - name: Early-stop cached whole-fit paired CPU
+        run: python -m experiments.bench_live_cython_fullfit --mode early-cached --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 400 --output cython-cached-${{ runner.os }}.json
+      - name: Early-stop legacy whole-fit paired CPU
+        run: python -m experiments.bench_live_cython_fullfit --mode early-legacy --nodes 500 --iterations 5000 --repeats 5 --fits-per-sample 400 --output cython-legacy-${{ runner.os }}.json
+      - name: Publish raw per-pair results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cython-live-fullfit-${{ runner.os }}-py312
+          path: cython-*-${{ runner.os }}.json
+          if-no-files-found: error
