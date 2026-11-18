@@ -1,0 +1,466 @@
+"""Strict stdlib-only review of the UNAPPROVED P1 scientific decision packet.
+
+This does not download datasets, build graphs, run a particle, assign labels,
+sample an RNG, compile a backend, approve science, or create P2 credentials.
+It checks that the reviewer-facing candidate/preprocessing/graph proposals
+are consistent with the existing UNAPPROVED P1 design and current master code.
+"""
+import argparse
+import ast
+import hashlib
+import json
+from pathlib import Path
+import re
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PACKET = ROOT / "docs/current_p1_scientific_decision_packet_2026-11-12.json"
+DRAFT = ROOT / "docs/current_p1_prospective_design_draft_2026-11-12.json"
+GRAPH_SOURCE = ROOT / "pcc_graph.py"
+EXPOSURE = ROOT / "docs/current_p1_public_literature_exposure_2026-11-12.json"
+RESOLUTION = ROOT / "docs/current_p1_scientific_resolution_for_review_2026-11-12.json"
+GRAPH_SHA = "3e8943462555b4feafbd162125b51e41f29d7ab7"
+EXPECTED_IDS = (212, 850, 292)
+EXPECTED_SUPPORT = {
+    212: {"Hernia": 60, "Normal": 100, "Spondylolisthesis": 150},
+    850: {"Besni": 450, "Kecimen": 450},
+    292: {"1": 298, "2": 142},
+}
+EXPECTED_SOURCES = {
+    212: (
+        "899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f",
+        "cf768854cf4cf42b3a3b792a239a81ebfd4fbfafc25fbe2a19d15b3f73249879",
+        310, 6,
+    ),
+    850: (
+        "5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db",
+        "9370b5f749a572a0bbeae15c93bf2e15c859b06d2626ae401b844c0a925fa553",
+        900, 7,
+    ),
+    292: (
+        "647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8",
+        "c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef",
+        440, 6,
+    ),
+}
+EXPECTED_MILESTONES = [0, 1, 10, 100, 1000, 5000, 25000, 50000]
+
+
+class ScientificDecisionInvalid(ValueError):
+    pass
+
+
+def require(ok, reason):
+    if not ok:
+        raise ScientificDecisionInvalid(reason)
+
+
+def git_blob_sha1(data):
+    return hashlib.sha1(
+        b"blob " + str(len(data)).encode("ascii") + b"\x00" + data
+    ).hexdigest()
+
+
+def canonical_sha256(value):
+    return hashlib.sha256(json.dumps(
+        value, sort_keys=True, ensure_ascii=True, allow_nan=False,
+        separators=(",", ":"),
+    ).encode("ascii")).hexdigest()
+
+
+def check_graph_source(content):
+    # Windows checkout may materialize the same Git LF blob as CRLF.
+    # Allow only that working-tree newline conversion, then compare EVERY
+    # canonical byte with the pinned Git blob SHA-1. No altered source passes.
+    if git_blob_sha1(content) != GRAPH_SHA:
+        require(b"\r\n" in content and
+                git_blob_sha1(content.replace(b"\r\n", b"\n")) == GRAPH_SHA,
+                "Production graph code is not the pinned master Git blob")
+        content = content.replace(b"\r\n", b"\n")
+    module = ast.parse(content)
+    functions = [x for x in module.body if isinstance(
+        x, (ast.FunctionDef, ast.AsyncFunctionDef)
+    ) and x.name == "build_knn_graph"]
+    require(len(functions) == 1, "Expected original graph API exactly once")
+    fn = functions[0]
+    require([x.arg for x in fn.args.args] ==
+            ["data", "k_nn", "metric", "p", "n_jobs"],
+            "Graph argument order changed")
+    require([ast.literal_eval(v) for v in fn.args.defaults] ==
+            [10, "minkowski", 2, None],
+            "Current production graph defaults have changed")
+    require(b"algorithm=\"auto\"" in content and
+            b"adj = adj + adj.T" in content and
+            b"neib_list = np.full((n_nodes, max_deg), -1" in content,
+            "Expected auto/symmetric/dense-padded graph construction changed")
+    # These text checks are not a substitute for P2 actual graph computation.
+    return True
+
+
+def review_public_literature_evidence(exposure):
+    """Validate the *limits* of manual source evidence, not paper authenticity.
+
+    A passing CI check proves only that a bounded reviewer register is internally
+    consistent. It CANNOT demonstrate no prior unpublished/local research use.
+    """
+    require(type(exposure) is dict and
+            exposure.get("schema") ==
+            "pypcc-P1-public-literature-exposure-register/v1" and
+            exposure.get("status") ==
+            "SCOPED_PUBLIC_TEXT_CHECK_ONLY_NOT_PROOF_OF_NOVELTY",
+            "Unrecognized or incorrectly approved literature scope")
+    papers = exposure["reviewed_full_texts"]
+    expected = {
+        "BREVE_NEUROCOMPUTING_2015": (
+            2015, "Neurocomputing2015.pdf",
+            {"Iris", "Wine", "g241c", "Semeion Handwritten Digit",
+             "Optical Recognition of Handwritten Digits",
+             "Gaussian synthetic four-class"}
+        ),
+        "GUERREIRO_ICCSA_2017": (
+            2017, "iccsa2017lucas.pdf",
+            {"Iris", "Wine", "Banknote Authentication"}
+        ),
+        "LETICIO_VISAPP_2025": (
+            2025, "132670.pdf",
+            {"g241c", "g241n", "Digit1", "USPS", "COIL", "COIL2", "BCI"}
+        )
+    }
+    require(len(papers) == len(expected) == 3 and
+            {x["id"] for x in papers} == set(expected),
+            "Exactly three named publicly checked papers, not all publications")
+    for entry in papers:
+        year, suffix, datasets = expected[entry["id"]]
+        require(entry["year"] == year and
+                entry["url"].startswith("https://") and
+                entry["url"].endswith(suffix) and
+                set(entry["experimental_datasets_named"]) == datasets and
+                entry["candidate_name_mentions_in_experimental_section"] == [],
+                "Published dataset-set evidence was changed without review")
+        require(len(entry["article_section"]) >= 5 and
+                len(entry["evidence_note"]) >= 20,
+                "Publication evidence scope undocumented")
+    require(exposure["candidate_ids_checked_against_these_three_papers_only"] ==
+            [212,850,292] and
+            exposure["candidate_names_checked"] ==
+            ["Vertebral Column","Raisin","Wholesale customers"] and
+            exposure["result"] ==
+            "NONE_OF_THREE_CANDIDATES_NAMED_IN_EXPERIMENTAL_SECTIONS_OF_THE_THREE_PAPERS_REVIEWED",
+            "No claim permitted beyond the three papers examined")
+    require(exposure["no_claim_of_unpublished_or_all_paper_novelty"] is True and
+            exposure["historical_exposure_completely_checked"] is False and
+            exposure["dataset_independence_verified"] is False and
+            exposure["clinical_lineage_or_ethical_review_completed"] is False,
+            "Source-only checking cannot become an unreviewed novelty/ethics seal")
+    history_note = exposure["known_historical_inventory_limitation"]
+    require("g241c" in history_note and "Semeion" in history_note and
+            "not exhaustive" in history_note.lower(),
+            "20-set campaign is not an exhaustive historical PCC-paper inventory")
+    sources = exposure["source_metadata"]
+    require([x["uci_id"] for x in sources] == [212,850,292] and
+            all(x["license_reported_by_uci"] == "CC BY 4.0" for x in sources),
+            "Original UCI provenance or license scope changed")
+    require(sources[0]["independent_subject_or_patient_IDs_in_selected_UCI_file_verified"] is False and
+            sources[1]["independent_raisins_and_acquisition_batch_IDs_verified"] is False and
+            sources[2]["independent_customers_or_org_IDs_verified"] is False and
+            sources[2]["channel_as_proposed_derived_target_is_uci_default"] is False,
+            "Provenance uncertainties and derived Wholesale target cannot be suppressed")
+    require(len(exposure["still_unreviewed"]) >= 5 and
+            exposure["dataset_selected_ids"] == [] and
+            exposure["P1_scientific_protocol_sha256"] is None and
+            exposure["P2_execution_preflight_sha256"] is None and
+            exposure["execution_authorized"] is False and
+            exposure["PCC_fits_executed"] == 0,
+            "Incomplete literature review must never authorize real data fitting")
+    return {
+        "public_full_text_papers_scoped_checked":3,
+        "three_candidate_names_absent_from_checked_papers_only":True,
+        "all_history_or_private_matlab_checked":False,
+        "paper_20_dataset_inventory_exhaustive":False,
+        "data_independence_or_ethics_certified":False,
+        "unreviewed_categories":len(exposure["still_unreviewed"]),
+        "public_literature_register_sha256_NOT_novelty_or_approval":
+            canonical_sha256(exposure),
+    }
+
+
+def review_scientific_resolution(resolution, draft, packet):
+    """Human review recommendations, never an implicit P1 scientific GO."""
+    require(type(resolution) is dict and
+            resolution.get("schema") ==
+            "pypcc-p1-scientific-resolution-for-review/v1" and
+            resolution.get("status") ==
+            "RECOMMENDED_FOR_EXPLICIT_SCIENTIFIC_DECISION_NOT_APPROVED",
+            "Invalid or automatically approved scientific resolution")
+    require(resolution["source_proposals"]["design"] ==
+            "docs/current_p1_prospective_design_draft_2026-11-12.json" and
+            resolution["source_proposals"]["decisions"] ==
+            "docs/current_p1_scientific_decision_packet_2026-11-12.json" and
+            resolution["source_proposals"]["scientific_design_draft_PR"] == 258 and
+            resolution["source_proposals"]["source_integrity_draft_PR"] == 260,
+            "Resolution not linked to the reviewed source proposals")
+    rows = resolution.get("recommendations")
+    names = [
+        "S1_DATASETS_AND_HISTORICAL_EXPOSURE",
+        "S2_TARGET_FEATURES_AND_PROVENANCE",
+        "S3_PREPROCESSING", "S4_GRAPH_REPRESENTATION",
+        "S5_MASK_SEEDS_AND_OBSERVATION", "S6_ANALYSIS_AND_DECISION",
+    ]
+    require(type(rows) is list and [r["id"] for r in rows] == names and
+            all(r["recommend"].startswith("RECOMMEND") and
+                len(r["needs_human_acknowledgment"]) >= 2 for r in rows),
+            "All six independent scientific decisions require review")
+    require(rows[0]["proposed_uci_ids"] == [212, 850, 292] and
+            len(set(rows[0]["domains"])) == 3 and
+            "not a claim" in rows[0]["mandatory_disclosure"] and
+            "Region" in rows[1]["feature_rule"] and
+            "Channel" in rows[1]["feature_rule"] and
+            "log1p" in rows[2]["numeric_rule"] and
+            "ddof=0" in rows[2]["numeric_rule"] and
+            "neib_list" in rows[3]["graph"] and
+            "CSR" in rows[3]["graph"] and
+            "72 fits" in rows[4]["proposed_work"] and
+            "EXPLORATORY" in rows[5]["recommend"],
+            "Unexpected proposed data/graph/statistical policy")
+    require(draft["experimental_design"]["number_of_fits_if_approved_and_feasible"] == 72 and
+            packet["candidate_shortlist_proposed_not_selected"][0]["dataset_id"] == 212 and
+            packet["candidate_shortlist_proposed_not_selected"][1]["dataset_id"] == 850 and
+            packet["candidate_shortlist_proposed_not_selected"][2]["dataset_id"] == 292 and
+            packet["dataset_registry_selected"] == [] and
+            draft["dataset_registry"]["selected"] == [],
+            "Candidate options must not masquerade as selected study sets")
+    decision = resolution.get("human_decision")
+    require(type(decision) is dict and
+            decision["maintainer_approval"] is None and
+            decision["approval_timestamp"] is None and
+            decision["selected_dataset_ids"] == [] and
+            decision["scientific_protocol_frozen"] is False and
+            decision["scientific_protocol_sha256"] is None and
+            decision["P2_execution_preflight_sha256"] is None and
+            decision["execution_authorized"] is False and
+            decision["real_PCC_fits_performed"] == 0 and
+            decision["new_generation_of_source_masks_or_graphs_authorized"] is False,
+            "The scientific decision memo is NOT a signed P1/P2 authorization")
+    require(len(resolution["remaining_nonnegotiable_gates"]) == 4 and
+            resolution["scope_only"].startswith("NONE") and
+            "reviewer approval/rejection" in resolution["next_action"].lower(),
+            "No bypass of explicit human and P2 approval gates")
+    return {
+        "scientific_resolution_review": "PASS_PENDING_HUMAN_DECISION",
+        "proposals_for_explicit_approval": len(rows),
+        "proposed_dataset_ids_not_selected": rows[0]["proposed_uci_ids"],
+        "all_six_recommendations_human_approved": False,
+        "resolution_checksum_NOT_scientific_protocol_approval":
+            canonical_sha256(resolution),
+        "P1_ready_to_freeze": False,
+        "P2_execution_preflight_sha256": None,
+        "real_PCC_fits_executed": 0,
+        "execution_authorized": False,
+    }
+
+
+def review(packet, scientific_draft, graph_content):
+    require(type(packet) is dict, "Decision packet must be an object")
+    require(packet.get("schema") == "pypcc-p1-protocol-decision-packet/v0.1",
+            "Unrecognized proposal packet schema")
+    require(packet.get("status") ==
+            "PROPOSAL_FOR_INDEPENDENT_SCIENTIFIC_REVIEW_NOT_APPROVED",
+            "Scientific decision packet cannot claim approval")
+    require(packet["linked_current_master_commit"] ==
+            "ea69f690208620d5563c8efece6b2e04369f52c0",
+            "Original master source base changed")
+    require(packet["evidence_head_commit"] ==
+            "096a6c127eeeaa6b37171c99824a7a80a040aa72",
+            "Unreviewed source-quality evidence base changed")
+    require(packet["linked_existing_draft"] ==
+            "docs/current_p1_prospective_design_draft_2026-11-12.json",
+            "Unexpected linked P1 draft")
+    for field in ("scientific_protocol_frozen", "execution_authorized"):
+        require(packet.get(field) is False,
+                "Packet may not authorize P1 or execution: " + field)
+    for field in ("scientific_protocol_sha256",
+                  "P2_execution_preflight_sha256"):
+        require(packet.get(field) is None,
+                "Packet cannot contain a scientific/P2 hash")
+    require(packet["dataset_registry_selected"] == [] and
+            packet["selected_dataset_count"] == 0 and
+            packet["real_PCC_fits_executed"] == 0,
+            "No dataset is selected and no fit is authorized")
+    for flag in ("no_dataset_download_in_this_document",
+                 "no_graph_construction_in_this_document",
+                 "no_model_fit_in_this_document"):
+        require(packet[flag] is True, "Source-only proposal must remain inert")
+
+    options = packet["candidate_shortlist_proposed_not_selected"]
+    require([x["dataset_id"] for x in options] == list(EXPECTED_IDS),
+            "Unexpected or reordered shortlist: independent review required")
+    require(len(set(x["domain"] for x in options)) == 3,
+            "Three distinct application domains required for shortlist")
+    for entry in options:
+        dataset_id = entry["dataset_id"]
+        expected = EXPECTED_SOURCES[dataset_id]
+        require((entry["source_zip_sha256"],
+                 entry["selected_file_sha256"],
+                 entry["n_rows"], entry["n_features"]) == expected,
+                f"Unreviewed source identity or shape for {dataset_id}")
+        require(entry["class_support"] == EXPECTED_SUPPORT[dataset_id] and
+                sum(entry["class_support"].values()) == entry["n_rows"],
+                f"Class supports do not match source for {dataset_id}")
+        require(entry["source_url"].startswith(
+            "https://archive.ics.uci.edu/static/public/" +
+            str(dataset_id) + "/"), "Candidate must point to UCI source")
+        require(len(entry["scientific_blockers"]) >= 2,
+                "Independent source/ethics review is still missing")
+        require(
+            entry["proposed_preprocessing"] in
+            packet["preprocessing_candidate_rule_not_approved"],
+            "Unknown proposed preprocessing algorithm",
+        )
+    wholesale = options[2]
+    require(wholesale["proposed_target"].startswith("Channel") and
+            wholesale["source_metadata_target"].startswith("Region") and
+            wholesale["excluded_X"] == ["Region", "Channel"] and
+            wholesale["proposed_X"] ==
+            ["Fresh", "Milk", "Grocery", "Frozen",
+             "Detergents_Paper", "Delicassen"],
+            "Source metadata Region and derived target Channel must remain distinct")
+    require(options[0]["selected_file_name"] == "column_3C_weka.arff",
+            "Vertebral study must not silently switch to two-class task")
+    require(options[1]["selected_file_name"] == "Raisin_Dataset.xlsx",
+            "Raisin study sheet identity changed")
+
+    not_shortlisted = packet["not_shortlisted"]
+    require([x["dataset_id"] for x in not_shortlisted] == [545, 379] and
+            "grain" in not_shortlisted[0]["reason"].lower() and
+            "categorical" in not_shortlisted[1]["reason"].lower(),
+            "Document domain redundancy and categorical-code conflicts")
+    prep = packet["preprocessing_candidate_rule_not_approved"]
+    require(prep["reviewed_and_approved"] is False and
+            "ddof=0" in prep["population_zscore_original_numeric_features"] and
+            "log1p" in prep["log1p_nonnegative_then_population_zscore"],
+            "Preprocessing must be explicit and unapproved")
+    graph = packet["graph_candidate_rule_not_approved"]
+    require(graph["source_file"] == "pcc_graph.py" and
+            graph["source_git_blob_sha1"] == GRAPH_SHA and
+            graph["call"] ==
+            "build_knn_graph(X, k_nn=10, metric='minkowski', p=2, n_jobs=1)",
+            "Graph construction differs from proposed original master call")
+    require(graph["undirected_symmetric"] is True and
+            graph["dense_padded_minus_one"] is True and
+            graph["cross_platform_graph_identity_not_yet_verified"] is True and
+            graph["reviewed_and_approved"] is False,
+            "Do not assume graph identity or change graph representation")
+    require(len(graph["before_P2_required"]) >= 5,
+            "Graph equivalence and budget checklist is incomplete")
+    check_graph_source(graph_content)
+
+    require(scientific_draft["status"] == "DRAFT_NOT_APPROVED" and
+            scientific_draft["dataset_registry"]["selected"] == [] and
+            scientific_draft["approval"]["scientific_protocol_frozen"] is False and
+            scientific_draft["approval"]["scientific_protocol_sha256"] is None and
+            scientific_draft["approval"]["execution_authorized"] is False,
+            "Linked original P1 design must remain unapproved")
+    d = scientific_draft["experimental_design"]
+    proposed = packet["scientific_design_preserved_from_P1_draft"]
+    require(proposed["backend_count"] == len(d["backend_conditions"]) == 3 and
+            proposed["mask_repeats_per_dataset"] ==
+            d["label_mask_replicates_proposed"] == 8 and
+            proposed["labeled_per_class"] ==
+            d["label_budget_per_class_proposed"] == 3 and
+            proposed["horizon_iterations"] ==
+            d["max_iterations_proposed"] == 50000 and
+            proposed["early_stop"] is d["early_stop"] is False and
+            proposed["milestones"] == d["milestones_proposed"] ==
+            EXPECTED_MILESTONES and
+            proposed["primary_flip_window"] ==
+            [d["primary_comparison"]["from_iteration"],
+             d["primary_comparison"]["to_iteration"]] == [5000, 50000] and
+            proposed["proposed_fit_count_if_all_approved"] ==
+            d["number_of_fits_if_approved_and_feasible"] == 72,
+            "P1 trial design changed without independent scientific review")
+    scope = packet["publication_exposure_review_scope"]
+    require(scope["status"] == "THREE_PUBLIC_PAPERS_SCOPED_CHECK_ONLY" and
+            scope["evidence_register"] ==
+            "docs/current_p1_public_literature_exposure_2026-11-12.json" and
+            scope["reviewed_paper_ids"] == [
+                "BREVE_NEUROCOMPUTING_2015",
+                "GUERREIRO_ICCSA_2017",
+                "LETICIO_VISAPP_2025"
+            ] and
+            scope["candidate_names_absent_in_these_three_papers_only"] is True and
+            scope["historical_20_dataset_inventory_is_exhaustive"] is False and
+            scope["all_prior_publications_or_unpublished_results_checked"] is False and
+            scope["patient_customer_batch_independence_verified"] is False and
+            scope["dataset_novelty_or_external_validation_approved"] is False and
+            scope["scientific_review_required_before_P1_freeze"] is True,
+            "Public literature evidence scope cannot be inflated to novelty approval")
+    require(
+        scope.get("additional_evidence_register") ==
+        "docs/current_p1_additional_public_papers_2026-11-12.json" and
+        scope.get("reviewed_additional_paper_ids") == [
+            "BREVE_COMPLEX_2009", "BREVE_IJCNN_2010", "BREVE_TKDE_2012",
+            "BREVE_IJCNN_2012_CONCEPT_DRIFT", "BREVE_IJCNN_2013_ACTIVE",
+            "BREVE_MLSP_2016", "BREVE_PCC_GCN_ARXIV_2026",
+        ] and
+        scope.get("sources_experiment_sections_checked_total") == 10 and
+        scope.get("additional_six_published_and_one_preprint_only") is True and
+        scope.get("candidate_names_absent_in_ten_scoped_sources_only") is True and
+        scope.get("all_pcc_papers_theses_or_local_experiments_checked") is False,
+        "A ten-source check is not an exhaustive corpus audit")
+    require(scope["additional_evidence_register"] in packet["evidence_files"],
+            "Expanded public paper register missing from scientific packet")
+    require(scope["evidence_register"] in packet["evidence_files"],
+            "Candidate provenance evidence is missing from packet")
+    require("historical 20-dataset pypcc campaign is demonstrably nonexhaustive" in
+            packet["reviewer_decisions_remaining"][0],
+            "Reviewer must know the benchmark list is not comprehensive")
+
+    require(len(packet["reviewer_decisions_remaining"]) >= 7,
+            "Review checklist must be comprehensive")
+
+    return {
+        "schema": "pypcc-p1-scientific-decision-review/v1",
+        "proposal_checks": "PASS",
+        "proposed_candidate_ids_not_selected": list(EXPECTED_IDS),
+        "source_provenance_pinned_for_review": True,
+        "original_graph_source_blob_checked": True,
+        "review_pending_count": len(packet["reviewer_decisions_remaining"]),
+        "packet_sha256_NOT_scientific_protocol_approval":
+            canonical_sha256(packet),
+        "P1_scientifically_frozen": False,
+        "P1_ready_to_freeze": False,
+        "P2_execution_preflight_sha256": None,
+        "PCC_fits_executed": 0,
+        "execution_authorized": False,
+    }
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--packet", type=Path, default=PACKET)
+    p.add_argument("--draft", type=Path, default=DRAFT)
+    p.add_argument("--graph-source", type=Path, default=GRAPH_SOURCE)
+    p.add_argument("--out", type=Path, default=None)
+    args = p.parse_args()
+    report = review(
+        json.loads(args.packet.read_text(encoding="utf-8")),
+        json.loads(args.draft.read_text(encoding="utf-8")),
+        args.graph_source.read_bytes(),
+    )
+    exposure = json.loads(EXPOSURE.read_text(encoding="utf-8"))
+    report.update(review_public_literature_evidence(exposure))
+    resolution = json.loads(RESOLUTION.read_text(encoding="utf-8"))
+    report.update(review_scientific_resolution(
+        resolution,
+        json.loads(args.draft.read_text(encoding="utf-8")),
+        json.loads(args.packet.read_text(encoding="utf-8")),
+    ))
+    rendered = json.dumps(report, sort_keys=True, indent=2) + "\n"
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(rendered, encoding="utf-8")
+    print(rendered)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,251 @@
+{
+  "schema": "pypcc-P1-scientific-protocol-frozen/v1",
+  "status": "SCIENTIFICALLY_APPROVED_EXPLORATORY_P1_ONLY",
+  "decision_date": "2026-11-12",
+  "approval_origin": {
+    "mechanism": "maintainer_explicit_in_conversation",
+    "evidence": "User answered 'Sim, prossiga.' to direct question explicitly requesting approval of scientific recommendations S1-S6, including Wholesale Channel and disclosed limitations.",
+    "scope": [
+      "S1_DATASETS_AND_HISTORICAL_EXPOSURE",
+      "S2_TARGET_FEATURES_AND_PROVENANCE",
+      "S3_PREPROCESSING",
+      "S4_GRAPH_REPRESENTATION",
+      "S5_MASK_SEEDS_AND_OBSERVATION",
+      "S6_ANALYSIS_AND_DECISION"
+    ],
+    "does_NOT_approve_P2_execution": true,
+    "cannot_claim_no_prior_local_experiments": true,
+    "local_unpublished_experiment_history": "UNKNOWN_NOT_DECLARED: approval to proceed with exploratory methodology is not a claim of no prior dataset use",
+    "source_patient_customer_batch_independence": "NOT_VERIFIED; do not infer independence or generalization",
+    "historical_public_check": "Ten bounded public experimental source sections reviewed; no candidate name reported there, does not establish novelty"
+  },
+  "source_version": {
+    "production_repository": "fbreve/pypcc",
+    "baseline_master_sha": "ea69f690208620d5563c8efece6b2e04369f52c0",
+    "production_graph_git_blob_sha1": "3e8943462555b4feafbd162125b51e41f29d7ab7",
+    "scientific_design_review_PR": 258,
+    "source_quality_review_PR": 260,
+    "evidence_registry": [
+      "docs/current_p1_official_uci_quality_results_2026-11-12.json",
+      "docs/current_p1_official_uci_near_duplicate_results_2026-11-12.json",
+      "docs/current_p1_alternative_domain_quality_results_2026-11-12.json",
+      "docs/current_p1_wholesale_region_spend_source_results_2026-11-12.json",
+      "docs/current_p1_public_literature_exposure_2026-11-12.json",
+      "docs/current_p1_additional_public_papers_2026-11-12.json"
+    ],
+    "data_source_hashes_are_observed_not_signed": true,
+    "production_source_changes_authorized": false
+  },
+  "selected_datasets": [
+    {
+      "registry_index": 0,
+      "uci_id": 212,
+      "source_name": "Vertebral Column",
+      "domain": "biomechanical_patient_measures",
+      "official_source_url": "https://archive.ics.uci.edu/static/public/212/vertebral%2Bcolumn.zip",
+      "zip_sha256": "899ed1d137ceb4c36d59fa35f3cbab39ec3b78fd3ca1fdaf2fae155459c1372f",
+      "file_name": "column_3C_weka.arff",
+      "file_sha256": "cf768854cf4cf42b3a3b792a239a81ebfd4fbfafc25fbe2a19d15b3f73249879",
+      "original_n_rows": 310,
+      "n_features": 6,
+      "class_support": {
+        "Hernia": 60,
+        "Normal": 100,
+        "Spondylolisthesis": 150
+      },
+      "class_order": "lexicographic_source_class_value_order",
+      "actual_target": "Class (three-class variant)",
+      "target_is_derived": false,
+      "predictive_features": "all six original numeric ARFF features in file order",
+      "excluded_predictors": [
+        "Class"
+      ],
+      "preprocessing": "population_zscore",
+      "clinical_subject_or_acquisition_batch_independence_established": false,
+      "documented_prior_local_PCC_use": "NOT_DISCLOSED_OR_VERIFIED",
+      "experiment_type": "EXPLORATORY_ONLY"
+    },
+    {
+      "registry_index": 1,
+      "uci_id": 850,
+      "source_name": "Raisin",
+      "domain": "grain_image_shape",
+      "official_source_url": "https://archive.ics.uci.edu/static/public/850/raisin.zip",
+      "zip_sha256": "5d516c040923fd154ecf85e31b6e1b5a096724fa0e68d588c33fb5a2f0c3e5db",
+      "file_name": "Raisin_Dataset.xlsx",
+      "file_sha256": "9370b5f749a572a0bbeae15c93bf2e15c859b06d2626ae401b844c0a925fa553",
+      "original_n_rows": 900,
+      "n_features": 7,
+      "class_support": {
+        "Besni": 450,
+        "Kecimen": 450
+      },
+      "class_order": "lexicographic_source_class_value_order",
+      "actual_target": "Class",
+      "target_is_derived": false,
+      "predictive_features": "seven original numeric data columns in Raisin_Grains_Dataset worksheet order",
+      "excluded_predictors": [
+        "Class"
+      ],
+      "preprocessing": "population_zscore",
+      "clinical_subject_or_acquisition_batch_independence_established": false,
+      "documented_prior_local_PCC_use": "NOT_DISCLOSED_OR_VERIFIED",
+      "experiment_type": "EXPLORATORY_ONLY"
+    },
+    {
+      "registry_index": 2,
+      "uci_id": 292,
+      "source_name": "Wholesale Customers",
+      "domain": "annual_wholesale_spending",
+      "official_source_url": "https://archive.ics.uci.edu/static/public/292/wholesale%2Bcustomers.zip",
+      "zip_sha256": "647e6a61683ed23f48c7b04e1e2be78835eca8758b32267603fc42a1479dbfb8",
+      "file_name": "Wholesale customers data.csv",
+      "file_sha256": "c3d018c643565b85cee733c4a2ac76dd76e080e857cb23f0ccfcc2e15a6c17ef",
+      "original_n_rows": 440,
+      "n_features": 6,
+      "class_support": {
+        "1": 298,
+        "2": 142
+      },
+      "class_order": "lexicographic_source_class_value_order",
+      "actual_target": "Channel",
+      "target_is_derived": true,
+      "predictive_features": [
+        "Fresh",
+        "Milk",
+        "Grocery",
+        "Frozen",
+        "Detergents_Paper",
+        "Delicassen"
+      ],
+      "excluded_predictors": [
+        "Channel",
+        "Region"
+      ],
+      "preprocessing": "nonnegative_log1p_then_population_zscore",
+      "clinical_subject_or_acquisition_batch_independence_established": false,
+      "documented_prior_local_PCC_use": "NOT_DISCLOSED_OR_VERIFIED",
+      "experiment_type": "EXPLORATORY_ONLY"
+    }
+  ],
+  "excluded_sources": [
+    {
+      "uci_id": 545,
+      "reason": "Rice overlaps grain-morphology domain with chosen Raisin; selected for lower prospective runtime not PCC outcome"
+    },
+    {
+      "uci_id": 379,
+      "reason": "Website Phishing coded categorical predictors and 48 conflicting class feature patterns; not within continuous Euclidean source protocol"
+    }
+  ],
+  "scientific_question": "Among originally unlabeled nodes, what fraction changes class argmax between fixed PCC iterations 5000 and 50000 for a fixed graph/label budget/backend, described across three application domains?",
+  "preprocessing": {
+    "original_rows_preserved": true,
+    "no_label_leakage": true,
+    "no_missing_value_imputation": true,
+    "no_row_exclusion": true,
+    "no_outlier_clipping": true,
+    "no_label_based_scaling": true,
+    "unsupervised_transductive_all_X": true,
+    "population_zscore_rule": "For each column j on all source rows, float64 (x_ij - mean(X[:,j])) / std(X[:,j],ddof=0), population denominator n; fail closed on zero variance or nonfinite",
+    "wholesale_transform": "Require all six spending features finite and >=0; apply float64 log1p elementwise before the same population z-score; no changing after PCC result",
+    "versions_and_transformed_array_hashes": "P2 technical verification required: exact NumPy implementation, row/column order, native float64 serialization and digest before any fit",
+    "class_labels_used_for_preprocessing": false
+  },
+  "graph": {
+    "source_module": "pcc_graph.py",
+    "function": "build_knn_graph",
+    "k_nn": 10,
+    "metric": "minkowski",
+    "p": 2,
+    "n_jobs": 1,
+    "nearest_neighbors_algorithm": "auto",
+    "symmetrization": "union(A,A.T) with binary undirected edges",
+    "graph_directed": false,
+    "PCC_storage": "dense int64 neib_list, ordered active entries and -1 padding; int64 neib_qt",
+    "prohibit_CSR_propagation_replacement": true,
+    "installation_route": "build_graph, not set_graph; exact native consumer representation and active edges must pass P2 hash equivalence",
+    "neighbor_tie_and_order": "P2 fail closed on source/neighbor-order drift, no self loops and no empty degrees; test actual graph before any fit",
+    "graph_hash": "P2 required, not computed in P1"
+  },
+  "fit": {
+    "backend_order": [
+      "numpy_sequential",
+      "numba_sequential_nopython",
+      "cython_sequential_cached_or_legacy_as_defined_by_early_stop"
+    ],
+    "update_mode": "sequential",
+    "p_grd": 0.5,
+    "delta_v": 0.1,
+    "deltap": 1,
+    "dexp": 2,
+    "max_iter": 50000,
+    "early_stop": false,
+    "es_chk": 2000,
+    "milestones": [
+      0,
+      1,
+      10,
+      100,
+      1000,
+      5000,
+      25000,
+      50000
+    ],
+    "trial_order": "registry_index asc, mask_replicate asc, backend_order as above; no outcome-dependent reordering",
+    "label_mask_replicates_per_dataset": 8,
+    "originally_labeled_per_class": 3,
+    "total_proposed_fits": 72,
+    "stop_rule": "No early stop, no adaptive resampling, no replacing failed fits",
+    "backend_native_RNGs": "Native streams differ and are not required to be bitwise identical across backends"
+  },
+  "rng_and_masks": {
+    "source_class_encoding": "Use exact original class values in sorted lexicographic order; code 0..C-1 for class index; -1 for all unlabeled rows",
+    "original_row_order": "as read from exact pinned source member, no sorting/reordering of observations",
+    "mask_seed_recipe": "np.random.Generator(np.random.PCG64(np.random.SeedSequence([20261112,registry_index,replicate_index])))",
+    "sampling_recipe": "For each class in sorted source label order, get ascending original row indices and call Generator.choice(candidate_indices,size=3,replace=False), once per class per replicate. Sort final selected row indices. The same frozen mask and graph must be used for all three native backends.",
+    "propagation_seed_recipe": "SHA256 ASCII 'pypcc-P1-propagation-v1|uci:<id>|mask:<r>|<backend_name>'; seed=1+(uint32_le(digest[:4]) modulo (2**32-1)); independent from PCG64 mask streams",
+    "propagate_seed_range": "[1,4294967295]",
+    "source_label_masks_generated": false,
+    "mask_array_hashes": "P2 technical preflight required, no mask sampled by P1",
+    "backend_seed_table": "P2 must materialize/verify approved formula before running models"
+  },
+  "analysis": {
+    "only_initially_unlabeled_nodes": true,
+    "primary_checkpoints": [
+      5000,
+      50000
+    ],
+    "argmax_tie_rule": "first index of exact maximum; count ties at both endpoints; include tied eligible nodes in denominator",
+    "primary_estimator": "Count initially-unlabeled nodes with differing argmax between checkpoints / originally unlabeled count",
+    "initial_labelled_nodes_never_counted": true,
+    "backend_reporting": "Report all 8 mask values and within-dataset/backend mean, median, min, max",
+    "cross_dataset_reporting": "For each backend unweighted average of 3 dataset-level mask means",
+    "secondary": "Accuracy and balanced accuracy using held-out original labels only in post-fit reporting; report dominance margins and tie counts; never select graph/seed/preprocessing using these results",
+    "inference": "EXPLORATORY_DESCRIPTIVE_ONLY_NO_CONFIDENCE_INTERVAL_PVALUES_EQUIVALENCE_OR_POPULATION_GENERALIZATION",
+    "missingness": "Record failed or noncompleting case in append-only attempt ledger; no silent replacement/drop; if any case missing, withhold unqualified 72-fit summary",
+    "nodes_and_masks_are_not_independent_application_domains": true
+  },
+  "ethics_and_limitations": {
+    "sources_attribution": "UCI source and required CC BY 4.0 attribution for all three; verify specific reuse conditions before any source artifact publication",
+    "patients": "Clinical-origin tabular features; no verified unique patient or visit IDs and no reidentification attempts",
+    "grains": "Image-derived morphology, independent grains/batches not demonstrated",
+    "customers": "Customer spending features, company/group identity not demonstrated; derived Channel task differs from UCI's declared target Region",
+    "previously_used_locally": "UNKNOWN_NOT_DECLARED_OR_VERIFIED; no statement of novelty",
+    "participant_records_prohibited_in_public_CI": true,
+    "science_claim": "Within the three chosen datasets and disclosed constraints only"
+  },
+  "approvals_and_execution": {
+    "P1_scientific_approval": "EXPLICIT_FOR_S1_TO_S6_IN_CONVERSATION",
+    "frozen_scientific_payload": true,
+    "P1_sha256_is_digest_of_this_JSON_without_embedding_its_own_digest": true,
+    "P1_sha256_recorded_in_separate_p1_manifest": true,
+    "P2_preflight_status": "NOT_COMPLETED",
+    "P2_preflight_sha256": null,
+    "P2_execution_approved": false,
+    "real_data_fits_authorized": 0,
+    "real_data_fits_executed": 0,
+    "labels_sampling_or_graph_building_for_real_datasets_authorized_at_P1": false,
+    "authorized_next_phase": "P2 no-fit engineering/preflight planning only, with explicit separate approval before any real PCC fit"
+  }
+}

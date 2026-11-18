@@ -1,0 +1,173 @@
+{
+  "schema": "pypcc-P1-seven-additional-public-experimental-papers/v1",
+  "status": "SEVEN_SCOPED_PUBLIC_SOURCES_ONLY_NOT_EXHAUSTIVE_NOT_NOVELTY_APPROVAL",
+  "review_date": "2026-11-12",
+  "previous_three_paper_register": "docs/current_p1_public_literature_exposure_2026-11-12.json",
+  "checked_extra_source_count": 7,
+  "checked_extra_published_work_count": 6,
+  "checked_extra_public_preprint_count": 1,
+  "reviewed_experimental_sources": [
+    {
+      "id": "BREVE_COMPLEX_2009",
+      "year": 2009,
+      "title": "Particle Competition in Complex Networks for Semi-Supervised Classification",
+      "type": "conference_proceedings",
+      "url": "https://www.fabriciobreve.com/artigos/complex2009.pdf",
+      "evidence_location": "Section 3, printed pp. 7-10, Iris/Wine and toy/banana cases; PDF screenshot page index 7",
+      "experimental_datasets": [
+        "Iris",
+        "Wine",
+        "synthetic banana-shaped distributions"
+      ],
+      "subset_type": "original_network_classification",
+      "candidate_names_present": [],
+      "note": "Named real UCI datasets Iris and Wine; artificial banana-shaped data. Absence of candidate names limited to described experiments."
+    },
+    {
+      "id": "BREVE_IJCNN_2010",
+      "year": 2010,
+      "title": "Semi-Supervised Learning from Imperfect Data through Particle Cooperation and Competition",
+      "type": "conference_proceedings",
+      "url": "https://www.fabriciobreve.com/artigos/ijcnn2010.pdf",
+      "evidence_location": "Section III Computer Simulations, printed p. 3689 onward, PDF screenshot page index 4",
+      "experimental_datasets": [
+        "synthetic four-class modular networks"
+      ],
+      "subset_type": "synthetic_graph_only",
+      "candidate_names_present": [],
+      "note": "This paper's numerical experiments vary synthetic modular networks/mislabeled subsets. No UCI real dataset used in the reviewed experiment section."
+    },
+    {
+      "id": "BREVE_TKDE_2012",
+      "year": 2012,
+      "title": "Particle Competition and Cooperation in Networks for Semi-Supervised Learning",
+      "type": "peer_reviewed_journal_preprint",
+      "url": "https://www.fabriciobreve.com/artigos/ieee-tkde-2009.pdf",
+      "evidence_location": "Section 4.3 Toy Data Sets, Section 4.4 Benchmark Table 1 printed p.10 (PDF screenshot index 9), and large-dataset Table 7 printed p.13 (index 12)",
+      "experimental_datasets": [
+        "synthetic banana",
+        "synthetic Highleyman",
+        "synthetic Lithuanian",
+        "synthetic Gaussian",
+        "g241c",
+        "g241d",
+        "Digit1",
+        "USPS",
+        "COIL",
+        "BCI",
+        "Text",
+        "USPS Handwritten Digit full",
+        "COIL 2000 Insurance Company",
+        "Letter Recognition"
+      ],
+      "subset_type": "standard_ssl_benchmark_plus_large_UCI",
+      "candidate_names_present": [],
+      "note": "Important historical source names beyond campaign 20-set list. PDF filename includes 2009 preprint date but journal publication year is 2012. COIL image benchmark in 7-set list is distinct from COIL 2000 Insurance Company large real dataset."
+    },
+    {
+      "id": "BREVE_IJCNN_2012_CONCEPT_DRIFT",
+      "year": 2012,
+      "title": "Particle Competition and Cooperation in Networks for Semi-Supervised Learning with Concept Drift",
+      "type": "conference_proceedings",
+      "url": "https://www.fabriciobreve.com/artigos/ijcnn2012.pdf",
+      "evidence_location": "Section III Computer Simulations, printed p.1805 onward, PDF screenshot index 3",
+      "experimental_datasets": [
+        "synthetic dynamic four-class Gaussian streams"
+      ],
+      "subset_type": "concept_drift_synthetic_only",
+      "candidate_names_present": [],
+      "note": "500 batches/50,000 synthetic items in slow drift and 100 batches/10,000 synthetic items in faster-drift variant; not static UCI tasks."
+    },
+    {
+      "id": "BREVE_IJCNN_2013_ACTIVE",
+      "year": 2013,
+      "title": "Active Semi-Supervised Learning using Particle Competition and Cooperation in Networks",
+      "type": "conference_proceedings",
+      "url": "https://www.fabriciobreve.com/artigos/2013/ijcnn2013/ijcnn2013.pdf",
+      "evidence_location": "Section III Computer Simulations, Figures 1–7; PDF screenshots index 3–4",
+      "experimental_datasets": [
+        "Iris",
+        "Wine",
+        "Digit1",
+        "USPS",
+        "COIL2",
+        "g241c",
+        "COIL"
+      ],
+      "subset_type": "active_semi_supervised_7_data_sets",
+      "candidate_names_present": [],
+      "note": "COIL2 is the two-class version and COIL is the six-class version in the paper; retain source spellings."
+    },
+    {
+      "id": "BREVE_MLSP_2016",
+      "year": 2016,
+      "title": "Combined Unsupervised and Semi-Supervised Learning for Data Classification",
+      "type": "conference_proceedings",
+      "url": "https://www.fabriciobreve.com/artigos/2016/mlsp2016/PaperMSLP2016.pdf",
+      "evidence_location": "Section 5 Computer Simulations, Tables 1–4, PDF screenshot index 3",
+      "experimental_datasets": [
+        "Iris",
+        "Wine",
+        "Digit1",
+        "COIL",
+        "USPS",
+        "g241c"
+      ],
+      "subset_type": "six_public_datasets_original_PCC_plus_CUSSL",
+      "candidate_names_present": [],
+      "note": "Six public datasets explicitly enumerated in full-text experimental section."
+    },
+    {
+      "id": "BREVE_PCC_GCN_ARXIV_2026",
+      "year": 2026,
+      "title": "Particle Competition and Cooperation for Robust Graph Convolutional Network Learning Under Label Noise",
+      "type": "arxiv_preprint_not_peer_review_claim",
+      "url": "https://arxiv.org/abs/2609.22053",
+      "evidence_location": "HTML full text, Section 4.1 Datasets/Table 2 and Section 6 Benchmark Comparison/Table 4, September 2026",
+      "experimental_datasets": [
+        "Cora",
+        "CiteSeer",
+        "PubMed",
+        "Amazon-Computers",
+        "Amazon-Photos",
+        "DBLP",
+        "BlogCatalog",
+        "Flickr",
+        "Amazon-Ratings",
+        "Roman-Empire"
+      ],
+      "subset_type": "ten_NoiseGL_graph_native_data_sets",
+      "candidate_names_present": [],
+      "note": "PCC+GCN graph-native datasets differ in task from prospective static UCI tabular kNN source study. Not a peer-reviewed journal publication claim."
+    }
+  ],
+  "provisional_candidate_ids_not_selected": [
+    212,
+    850,
+    292
+  ],
+  "provisional_candidate_names": [
+    "Vertebral Column",
+    "Raisin",
+    "Wholesale Customers"
+  ],
+  "negative_claim": "NONE_OF_THREE_CANDIDATES_NAMED_IN_REVIEWED_EXPERIMENTAL_DATASET_LISTS_OF_THESE_SEVEN_SOURCES_ONLY",
+  "limits": [
+    "Scanning seven sources is not exhaustive across all PCC papers, conference abstracts, theses, local historical MATLAB/Python experiments, collaborators or alternate dataset aliases.",
+    "2012 TKDE source is a 2009-dated author preprint and final publisher PDF may differ; record the inspected source, not an authenticated journal PDF.",
+    "Some studies examine synthetic graphs and 2026 uses native graph datasets; absent tabular names there is not evidence of globally unused datasets.",
+    "Published tables are historical exposure evidence, not control of private archives or a scientific recommendation of a fixed 3-domain shortlist.",
+    "PDF pages were opened/screenshot-checked in web viewing; 2026 arXiv was read as HTML and not treated as PDF-verified text.",
+    "Additional journal, conference and thesis corpus not reviewed; independent ethics/group identifiers remain unresolved."
+  ],
+  "historical_20_dataset_campaign_exhaustive": false,
+  "all_prior_research_checked": false,
+  "all_candidate_aliases_checked": false,
+  "clinical_or_subject_group_independence_proved": false,
+  "scientific_P1_approved": false,
+  "P1_scientific_sha256": null,
+  "P2_execution_sha256": null,
+  "dataset_selected_ids": [],
+  "PCC_real_data_fits_executed": 0,
+  "execution_authorized": false
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "pypcc-P1-scientific-payload-sha-manifest/v1",
+  "study": "PCC 5000-to-50000 originally-unlabeled argmax stability across three prospective data domains",
+  "approved_science_scope": "EXPLORATORY_S1_TO_S6_ONLY",
+  "approved_by": "project_maintainer_direct_in_conversation",
+  "approved_date_local": "2026-11-12",
+  "approval_evidence": "User replied 'Sim, prossiga.' after being explicitly asked for approval of S1–S6, Wholesale Channel as derived target, and disclosure of historical/independence limitations. No assertion was made about prior local unpublished use.",
+  "approved_payload_path": "docs/current_p1_frozen_scientific_protocol_2026-11-12.json",
+  "digest_algorithm": "SHA-256(canonical-json-utf8); Python json.dumps(sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False)",
+  "approved_P1_scientific_protocol_sha256": "f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166",
+  "verified_at_source_commit": "4a4269a7a61ef6af2445de68a46549139e6176e1",
+  "approved_uci_dataset_ids": [
+    212,
+    850,
+    292
+  ],
+  "retrospective_draft_PR": 258,
+  "real_source_data_mask_or_graph_work_authorized": false,
+  "any_real_PCC_fit_authorized": false,
+  "P2_execution_authorized": false,
+  "P2_preflight_sha256": null,
+  "separate_explicit_P2_approval_required": true,
+  "local_prior_PCC_use_on_selected_sets": "UNKNOWN_NOT_DECLARED_OR_VERIFIED",
+  "group_identifiers_patient_grain_batch_customer": "NOT_VERIFIED",
+  "next_phase": "P2 no-fit technical preflight design and independent resource feasibility; authorization to run actual PCC requires separate P2 digest approval",
+  "source_data_rows_in_this_manifest": 0,
+  "real_PCC_fits_executed": 0
+}

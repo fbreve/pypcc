@@ -1,0 +1,96 @@
+name: Research P1 prospective draft review (no fits)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/current_p1_prospective_design_draft_2026-11-12.json'
+      - 'docs/current_p1_prospective_design_2026-11-12.md'
+      - 'docs/current_p1_scientific_decision_packet_2026-11-12.json'
+      - 'docs/current_p1_scientific_decisions_2026-11-12.md'
+      - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.json'
+      - 'docs/current_p1_scientific_resolution_for_review_2026-11-12.md'
+      - 'docs/current_p1_frozen_scientific_protocol_2026-11-12.json'
+      - 'docs/current_p1_scientific_sha_manifest_2026-11-12.json'
+      - 'docs/current_p2_preflight_plan_2026-11-12.json'
+      - 'docs/current_p2_preflight_plan_2026-11-12.md'
+      - 'experiments/review_p2_preflight_plan.py'
+      - 'experiments/test_review_p2_preflight_plan.py'
+      - 'docs/current_p1_scientific_freeze_approved_2026-11-12.md'
+      - 'experiments/validate_p1_frozen_science.py'
+      - 'experiments/test_validate_p1_frozen_science.py'
+      - 'experiments/review_p1_scientific_decisions.py'
+      - 'experiments/test_review_p1_scientific_decisions.py'
+      - 'experiments/p1_exploratory_reference.py'
+      - 'experiments/test_p1_exploratory_reference.py'
+      - 'docs/current_p1_rng_and_exploratory_analysis_2026-11-12.md'
+      - 'docs/current_p1_public_literature_exposure_2026-11-12.json'
+      - 'docs/current_p1_public_literature_exposure_2026-11-12.md'
+      - 'docs/current_p1_additional_public_papers_2026-11-12.json'
+      - 'docs/current_p1_additional_public_papers_2026-11-12.md'
+      - 'experiments/review_p1_additional_public_papers.py'
+      - 'experiments/test_review_p1_additional_public_papers.py'
+      - 'experiments/review_p1_proposal.py'
+      - 'experiments/test_review_p1_proposal.py'
+      - '.github/workflows/research-p1-proposal-no-fits.yml'
+jobs:
+  draft-only:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.12']
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Validate draft only (stdlib, no dependencies, no data)
+        run: python -m experiments.review_p1_proposal --output p1-draft-review.json
+      - name: Validate source-pinned P1 reviewer decisions (no datasets or graphs loaded)
+        run: python -m experiments.review_p1_scientific_decisions --out p1-science-decision-review.json
+      - name: Verify approved exploratory P1 science SHA without real input or model fit
+        run: python -m experiments.validate_p1_frozen_science --out p1-approved-science-no-fit.json
+      - name: Verify P2 technical preflight plan remains no-fit and unauthorized
+        run: python -m experiments.review_p2_preflight_plan --out p2-unapproved-plan-review.json
+      - name: Validate seven additional bounded historical PCC sources (no data/models)
+        run: python -m experiments.review_p1_additional_public_papers --out p1-additional-paper-evidence.json
+      - name: Verify reject-approval and reject-scientific-drift tests
+        run: python -m unittest experiments.test_review_p1_proposal experiments.test_review_p1_scientific_decisions experiments.test_p1_exploratory_reference experiments.test_review_p1_additional_public_papers experiments.test_validate_p1_frozen_science experiments.test_review_p2_preflight_plan -v
+      - name: Assert report cannot authorize science or execution
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p1-draft-review.json')); assert r['design_integrity']=='PASS'; assert not r['P1_ready_to_freeze']; assert not r['P2_ready']; assert not r['P3_ready']; assert not r['execution_authorized']; assert r['execution_preflight_sha256'] is None; assert r['model_fits_executed']==0"
+      - name: Reject any false dataset selection, scientific seal, or real PCC fit
+        shell: bash
+        run: |
+          python -c "import json; r=json.load(open('p1-science-decision-review.json')); assert r['proposal_checks']=='PASS'; assert r['proposed_candidate_ids_not_selected']==[212,850,292]; assert r['original_graph_source_blob_checked']; assert r['scientific_resolution_review']=='PASS_PENDING_HUMAN_DECISION'; assert r['proposals_for_explicit_approval']==6; assert not r['all_six_recommendations_human_approved']; assert r['public_full_text_papers_scoped_checked']==3; assert not r['all_history_or_private_matlab_checked']; assert not r['paper_20_dataset_inventory_exhaustive']; assert not r['data_independence_or_ethics_certified']; assert not r['P1_scientifically_frozen']; assert not r['P1_ready_to_freeze']; assert r['P2_execution_preflight_sha256'] is None; assert r['PCC_fits_executed']==0; assert not r['execution_authorized']"
+      - name: Reject false full historical coverage, source independence and science approval
+        shell: bash
+        run: |
+          python -c "import json; a=json.load(open('p1-additional-paper-evidence.json')); assert a['scope_integrity']=='PASS'; assert a['additional_published_sources']==6; assert a['additional_arxiv_preprints']==1; assert a['total_scoped_sources_with_prior_three']==10; assert not a['candidate_dataset_novelty_proved']; assert not a['all_prior_research_or_aliases_checked']; assert not a['scientific_P1_approved']; assert not a['execution_authorized']; assert a['PCC_fits_executed']==0"
+      - name: Ensure approved SCIENCE does NOT authorize technical P2 execution
+        shell: bash
+        run: |
+          python -c "import json; a=json.load(open('p1-approved-science-no-fit.json')); assert a['science_status']=='FROZEN_S1_S6_EXPLORATORY_ONLY'; assert a['selected_source_uci_ids_as_research_protocol']==[212,850,292]; assert a['trial_count_IF_future_P2_approved']==72; assert not a['P2_execution_authorized']; assert a['P2_execution_preflight_sha256'] is None; assert a['PCC_fits_executed']==0; assert a['datasets_or_real_labels_processed']==0; assert a['scientific_P1_SHA_manifest_matches_exact_approved_digest']; assert a['scientific_protocol_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'"
+      - name: Ensure P2 planning does not claim an executable preflight SHA
+        shell: bash
+        run: |
+          python -c "import json; p=json.load(open('p2-unapproved-plan-review.json')); assert p['P2_plan_integrity']=='PASS_PLANNING_ONLY'; assert p['P1_scientific_sha256']=='f0111f153ade3d72191c107ace039e1835e5c27db2cf4b3df8d610b41b2f4166'; assert p['planned_gates']==8 and p['gates_executed']==0; assert not p['P2_execution_authorized']; assert p['real_PCC_fits_executed']==0; assert p['P2_preflight_sha256'] is None"
+      - name: Upload explicitly unapproved P1 review
+        uses: actions/upload-artifact@v4
+        with:
+          name: P1-DRAFT-NOT-APPROVED-${{ runner.os }}-py${{ matrix.python-version }}
+          path: |
+            p1-draft-review.json
+            p1-science-decision-review.json
+            p1-additional-paper-evidence.json
+            p1-approved-science-no-fit.json
+            p2-unapproved-plan-review.json
+          if-no-files-found: error
